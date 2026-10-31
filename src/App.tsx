@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Settings,
   ChevronDown,
@@ -14,8 +14,19 @@ import {
   Check,
   RotateCcw,
   Headphones,
-  Download
+  Download,
+  Database,
+  Activity,
+  Workflow,
+  BarChart3
 } from 'lucide-react';
+import type { CorpusEntry, SynthResult } from './lib/types';
+import { getAllEntries } from './lib/store';
+import { loadManifest, synthesize } from './lib/tts';
+import PipelinePanel from './components/PipelinePanel';
+import FeaturesPanel from './components/FeaturesPanel';
+import CorpusPanel from './components/CorpusPanel';
+import EvalPanel from './components/EvalPanel';
 
 interface VoiceOption {
   id: string;
@@ -26,47 +37,65 @@ interface VoiceOption {
   avatarBg: string;
   accentColor: string;
   sampleText: string;
+  style: 'nu' | 'nam';
 }
 
-const VOICES: VoiceOption[] = [
+const AVATARS = [
+  { avatarBg: 'from-pink-500 via-rose-500 to-indigo-600', accentColor: '#ec4899', style: 'nu' as const },
+  { avatarBg: 'from-blue-600 via-cyan-500 to-indigo-800', accentColor: '#06b6d4', style: 'nam' as const }
+];
+
+// Hiển thị khi chưa có ngữ liệu; khi có ngữ liệu, danh sách giọng lấy từ người thu âm thực tế.
+const DEFAULT_VOICES: VoiceOption[] = [
   {
     id: 'nu',
     name: 'Giọng Nữ',
     gender: 'Nữ',
-    tags: ['Truyền cảm', 'Tự nhiên', 'Dịu dàng'],
-    tone: 'Truyền cảm & Tự nhiên',
-    avatarBg: 'from-pink-500 via-rose-500 to-indigo-600',
-    accentColor: '#ec4899',
-    sampleText: 'Chào mừng bạn đến với VietVoice! Trải nghiệm chuyển đổi văn bản thành giọng nói tiếng Việt tự nhiên, cảm xúc và mượt mà.'
+    tags: [],
+    tone: 'Chưa có ngữ liệu',
+    sampleText: '',
+    ...AVATARS[0]
   },
   {
     id: 'nam',
     name: 'Giọng Nam',
     gender: 'Nam',
-    tags: ['Trầm ấm', 'Chuyên nghiệp', 'Tự tin'],
-    tone: 'Trầm ấm & Chuyên nghiệp',
-    avatarBg: 'from-blue-600 via-cyan-500 to-indigo-800',
-    accentColor: '#06b6d4',
-    sampleText: 'VietVoice cung cấp giọng đọc AI chất lượng phòng thu, tối ưu cho sách nói, podcast, video tin tức và thuyết minh.'
+    tags: [],
+    tone: 'Chưa có ngữ liệu',
+    sampleText: '',
+    ...AVATARS[1]
   }
 ];
 
 const LANGUAGES = [
   { code: 'vi-VN', name: 'Vietnamese (Tiếng Việt)', flag: '🇻🇳' },
-  { code: 'en-US', name: 'English (US)', flag: '🇺🇸' },
-  { code: 'en-GB', name: 'English (UK)', flag: '🇬🇧' },
-  { code: 'ja-JP', name: 'Japanese (日本語)', flag: '🇯🇵' },
-  { code: 'es-ES', name: 'Spanish (Español)', flag: '🇪🇸' },
-  { code: 'fr-FR', name: 'French (Français)', flag: '🇫🇷' },
 ];
 
 const SPEED_OPTIONS = [0.75, 1.0, 1.25, 1.5, 2.0];
 
+const SETTINGS_TABS = [
+  { id: 'params', label: 'Tham số ghép nối', icon: Sliders },
+  { id: 'corpus', label: 'Ngữ liệu & Lưu trữ', icon: Database },
+  { id: 'features', label: 'Đặc trưng âm thanh', icon: Activity },
+  { id: 'eval', label: 'Đánh giá kết quả', icon: BarChart3 },
+  { id: 'pipeline', label: 'Sơ đồ & Quy trình', icon: Workflow }
+] as const;
+type SettingsTabId = (typeof SETTINGS_TABS)[number]['id'];
+
+const DEFAULT_BARS = [
+  22, 38, 55, 78, 92, 45, 68, 88, 100, 60, 35, 70, 85, 95, 50, 30, 65, 82,
+  90, 75, 40, 60, 95, 80, 52, 38, 72, 86, 64, 42, 58, 74, 90, 65, 38, 24
+];
+
 export default function App() {
+  // Corpus (ngữ liệu thu âm thật) & kết quả tổng hợp
+  const [entries, setEntries] = useState<CorpusEntry[]>([]);
+  const [lastResult, setLastResult] = useState<SynthResult | null>(null);
+  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('params');
+  const [statusMsg, setStatusMsg] = useState<string>('');
+
   // Input & Selection State
-  const [text, setText] = useState<string>(
-    'Chào mừng bạn đến với VietVoice! Trải nghiệm chuyển đổi văn bản thành giọng nói tiếng Việt tự nhiên, cảm xúc và mượt mà.'
-  );
+  const [text, setText] = useState<string>('');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('Vietnamese (Tiếng Việt)');
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>('nu');
   const [isLangOpen, setIsLangOpen] = useState<boolean>(false);
@@ -76,33 +105,82 @@ export default function App() {
   // Audio Playback & Generation State
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [currentTime, setCurrentTime] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(154); // 02:34 in seconds
+  const [currentTime, setCurrentTimeState] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(0);
   const [volume, setVolume] = useState<number>(85);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [speedIndex, setSpeedIndex] = useState<number>(1); // 1.0x
 
-  // Advanced Settings State
-  const [pitch, setPitch] = useState<number>(50);
-  const [stability, setStability] = useState<number>(75);
-  const [clarity, setClarity] = useState<number>(85);
-  const [outputFormat, setOutputFormat] = useState<string>('MP3 (320kbps)');
+  // Concatenation settings
+  const [gapMs, setGapMs] = useState<number>(120);
+  const [crossfadeMs, setCrossfadeMs] = useState<number>(20);
+  const [trim, setTrim] = useState<boolean>(true);
+  const [normalize, setNormalize] = useState<boolean>(true);
+  const [fallbackSpeaker, setFallbackSpeaker] = useState<boolean>(true);
 
-  const playbackTimerRef = useRef<number | null>(null);
-  const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const urlRef = useRef<string>('');
+
+  const refreshEntries = useCallback(async () => {
+    setEntries(await getAllEntries());
+  }, []);
+
+  // Nạp ngữ liệu từ IndexedDB + public/corpus/manifest.json (nếu có)
+  useEffect(() => {
+    (async () => {
+      const existing = await getAllEntries();
+      setEntries(existing);
+      const added = await loadManifest(new Set(existing.map((e) => e.id)));
+      if (added.length) await refreshEntries();
+    })();
+  }, [refreshEntries]);
+
+  const voices: VoiceOption[] = useMemo(() => {
+    const speakers = [...new Set(entries.map((e) => e.speaker))].sort();
+    if (!speakers.length) return DEFAULT_VOICES;
+    return speakers.map((s, i) => {
+      const own = entries.filter((e) => e.speaker === s);
+      return {
+        id: s,
+        name: `Giọng ${s}`,
+        gender: `${own.length} từ`,
+        tags: [],
+        tone: 'Giọng thu âm thật',
+        sampleText: own.slice(0, 3).map((e) => e.word).join(' '),
+        ...AVATARS[i % 2]
+      };
+    });
+  }, [entries]);
+
+  useEffect(() => {
+    if (!voices.some((v) => v.id === selectedVoiceId)) setSelectedVoiceId(voices[0].id);
+  }, [voices, selectedVoiceId]);
 
   const selectedVoice = useMemo(() => {
-    return VOICES.find(v => v.id === selectedVoiceId) || VOICES[0];
-  }, [selectedVoiceId]);
+    return voices.find(v => v.id === selectedVoiceId) || voices[0];
+  }, [voices, selectedVoiceId]);
 
-  // Waveform bars data (36 bars, symmetric random heights)
+  // Danh sách từ có sẵn cho giọng đang chọn (để gợi ý/bấm chọn nhanh trên UI chính)
+  const availableWords = useMemo(() => {
+    const own = entries.filter((e) => e.speaker === selectedVoiceId).map((e) => e.word);
+    const all = own.length ? own : entries.map((e) => e.word);
+    return [...new Set(all)].sort((a, b) => a.localeCompare(b, 'vi'));
+  }, [entries, selectedVoiceId]);
+
+  // Waveform bars lấy từ tín hiệu tổng hợp thật (36 cột, biên độ đỉnh)
   const waveformBars = useMemo(() => {
-    const rawHeights = [
-      22, 38, 55, 78, 92, 45, 68, 88, 100, 60, 35, 70, 85, 95, 50, 30, 65, 82,
-      90, 75, 40, 60, 95, 80, 52, 38, 72, 86, 64, 42, 58, 74, 90, 65, 38, 24
-    ];
-    return rawHeights;
-  }, []);
+    if (!lastResult) return DEFAULT_BARS;
+    const x = lastResult.samples;
+    const n = DEFAULT_BARS.length;
+    const size = Math.max(1, Math.floor(x.length / n));
+    const peaks = Array.from({ length: n }, (_, b) => {
+      let m = 0;
+      for (let i = b * size; i < Math.min(x.length, (b + 1) * size); i++) m = Math.max(m, Math.abs(x[i]));
+      return m;
+    });
+    const max = Math.max(...peaks) || 1;
+    return peaks.map((p) => Math.max(8, Math.round((p / max) * 100)));
+  }, [lastResult]);
 
   // Format seconds to mm:ss
   const formatTime = (seconds: number): string => {
@@ -111,118 +189,127 @@ export default function App() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Playback timer loop
+  const setCurrentTime = (t: number) => {
+    if (audioRef.current) audioRef.current.currentTime = t;
+    setCurrentTimeState(t);
+  };
+
+  // Audio element thật phát file WAV đã tổng hợp
   useEffect(() => {
-    if (isPlaying) {
-      const step = 0.5 * SPEED_OPTIONS[speedIndex];
-      playbackTimerRef.current = window.setInterval(() => {
-        setCurrentTime(prev => {
-          if (prev >= duration) {
-            setIsPlaying(false);
-            if ('speechSynthesis' in window) {
-              window.speechSynthesis.cancel();
-            }
-            return 0;
-          }
-          return Math.min(prev + step, duration);
-        });
-      }, 500);
-    } else {
-      if (playbackTimerRef.current) {
-        clearInterval(playbackTimerRef.current);
-      }
-    }
-    return () => {
-      if (playbackTimerRef.current) {
-        clearInterval(playbackTimerRef.current);
-      }
+    const a = new Audio();
+    a.onended = () => {
+      setIsPlaying(false);
+      setCurrentTimeState(0);
     };
-  }, [isPlaying, duration, speedIndex]);
+    audioRef.current = a;
+    return () => {
+      a.pause();
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    };
+  }, []);
 
-  // Web Speech API Integration for natural voice output
-  const triggerNativeSpeech = (textToSpeak: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.rate = SPEED_OPTIONS[speedIndex];
-      const genderPitchFactor = selectedVoiceId === 'nam' ? 0.8 : 1.15;
-      utterance.pitch = Math.max(0.5, Math.min(2.0, (0.8 + (pitch / 100) * 0.4) * genderPitchFactor));
-      utterance.volume = isMuted ? 0 : volume / 100;
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    a.volume = isMuted ? 0 : volume / 100;
+    a.playbackRate = SPEED_OPTIONS[speedIndex];
+  }, [volume, isMuted, speedIndex, lastResult]);
 
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length > 0) {
-        const langCode = selectedLanguage.includes('Vietnamese') ? 'vi' : 'en';
-        const matchedVoices = voices.filter(v => v.lang.toLowerCase().startsWith(langCode));
-        if (matchedVoices.length > 0) {
-          const matched = matchedVoices.find(v =>
-            selectedVoiceId === 'nam'
-              ? /nam|male|david|george|mark|minh|khoa/i.test(v.name)
-              : /nu|nữ|female|zira|susan|mai|linh|lan|nga/i.test(v.name)
-          ) || matchedVoices[0];
-          utterance.voice = matched;
-        }
+  // Cập nhật thanh tiến trình theo thời gian phát thật
+  useEffect(() => {
+    if (!isPlaying) return;
+    const id = window.setInterval(() => {
+      if (audioRef.current) setCurrentTimeState(audioRef.current.currentTime);
+    }, 50);
+    return () => clearInterval(id);
+  }, [isPlaying]);
+
+  // Handle Generate: tổng hợp ghép nối từ các file thu âm
+  const handleGenerate = async () => {
+    if (isGenerating) return;
+    const input = text.trim();
+    if (!input) {
+      setStatusMsg('Hãy nhập một từ hoặc chuỗi từ thuộc danh sách ngữ liệu.');
+      return;
+    }
+    if (!entries.length) {
+      setStatusMsg('Chưa có ngữ liệu. Bấm biểu tượng Cài đặt (⚙️) → "Ngữ liệu & Lưu trữ" để thu âm hoặc nạp file.');
+      return;
+    }
+    setIsGenerating(true);
+    setStatusMsg('');
+    audioRef.current?.pause();
+    setIsPlaying(false);
+    try {
+      const result = await synthesize(input, entries, {
+        speaker: selectedVoiceId,
+        gapMs,
+        crossfadeMs,
+        trim,
+        normalize,
+        fallbackSpeaker
+      });
+      const oov = result.trace.filter((t) => t.status === 'oov').map((t) => t.token);
+      if (result.trace.every((t) => t.status === 'oov')) {
+        setStatusMsg(`Không có từ nào thuộc danh sách ngữ liệu: ${oov.join(', ')}`);
+        return;
       }
-
-      utterance.onend = () => {
-        setIsPlaying(false);
-      };
-      utterance.onerror = () => {
-        setIsPlaying(false);
-      };
-
-      speechUtteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
+      if (oov.length) setStatusMsg(`Bỏ qua từ ngoài danh sách: ${oov.join(', ')}`);
+      setLastResult(result);
+      setDuration(result.durationSec);
+      setCurrentTimeState(0);
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+      urlRef.current = URL.createObjectURL(result.wav);
+      const a = audioRef.current!;
+      a.src = urlRef.current;
+      a.playbackRate = SPEED_OPTIONS[speedIndex];
+      a.volume = isMuted ? 0 : volume / 100;
+      await a.play();
+      setIsPlaying(true);
+    } catch (e) {
+      setStatusMsg(`Lỗi tổng hợp: ${String(e)}`);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   // Handle Play/Pause
   const handleTogglePlay = () => {
     if (isGenerating) return;
-
+    const a = audioRef.current;
+    if (!lastResult || !a) {
+      handleGenerate();
+      return;
+    }
     if (isPlaying) {
+      a.pause();
       setIsPlaying(false);
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.pause();
-      }
     } else {
-      if ('speechSynthesis' in window && window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      } else {
-        triggerNativeSpeech(text || selectedVoice.sampleText);
-      }
+      a.play();
       setIsPlaying(true);
     }
   };
 
-  // Handle Generate
-  const handleGenerate = () => {
-    if (isGenerating) return;
-    setIsGenerating(true);
-    setIsPlaying(false);
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+  // Export: tải file WAV đã tổng hợp
+  const handleExport = () => {
+    if (!lastResult) {
+      setStatusMsg('Chưa có âm thanh để xuất. Hãy bấm Generate Voice trước.');
+      return;
     }
-
-    setTimeout(() => {
-      setIsGenerating(false);
-      setCurrentTime(0);
-      // Recalculate duration based on text length (roughly 130 words per min)
-      const words = (text || selectedVoice.sampleText).trim().split(/\s+/).length;
-      const calculatedDuration = Math.max(15, Math.min(300, Math.round((words / 2.5))));
-      setDuration(calculatedDuration);
-      setIsPlaying(true);
-      triggerNativeSpeech(text || selectedVoice.sampleText);
-    }, 1200);
+    const link = document.createElement('a');
+    link.href = urlRef.current;
+    link.download = `vietvoice_${lastResult.speaker}_${lastResult.text.slice(0, 20).replace(/\s+/g, '_')}.wav`;
+    link.click();
   };
 
   // Skip Back 5 seconds
   const handleSkipBack = () => {
-    setCurrentTime(prev => Math.max(0, prev - 5));
+    setCurrentTime(Math.max(0, currentTime - 5));
   };
 
   // Skip Forward 5 seconds
   const handleSkipForward = () => {
-    setCurrentTime(prev => Math.min(duration, prev + 5));
+    setCurrentTime(Math.min(duration, currentTime + 5));
   };
 
   // Handle Speed Cycle
@@ -239,35 +326,31 @@ export default function App() {
   const progressFraction = duration > 0 ? currentTime / duration : 0;
 
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-x-hidden bg-gradient-to-br from-[#1e1b4b] via-[#172554] to-[#0f172a]">
+    <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-x-hidden bg-gradient-to-br from-[#2b309c] via-[#3428a6] to-[#231d7a]">
       {/* Dynamic Background Ambient Blobs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2 animate-float-slow" />
-      <div className="absolute bottom-1/4 right-1/4 w-[420px] h-[420px] bg-cyan-500/15 rounded-full blur-3xl pointer-events-none translate-x-1/3 translate-y-1/3 animate-pulse-subtle" />
-      <div className="absolute top-2/3 left-1/3 w-80 h-80 bg-blue-500/15 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#5b4ce8]/35 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2 animate-float-slow" />
+      <div className="absolute bottom-1/4 right-1/4 w-[420px] h-[420px] bg-[#6d3fe8]/30 rounded-full blur-3xl pointer-events-none translate-x-1/3 translate-y-1/3 animate-pulse-subtle" />
+      <div className="absolute top-2/3 left-1/3 w-80 h-80 bg-[#3b5bdb]/30 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
 
-      {/* Main Glassmorphic Dashboard Card */}
-      <div className="relative z-10 w-full max-w-2xl backdrop-blur-xl bg-white/10 border border-white/15 rounded-3xl shadow-2xl p-6 sm:p-8 transition-all duration-300">
+      {/* Main Glassmorphic Dashboard Card (UI duy nhất) */}
+      <div className="relative z-10 w-full max-w-2xl backdrop-blur-xl bg-white/[0.14] border border-white/25 rounded-3xl shadow-2xl p-6 sm:p-8 transition-all duration-300">
         
         {/* Header Card */}
-        <div className="flex items-start justify-between pb-6 border-b border-white/10">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-400 to-indigo-500 flex items-center justify-center shadow-md shadow-indigo-500/30">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                VietVoice
-              </h1>
+        <div className="flex items-center justify-between pb-6 border-b border-white/10">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-400 to-indigo-500 flex items-center justify-center shadow-md shadow-indigo-500/30">
+              <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <p className="mt-1 text-sm sm:text-base text-slate-300 font-normal">
-              Text-to-Speech · Natural Voices
-            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+              VietVoice
+            </h1>
           </div>
 
           {/* Settings Button */}
           <button
             onClick={() => setIsSettingsOpen(true)}
             aria-label="Audio and Model Settings"
+            title="Cài đặt, Ngữ liệu, Đặc trưng & Đánh giá"
             className="group relative bg-white/10 hover:bg-white/20 active:scale-95 transition-all duration-200 p-2.5 rounded-full border border-white/10 shadow-sm text-slate-200 hover:text-white"
           >
             <Settings className="w-5 h-5 transition-transform duration-300 group-hover:rotate-45" />
@@ -327,18 +410,31 @@ export default function App() {
             <div className="relative flex flex-col flex-1">
               <label className="block text-xs font-medium text-slate-300 mb-1.5 ml-1 flex items-center justify-between">
                 <span>Prompt / Text</span>
-                <button
-                  onClick={() => setText(selectedVoice.sampleText)}
-                  className="text-[11px] text-cyan-400 hover:text-cyan-300 underline font-normal transition"
-                >
-                  Load Sample
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setSettingsTab('corpus');
+                      setIsSettingsOpen(true);
+                    }}
+                    className="text-[11px] text-indigo-300 hover:text-indigo-200 underline font-normal transition"
+                  >
+                    + Ngữ liệu ({entries.length})
+                  </button>
+                  {selectedVoice.sampleText && (
+                    <button
+                      onClick={() => setText(selectedVoice.sampleText)}
+                      className="text-[11px] text-cyan-400 hover:text-cyan-300 underline font-normal transition"
+                    >
+                      Load Sample
+                    </button>
+                  )}
+                </div>
               </label>
               <div className="relative flex-1">
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value.slice(0, 500))}
-                  placeholder="Type or paste text here..."
+                  placeholder="Nhập một từ hoặc chuỗi từ thuộc danh sách..."
                   rows={4}
                   className="w-full h-full min-h-[115px] resize-none rounded-2xl bg-black/20 border border-white/10 p-3.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-transparent transition-all backdrop-blur-md"
                 />
@@ -350,7 +446,24 @@ export default function App() {
                   /500
                 </div>
               </div>
+              {availableWords.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1 max-h-14 overflow-y-auto">
+                  {availableWords.slice(0, 24).map((w) => (
+                    <button
+                      key={w}
+                      type="button"
+                      onClick={() => setText((prev) => (prev ? `${prev.trimEnd()} ${w}` : w))}
+                      className="px-2 py-0.5 rounded-full text-[10px] bg-white/5 hover:bg-white/15 border border-white/10 text-slate-200 transition"
+                    >
+                      {w}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+            {statusMsg && (
+              <p className="text-[11px] text-amber-300 ml-1">{statusMsg}</p>
+            )}
           </div>
 
           {/* Right Column: Voice Dropdown & Voice Avatars */}
@@ -376,7 +489,7 @@ export default function App() {
               {/* Voice Dropdown Options */}
               {isVoiceDropdownOpen && (
                 <div className="absolute z-30 mt-1.5 w-full rounded-xl bg-[#1e2238]/95 backdrop-blur-xl border border-white/15 shadow-2xl py-1.5 animate-in fade-in zoom-in-95 duration-150">
-                  {VOICES.map((v) => (
+                  {voices.map((v) => (
                     <button
                       key={v.id}
                       type="button"
@@ -410,7 +523,7 @@ export default function App() {
                 Loại Giọng (Voice Type)
               </span>
               <div className="grid grid-cols-2 gap-3">
-                {VOICES.map((v) => {
+                {voices.map((v) => {
                   const isActive = selectedVoiceId === v.id;
                   return (
                     <button
@@ -433,7 +546,7 @@ export default function App() {
                       >
                         <div className={`w-full h-full rounded-full bg-gradient-to-br ${v.avatarBg} flex items-center justify-center overflow-hidden`}>
                           {/* Illustrated cartoon avatar representation */}
-                          {v.id === 'nu' && (
+                          {v.style === 'nu' && (
                             <svg className="w-9 h-9" viewBox="0 0 36 36" fill="none">
                               <circle cx="18" cy="18" r="16" fill="url(#nu-grad)" fillOpacity="0.4" />
                               <circle cx="18" cy="14" r="7" fill="#fed7aa" />
@@ -450,7 +563,7 @@ export default function App() {
                               </defs>
                             </svg>
                           )}
-                          {v.id === 'nam' && (
+                          {v.style === 'nam' && (
                             <svg className="w-9 h-9" viewBox="0 0 36 36" fill="none">
                               <circle cx="18" cy="18" r="16" fill="url(#nam-grad)" fillOpacity="0.4" />
                               <circle cx="18" cy="14" r="7" fill="#ffedd5" />
@@ -681,14 +794,12 @@ export default function App() {
         <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>AI Neural Engine v3.4 Ready</span>
+            <span>Concatenative Engine · {entries.length} mục ngữ liệu</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden sm:inline">Active Model: {selectedVoice.name} ({selectedVoice.tone})</span>
+            <span className="hidden sm:inline">Voice: {selectedVoice.name} ({selectedVoice.tone})</span>
             <button
-              onClick={() => {
-                alert(`Audio export started for ${selectedVoice.name} (${outputFormat})`);
-              }}
+              onClick={handleExport}
               className="hover:text-cyan-400 flex items-center gap-1 text-[11px] transition"
             >
               <Download className="w-3.5 h-3.5" />
@@ -698,16 +809,16 @@ export default function App() {
         </div>
       </div>
 
-      {/* Advanced Settings Modal (Frosted Glass) */}
+      {/* Advanced Settings & System Modal (Frosted Glass) */}
       {isSettingsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-md backdrop-blur-2xl bg-[#161a33]/90 border border-white/20 rounded-3xl p-6 shadow-2xl relative text-white">
+          <div className="w-full max-w-3xl max-h-[88vh] flex flex-col backdrop-blur-2xl bg-[#161a33]/95 border border-white/20 rounded-3xl p-6 shadow-2xl relative text-white">
             
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <Sliders className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-lg font-bold">Voice Synthesis Settings</h3>
+                <h3 className="text-lg font-bold">VietVoice</h3>
               </div>
               <button
                 onClick={() => setIsSettingsOpen(false)}
@@ -717,88 +828,122 @@ export default function App() {
               </button>
             </div>
 
+            {/* Sub-navigation inside Settings Modal */}
+            <div className="flex flex-wrap gap-1.5 py-3 border-b border-white/10">
+              {SETTINGS_TABS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setSettingsTab(id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                    settingsTab === id
+                      ? 'bg-blue-600/40 border-cyan-400 text-white shadow-sm'
+                      : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
             {/* Settings Body */}
-            <div className="mt-5 space-y-4 text-sm">
-              {/* Pitch */}
-              <div>
-                <div className="flex justify-between text-xs text-slate-300 mb-1">
-                  <span>Pitch Adjustment</span>
-                  <span className="font-mono text-cyan-400">{pitch}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={pitch}
-                  onChange={(e) => setPitch(Number(e.target.value))}
-                  className="w-full h-1.5 bg-white/15 rounded-lg"
-                />
-              </div>
+            <div className="mt-4 flex-1 overflow-y-auto pr-1 space-y-4 text-sm">
+              {settingsTab === 'params' && (
+                <>
+                  {/* Khoảng lặng giữa các từ */}
+                  <div>
+                    <div className="flex justify-between text-xs text-slate-300 mb-1">
+                      <span>Khoảng lặng giữa các từ</span>
+                      <span className="font-mono text-cyan-400">{gapMs} ms</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="500"
+                      step="10"
+                      value={gapMs}
+                      onChange={(e) => setGapMs(Number(e.target.value))}
+                      className="w-full h-1.5 bg-white/15 rounded-lg"
+                    />
+                  </div>
 
-              {/* Stability */}
-              <div>
-                <div className="flex justify-between text-xs text-slate-300 mb-1">
-                  <span>Voice Stability</span>
-                  <span className="font-mono text-indigo-400">{stability}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={stability}
-                  onChange={(e) => setStability(Number(e.target.value))}
-                  className="w-full h-1.5 bg-white/15 rounded-lg"
-                />
-                <p className="text-[11px] text-slate-400 mt-0.5">Higher stability creates consistent rhythm; lower adds natural emotional variance.</p>
-              </div>
+                  {/* Crossfade */}
+                  <div>
+                    <div className="flex justify-between text-xs text-slate-300 mb-1">
+                      <span>Crossfade (khi khoảng lặng = 0)</span>
+                      <span className="font-mono text-indigo-400">{crossfadeMs} ms</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="60"
+                      step="5"
+                      value={crossfadeMs}
+                      onChange={(e) => setCrossfadeMs(Number(e.target.value))}
+                      className="w-full h-1.5 bg-white/15 rounded-lg"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-0.5">Chồng hai từ liền kề bằng crossfade equal-power để điểm nối mượt hơn.</p>
+                  </div>
 
-              {/* Clarity */}
-              <div>
-                <div className="flex justify-between text-xs text-slate-300 mb-1">
-                  <span>Clarity & Enhancement</span>
-                  <span className="font-mono text-pink-400">{clarity}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={clarity}
-                  onChange={(e) => setClarity(Number(e.target.value))}
-                  className="w-full h-1.5 bg-white/15 rounded-lg"
-                />
-              </div>
+                  {/* Tiền xử lý */}
+                  <div className="space-y-2">
+                    {[
+                      { label: 'Cắt khoảng lặng đầu/cuối từng từ', value: trim, set: setTrim },
+                      { label: 'Chuẩn hóa mức RMS giữa các từ', value: normalize, set: setNormalize },
+                      { label: 'Dùng giọng khác nếu giọng đã chọn thiếu từ', value: fallbackSpeaker, set: setFallbackSpeaker }
+                    ].map((opt) => (
+                      <label key={opt.label} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={opt.value}
+                          onChange={(e) => opt.set(e.target.checked)}
+                          className="accent-cyan-400"
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
+                  </div>
 
-              {/* Output Audio Format */}
-              <div>
-                <label className="block text-xs text-slate-300 mb-1.5">
-                  Output Format
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['MP3 (320kbps)', 'WAV (Lossless)', 'AAC (256kbps)'].map((fmt) => (
-                    <button
-                      key={fmt}
-                      onClick={() => setOutputFormat(fmt)}
-                      className={`px-2 py-2 rounded-xl text-xs font-medium border transition ${
-                        outputFormat === fmt
-                          ? 'bg-blue-600/40 border-cyan-400 text-white shadow-sm'
-                          : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
-                      }`}
-                    >
-                      {fmt.split(' ')[0]}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                  {/* Output Audio Format */}
+                  <div>
+                    <label className="block text-xs text-slate-300 mb-1.5">
+                      Output Format
+                    </label>
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="px-2 py-2 rounded-xl text-xs font-medium border bg-blue-600/40 border-cyan-400 text-white shadow-sm text-center">
+                        WAV (PCM 16-bit, 22.05 kHz, mono)
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {settingsTab === 'corpus' && (
+                <CorpusPanel entries={entries} refresh={refreshEntries} />
+              )}
+
+              {settingsTab === 'features' && (
+                <FeaturesPanel entries={entries} />
+              )}
+
+              {settingsTab === 'eval' && (
+                <EvalPanel entries={entries} last={lastResult} />
+              )}
+
+              {settingsTab === 'pipeline' && (
+                <PipelinePanel />
+              )}
             </div>
 
             {/* Modal Actions */}
-            <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
+            <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
               <button
                 onClick={() => {
-                  setPitch(50);
-                  setStability(75);
-                  setClarity(85);
-                  setOutputFormat('MP3 (320kbps)');
+                  setGapMs(120);
+                  setCrossfadeMs(20);
+                  setTrim(true);
+                  setNormalize(true);
+                  setFallbackSpeaker(true);
                 }}
                 className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition"
               >

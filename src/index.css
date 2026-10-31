@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body, body * {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  input[type="text"], input:not([type]), textarea {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+  }
+}
+
 @layer utilities {
   .glass-card {
     background: rgba(255, 255, 255, 0.08);
