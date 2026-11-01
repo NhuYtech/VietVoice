@@ -10,15 +10,10 @@ import {
   Volume2,
   VolumeX,
   X,
-  Sliders,
   Check,
   RotateCcw,
   Headphones,
   Download,
-  Database,
-  Activity,
-  Workflow,
-  BarChart3,
   Mic,
   Loader2
 } from 'lucide-react';
@@ -26,10 +21,7 @@ import type { CorpusEntry, SynthResult } from './lib/types';
 import { getAllEntries } from './lib/store';
 import { loadManifest, normalizeText, synthesize } from './lib/tts';
 import logo from './assets/images/logo.png';
-import PipelinePanel from './components/PipelinePanel';
-import FeaturesPanel from './components/FeaturesPanel';
 import CorpusPanel from './components/CorpusPanel';
-import EvalPanel from './components/EvalPanel';
 
 interface VoiceOption {
   id: string;
@@ -72,15 +64,6 @@ const DEFAULT_VOICES: VoiceOption[] = [
 
 const SPEED_OPTIONS = [0.75, 1.0, 1.25, 1.5, 2.0];
 
-const SETTINGS_TABS = [
-  { id: 'params', label: 'Tham số ghép nối', icon: Sliders },
-  { id: 'corpus', label: 'Thu âm', icon: Mic },
-  { id: 'features', label: 'Đặc trưng âm thanh', icon: Activity },
-  { id: 'eval', label: 'Đánh giá kết quả', icon: BarChart3 },
-  { id: 'pipeline', label: 'Sơ đồ & Quy trình', icon: Workflow }
-] as const;
-type SettingsTabId = (typeof SETTINGS_TABS)[number]['id'];
-
 const DEFAULT_BARS = [
   22, 38, 55, 78, 92, 45, 68, 88, 100, 60, 35, 70, 85, 95, 50, 30, 65, 82,
   90, 75, 40, 60, 95, 80, 52, 38, 72, 86, 64, 42, 58, 74, 90, 65, 38, 24
@@ -90,7 +73,6 @@ export default function App() {
   // Corpus (ngữ liệu thu âm thật) & kết quả tổng hợp
   const [entries, setEntries] = useState<CorpusEntry[]>([]);
   const [lastResult, setLastResult] = useState<SynthResult | null>(null);
-  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('params');
   const [statusMsg, setStatusMsg] = useState<string>('');
 
   // Input & Selection State
@@ -426,10 +408,7 @@ export default function App() {
                 <span>Prompt / Text</span>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => {
-                      setSettingsTab('corpus');
-                      setIsSettingsOpen(true);
-                    }}
+                    onClick={() => setIsSettingsOpen(true)}
                     className="text-[11px] text-slate-900 hover:text-black underline font-medium transition"
                   >
                     + Thu âm ({entries.length})
@@ -828,7 +807,7 @@ export default function App() {
                   alt="VietVoice Logo"
                   className="w-6 h-6 rounded-lg object-cover shadow-sm"
                 />
-                <h3 className="text-lg font-bold">VietVoice</h3>
+                <h3 className="text-lg font-bold">Thu âm</h3>
               </div>
               <button
                 onClick={() => setIsSettingsOpen(false)}
@@ -838,133 +817,18 @@ export default function App() {
               </button>
             </div>
 
-            {/* Sub-navigation inside Settings Modal */}
-            <div className="flex flex-wrap gap-1.5 py-3 border-b border-white/10">
-              {SETTINGS_TABS.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setSettingsTab(id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition ${settingsTab === id
-                    ? 'bg-blue-600/40 border-cyan-400 text-white shadow-sm'
-                    : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-                    }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {/* Settings Body */}
-            <div className="mt-4 flex-1 overflow-y-auto pr-1 space-y-4 text-sm">
-              {settingsTab === 'params' && (
-                <>
-                  {/* Khoảng lặng giữa các từ */}
-                  <div>
-                    <div className="flex justify-between text-xs text-slate-300 mb-1">
-                      <span>Khoảng lặng giữa các từ</span>
-                      <span className="font-mono text-cyan-400">{gapMs} ms</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="500"
-                      step="10"
-                      value={gapMs}
-                      onChange={(e) => setGapMs(Number(e.target.value))}
-                      className="w-full h-1.5 bg-white/15 rounded-lg"
-                    />
-                  </div>
-
-                  {/* Crossfade */}
-                  <div>
-                    <div className="flex justify-between text-xs text-slate-300 mb-1">
-                      <span>Crossfade (khi khoảng lặng = 0)</span>
-                      <span className="font-mono text-indigo-400">{crossfadeMs} ms</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="60"
-                      step="5"
-                      value={crossfadeMs}
-                      onChange={(e) => setCrossfadeMs(Number(e.target.value))}
-                      className="w-full h-1.5 bg-white/15 rounded-lg"
-                    />
-                    <p className="text-[11px] text-slate-400 mt-0.5">Chồng hai từ liền kề bằng crossfade equal-power để điểm nối mượt hơn.</p>
-                  </div>
-
-                  {/* Tiền xử lý */}
-                  <div className="space-y-2">
-                    {[
-                      { label: 'Cắt khoảng lặng đầu/cuối từng từ', value: trim, set: setTrim },
-                      { label: 'Chuẩn hóa mức RMS giữa các từ', value: normalize, set: setNormalize },
-                      { label: 'Dùng giọng khác nếu giọng đã chọn thiếu từ', value: fallbackSpeaker, set: setFallbackSpeaker }
-                    ].map((opt) => (
-                      <label key={opt.label} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={opt.value}
-                          onChange={(e) => opt.set(e.target.checked)}
-                          className="accent-cyan-400"
-                        />
-                        {opt.label}
-                      </label>
-                    ))}
-                  </div>
-
-                  {/* Output Audio Format */}
-                  <div>
-                    <label className="block text-xs text-slate-300 mb-1.5">
-                      Output Format
-                    </label>
-                    <div className="grid grid-cols-1 gap-2">
-                      <div className="px-2 py-2 rounded-xl text-xs font-medium border bg-blue-600/40 border-cyan-400 text-white shadow-sm text-center">
-                        WAV (PCM 16-bit, 22.05 kHz, mono)
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {settingsTab === 'corpus' && (
-                <CorpusPanel entries={entries} refresh={refreshEntries} speaker={selectedVoice.name.replace('Giọng ', '')} />
-              )}
-
-              {settingsTab === 'features' && (
-                <FeaturesPanel entries={entries} />
-              )}
-
-              {settingsTab === 'eval' && (
-                <EvalPanel entries={entries} last={lastResult} />
-              )}
-
-              {settingsTab === 'pipeline' && (
-                <PipelinePanel />
-              )}
+            {/* Modal Body - Chỉ còn Thu âm */}
+            <div className="mt-4 flex-1 overflow-y-auto pr-1 text-sm">
+              <CorpusPanel entries={entries} refresh={refreshEntries} speaker={selectedVoice.name.replace('Giọng ', '')} />
             </div>
 
             {/* Modal Actions */}
-            <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
-              <button
-                onClick={() => {
-                  setGapMs(120);
-                  setCrossfadeMs(20);
-                  setTrim(true);
-                  setNormalize(true);
-                  setFallbackSpeaker(true);
-                }}
-                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Reset Defaults
-              </button>
-
+            <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-end">
               <button
                 onClick={() => setIsSettingsOpen(false)}
                 className="px-5 py-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-xs font-semibold text-white hover:from-blue-500 hover:to-indigo-500 shadow-md shadow-indigo-500/30 transition"
               >
-                Save Settings
+                Đóng
               </button>
             </div>
           </div>
