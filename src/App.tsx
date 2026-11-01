@@ -18,7 +18,9 @@ import {
   Database,
   Activity,
   Workflow,
-  BarChart3
+  BarChart3,
+  Mic,
+  Loader2
 } from 'lucide-react';
 import type { CorpusEntry, SynthResult } from './lib/types';
 import { getAllEntries } from './lib/store';
@@ -72,7 +74,7 @@ const SPEED_OPTIONS = [0.75, 1.0, 1.25, 1.5, 2.0];
 
 const SETTINGS_TABS = [
   { id: 'params', label: 'Tham số ghép nối', icon: Sliders },
-  { id: 'corpus', label: 'Ngữ liệu & Lưu trữ', icon: Database },
+  { id: 'corpus', label: 'Thu âm', icon: Mic },
   { id: 'features', label: 'Đặc trưng âm thanh', icon: Activity },
   { id: 'eval', label: 'Đánh giá kết quả', icon: BarChart3 },
   { id: 'pipeline', label: 'Sơ đồ & Quy trình', icon: Workflow }
@@ -167,7 +169,7 @@ export default function App() {
     const normalized = normalizeText(text);
     if (!normalized) return '';
     if (!entries.length) {
-      return 'Từ này không nằm trong dataset (dataset hiện đang trống).';
+      return 'Từ này không nằm trong dataset.';
     }
     const validWords = new Set<string>();
     let maxN = 1;
@@ -179,7 +181,7 @@ export default function App() {
     }
     const tokens = normalized.split(' ').filter(Boolean);
     const missing: string[] = [];
-    for (let i = 0; i < tokens.length; ) {
+    for (let i = 0; i < tokens.length;) {
       let matched = false;
       for (let n = Math.min(maxN, tokens.length - i); n >= 1; n--) {
         const candidate = tokens.slice(i, i + n).join(' ');
@@ -265,7 +267,7 @@ export default function App() {
       return;
     }
     if (!entries.length) {
-      setStatusMsg('Chưa có ngữ liệu. Bấm biểu tượng Cài đặt (⚙️) → "Ngữ liệu & Lưu trữ" để thu âm hoặc nạp file.');
+      setStatusMsg('Chưa có ngữ liệu. Bấm biểu tượng Cài đặt (⚙️) → "Thu âm" để thu âm từ vựng.');
       return;
     }
     setIsGenerating(true);
@@ -305,11 +307,16 @@ export default function App() {
     }
   };
 
-  // Handle Play/Pause
+  // Handle Play/Pause: tự động tạo âm thanh nếu chưa có hoặc văn bản thay đổi
   const handleTogglePlay = () => {
     if (isGenerating) return;
     const a = audioRef.current;
-    if (!lastResult || !a) {
+    const isSameTextAndVoice =
+      lastResult &&
+      lastResult.text.trim() === text.trim() &&
+      lastResult.speaker === selectedVoiceId;
+
+    if (!isSameTextAndVoice || !a) {
       handleGenerate();
       return;
     }
@@ -325,7 +332,7 @@ export default function App() {
   // Export: tải file WAV đã tổng hợp
   const handleExport = () => {
     if (!lastResult) {
-      setStatusMsg('Chưa có âm thanh để xuất. Hãy bấm Generate Voice trước.');
+      setStatusMsg('Chưa có âm thanh để xuất. Hãy bấm nút Play để phát trước.');
       return;
     }
     const link = document.createElement('a');
@@ -358,15 +365,15 @@ export default function App() {
   const progressFraction = duration > 0 ? currentTime / duration : 0;
 
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-x-hidden bg-gradient-to-br from-[#2b309c] via-[#3428a6] to-[#231d7a]">
+    <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-x-hidden bg-gradient-to-br from-[#5372ec] via-[#3a89e6] to-[#17a8db]">
       {/* Dynamic Background Ambient Blobs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#5b4ce8]/35 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2 animate-float-slow" />
-      <div className="absolute bottom-1/4 right-1/4 w-[420px] h-[420px] bg-[#6d3fe8]/30 rounded-full blur-3xl pointer-events-none translate-x-1/3 translate-y-1/3 animate-pulse-subtle" />
-      <div className="absolute top-2/3 left-1/3 w-80 h-80 bg-[#3b5bdb]/30 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#60a5fa]/30 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2 animate-float-slow" />
+      <div className="absolute bottom-1/4 right-1/4 w-[420px] h-[420px] bg-[#06b6d4]/25 rounded-full blur-3xl pointer-events-none translate-x-1/3 translate-y-1/3 animate-pulse-subtle" />
+      <div className="absolute top-2/3 left-1/3 w-80 h-80 bg-[#38bdf8]/20 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
 
       {/* Main Glassmorphic Dashboard Card (UI duy nhất) */}
       <div className="relative z-10 w-full max-w-2xl backdrop-blur-xl bg-white/[0.14] border border-white/25 rounded-3xl shadow-2xl p-6 sm:p-8 transition-all duration-300">
-        
+
         {/* Header Card */}
         <div className="flex items-center justify-between pb-6 border-b border-white/10">
           <div className="flex items-center gap-3">
@@ -394,7 +401,7 @@ export default function App() {
 
         {/* Input & Voice Selection Section (2-Column Grid) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
-          
+
           {/* Left Column: Language & Text Input */}
           <div className="flex flex-col gap-3">
             {/* Language Box (Mặc định Tiếng Việt) */}
@@ -425,7 +432,7 @@ export default function App() {
                     }}
                     className="text-[11px] text-indigo-300 hover:text-indigo-200 underline font-normal transition"
                   >
-                    + Ngữ liệu ({entries.length})
+                    + Thu âm ({entries.length})
                   </button>
                   {selectedVoice.sampleText && (
                     <button
@@ -529,7 +536,7 @@ export default function App() {
             {/* Voice Avatars Row */}
             <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
               <span className="block text-[11px] font-medium text-slate-300 uppercase tracking-wider mb-2.5">
-                Loại Giọng (Voice Type)
+                Voice Type
               </span>
               <div className="grid grid-cols-2 gap-3">
                 {voices.map((v) => {
@@ -539,19 +546,17 @@ export default function App() {
                       key={v.id}
                       type="button"
                       onClick={() => setSelectedVoiceId(v.id)}
-                      className={`group flex flex-col items-center p-2.5 rounded-xl transition-all duration-200 relative ${
-                        isActive
-                          ? 'bg-white/15 border border-white/20 shadow-inner'
-                          : 'hover:bg-white/5 border border-transparent'
-                      }`}
+                      className={`group flex flex-col items-center p-2.5 rounded-xl transition-all duration-200 relative ${isActive
+                        ? 'bg-white/15 border border-white/20 shadow-inner'
+                        : 'hover:bg-white/5 border border-transparent'
+                        }`}
                     >
                       {/* Avatar Circle with Cartoon Styled Illustration */}
                       <div
-                        className={`relative w-12 h-12 rounded-full flex items-center justify-center p-0.5 transition-all duration-300 ${
-                          isActive
-                            ? 'ring-2 ring-blue-400 ring-offset-2 ring-offset-transparent shadow-lg shadow-blue-500/40 scale-105'
-                            : 'opacity-75 group-hover:opacity-100 group-hover:scale-105'
-                        }`}
+                        className={`relative w-12 h-12 rounded-full flex items-center justify-center p-0.5 transition-all duration-300 ${isActive
+                          ? 'ring-2 ring-blue-400 ring-offset-2 ring-offset-transparent shadow-lg shadow-blue-500/40 scale-105'
+                          : 'opacity-75 group-hover:opacity-100 group-hover:scale-105'
+                          }`}
                       >
                         <div className={`w-full h-full rounded-full bg-gradient-to-br ${v.avatarBg} flex items-center justify-center overflow-hidden`}>
                           {/* Illustrated cartoon avatar representation */}
@@ -593,9 +598,8 @@ export default function App() {
                       </div>
 
                       {/* Name & Active Indicator */}
-                      <span className={`mt-1.5 text-xs font-medium transition-colors ${
-                        isActive ? 'text-white font-bold' : 'text-slate-300 group-hover:text-white'
-                      }`}>
+                      <span className={`mt-1.5 text-xs font-medium transition-colors ${isActive ? 'text-white font-bold' : 'text-slate-300 group-hover:text-white'
+                        }`}>
                         {v.name}
                       </span>
                       <span className="text-[10px] text-slate-400">
@@ -634,7 +638,7 @@ export default function App() {
             {waveformBars.map((height, idx) => {
               const barFraction = idx / waveformBars.length;
               const isPast = barFraction <= progressFraction;
-              
+
               // Dynamic scaling if playing
               const dynamicHeight = isPlaying
                 ? Math.min(100, Math.max(15, height + (Math.sin(idx * 0.8 + currentTime * 8) * 25)))
@@ -655,9 +659,8 @@ export default function App() {
                         ? '0 0 12px rgba(6, 182, 212, 0.45)'
                         : 'none'
                     }}
-                    className={`w-full max-w-[6px] rounded-full transition-all duration-150 ${
-                      isPast ? 'opacity-100' : 'opacity-40 group-hover:opacity-60'
-                    }`}
+                    className={`w-full max-w-[6px] rounded-full transition-all duration-150 ${isPast ? 'opacity-100' : 'opacity-40 group-hover:opacity-60'
+                      }`}
                   />
                 </div>
               );
@@ -677,65 +680,13 @@ export default function App() {
 
         {/* Media Control Bar */}
         <div className="mt-6 flex flex-col gap-4">
-          
+
           {/* Main Controls Row */}
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            
-            {/* Generate Button */}
-            <button
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className={`relative overflow-hidden group flex items-center gap-2 px-6 py-3 rounded-full font-medium text-white shadow-lg shadow-indigo-500/30 transition-all duration-300 active:scale-95 ${
-                isGenerating
-                  ? 'bg-indigo-700 cursor-not-allowed opacity-90'
-                  : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-500 hover:via-indigo-500 hover:to-indigo-600 hover:shadow-indigo-500/50'
-              }`}
-            >
-              <Sparkles className={`w-4 h-4 transition-transform duration-500 ${isGenerating ? 'animate-spin text-cyan-300' : 'group-hover:rotate-12'}`} />
-              <span className="text-sm tracking-wide">
-                {isGenerating ? 'Synthesizing...' : 'Generate Voice'}
-              </span>
-              <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform" />
-            </button>
+          <div className="flex items-center justify-between gap-3 sm:gap-4">
 
-            {/* Player Controls (Prev, Big Play/Pause, Next) */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* Skip Back */}
-              <button
-                onClick={handleSkipBack}
-                title="Skip back 5 seconds"
-                className="p-2.5 rounded-full text-slate-300 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
-              >
-                <SkipBack className="w-5 h-5" />
-              </button>
-
-              {/* Big White Circular Play/Pause */}
-              <button
-                onClick={handleTogglePlay}
-                title={isPlaying ? 'Pause' : 'Play'}
-                className="w-13 h-13 p-4 rounded-full bg-white text-slate-900 shadow-xl shadow-white/20 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center hover:bg-slate-100"
-              >
-                {isPlaying ? (
-                  <Pause className="w-5 h-5 fill-slate-900" />
-                ) : (
-                  <Play className="w-5 h-5 fill-slate-900 ml-0.5" />
-                )}
-              </button>
-
-              {/* Skip Forward */}
-              <button
-                onClick={handleSkipForward}
-                title="Skip forward 5 seconds"
-                className="p-2.5 rounded-full text-slate-300 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
-              >
-                <SkipForward className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Volume & Speed Controls */}
-            <div className="flex items-center gap-3">
-              {/* Volume Slider & Toggle */}
-              <div className="flex items-center gap-2.5 bg-white/15 border border-white/25 px-3 py-1.5 rounded-full backdrop-blur-md shadow-sm">
+            {/* Left: Volume Slider & Toggle */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-white/15 border border-white/25 px-2.5 sm:px-3 py-1.5 rounded-full backdrop-blur-md shadow-sm">
                 <button
                   onClick={() => setIsMuted(!isMuted)}
                   title={isMuted ? 'Unmute' : 'Mute'}
@@ -756,7 +707,7 @@ export default function App() {
                     setVolume(Number(e.target.value));
                     if (isMuted) setIsMuted(false);
                   }}
-                  className="w-20 h-1.5 rounded-lg appearance-none cursor-pointer"
+                  className="w-16 sm:w-20 h-1.5 rounded-lg appearance-none cursor-pointer"
                   style={{
                     background: `linear-gradient(to right, #fbbf24 0%, #f472b6 ${isMuted ? 0 : volume}%, rgba(255, 255, 255, 0.28) ${isMuted ? 0 : volume}%, rgba(255, 255, 255, 0.28) 100%)`
                   }}
@@ -764,11 +715,57 @@ export default function App() {
                 />
               </div>
 
-              {/* Speed Badge */}
+              {isGenerating && (
+                <span className="hidden sm:flex items-center gap-1 text-xs text-cyan-300 font-medium animate-pulse">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Đang phát...
+                </span>
+              )}
+            </div>
+
+            {/* Center: Player Controls (Prev, Big Play/Pause, Next) */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Skip Back */}
+              <button
+                onClick={handleSkipBack}
+                title="Tua lại 5 giây"
+                className="p-2.5 rounded-full text-slate-300 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
+              >
+                <SkipBack className="w-5 h-5" />
+              </button>
+
+              {/* Big White Circular Play/Pause */}
+              <button
+                onClick={handleTogglePlay}
+                disabled={isGenerating}
+                title={isPlaying ? 'Tạm dừng' : 'Phát âm thanh'}
+                className="w-14 h-14 p-4 rounded-full bg-white text-slate-900 shadow-xl shadow-white/20 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center hover:bg-slate-100 disabled:opacity-75"
+              >
+                {isGenerating ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-slate-900" />
+                ) : isPlaying ? (
+                  <Pause className="w-6 h-6 fill-slate-900" />
+                ) : (
+                  <Play className="w-6 h-6 fill-slate-900 ml-0.5" />
+                )}
+              </button>
+
+              {/* Skip Forward */}
+              <button
+                onClick={handleSkipForward}
+                title="Tua đi 5 giây"
+                className="p-2.5 rounded-full text-slate-300 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
+              >
+                <SkipForward className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Right: Speed Badge */}
+            <div className="flex items-center justify-end">
               <button
                 onClick={handleCycleSpeed}
-                title="Toggle playback speed"
-                className="px-2.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white tracking-wider active:scale-95 transition-all"
+                title="Tốc độ phát"
+                className="px-2.5 sm:px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white tracking-wider active:scale-95 transition-all"
               >
                 {SPEED_OPTIONS[speedIndex].toFixed(2).replace(/\.00$/, '.0')}x
               </button>
@@ -825,7 +822,7 @@ export default function App() {
       {isSettingsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
           <div className="w-full max-w-3xl max-h-[88vh] flex flex-col backdrop-blur-2xl bg-[#161a33]/95 border border-white/20 rounded-3xl p-6 shadow-2xl relative text-white">
-            
+
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-white/10">
               <div className="flex items-center gap-2">
@@ -846,11 +843,10 @@ export default function App() {
                 <button
                   key={id}
                   onClick={() => setSettingsTab(id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                    settingsTab === id
-                      ? 'bg-blue-600/40 border-cyan-400 text-white shadow-sm'
-                      : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-                  }`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition ${settingsTab === id
+                    ? 'bg-blue-600/40 border-cyan-400 text-white shadow-sm'
+                    : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
+                    }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {label}
@@ -931,7 +927,7 @@ export default function App() {
               )}
 
               {settingsTab === 'corpus' && (
-                <CorpusPanel entries={entries} refresh={refreshEntries} />
+                <CorpusPanel entries={entries} refresh={refreshEntries} speaker={selectedVoice.name.replace('Giọng ', '')} />
               )}
 
               {settingsTab === 'features' && (
