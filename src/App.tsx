@@ -380,7 +380,7 @@ export default function App() {
             <img
               src={logo}
               alt="VietVoice Logo"
-              className="w-9 h-9 rounded-xl object-cover shadow-md shadow-indigo-500/30 border border-white/20"
+              className="w-10 h-10 rounded-2xl object-cover shadow-lg shadow-indigo-500/25"
             />
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               VietVoice
