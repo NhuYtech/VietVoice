@@ -535,9 +535,9 @@ export default function App() {
 
             {/* Voice Avatars Row */}
             <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-              <span className="block text-[11px] font-medium text-slate-300 uppercase tracking-wider mb-2.5">
+              {/* <span className="block text-[11px] font-medium text-slate-300 uppercase tracking-wider mb-2.5">
                 Voice Type
-              </span>
+              </span> */}
               <div className="grid grid-cols-2 gap-3">
                 {voices.map((v) => {
                   const isActive = selectedVoiceId === v.id;
@@ -682,7 +682,7 @@ export default function App() {
         <div className="mt-6 flex flex-col gap-4">
 
           {/* Main Controls Row */}
-          <div className="flex items-center justify-between gap-3 sm:gap-4">
+          <div className="relative flex items-center justify-between min-h-[56px]">
 
             {/* Left: Volume Slider & Toggle */}
             <div className="flex items-center gap-2">
@@ -707,7 +707,7 @@ export default function App() {
                     setVolume(Number(e.target.value));
                     if (isMuted) setIsMuted(false);
                   }}
-                  className="w-16 sm:w-20 h-1.5 rounded-lg appearance-none cursor-pointer"
+                  className="w-14 sm:w-20 h-1.5 rounded-lg appearance-none cursor-pointer"
                   style={{
                     background: `linear-gradient(to right, #fbbf24 0%, #f472b6 ${isMuted ? 0 : volume}%, rgba(255, 255, 255, 0.28) ${isMuted ? 0 : volume}%, rgba(255, 255, 255, 0.28) 100%)`
                   }}
@@ -723,8 +723,8 @@ export default function App() {
               )}
             </div>
 
-            {/* Center: Player Controls (Prev, Big Play/Pause, Next) */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            {/* Center: Pinned Dead-Center Player Controls (Prev, Big Play/Pause, Next) */}
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 sm:gap-3 pointer-events-auto">
               {/* Skip Back */}
               <button
                 onClick={handleSkipBack}
@@ -760,12 +760,12 @@ export default function App() {
               </button>
             </div>
 
-            {/* Right: Speed Badge */}
+            {/* Right: Speed Badge with fixed dimensions */}
             <div className="flex items-center justify-end">
               <button
                 onClick={handleCycleSpeed}
                 title="Tốc độ phát"
-                className="px-2.5 sm:px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white tracking-wider active:scale-95 transition-all"
+                className="w-14 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white tracking-wider tabular-nums active:scale-95 transition-all"
               >
                 {SPEED_OPTIONS[speedIndex].toFixed(2).replace(/\.00$/, '.0')}x
               </button>
