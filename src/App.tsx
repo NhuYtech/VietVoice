@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
-  Settings,
   ChevronDown,
   Sparkles,
   Play,
@@ -369,15 +368,15 @@ export default function App() {
             </h1>
           </div>
 
-          {/* Settings Button */}
+          {/* Record / Corpus Button */}
           <button
             onClick={() => setIsSettingsOpen(true)}
-            aria-label="Audio and Model Settings"
-            title="Cài đặt, Ngữ liệu, Đặc trưng & Đánh giá"
+            aria-label="Thu âm ngữ liệu"
+            title="Thu âm ngữ liệu"
             className="group relative bg-white/10 hover:bg-white/20 active:scale-95 transition-all duration-200 p-2.5 rounded-full border border-white/10 shadow-sm text-slate-900 hover:text-black"
           >
-            <Settings className="w-5 h-5 transition-transform duration-300 group-hover:rotate-45" />
-            <span className="sr-only">Settings</span>
+            <Mic className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
+            <span className="sr-only">Thu âm</span>
           </button>
         </div>
 
