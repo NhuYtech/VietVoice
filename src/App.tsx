@@ -22,7 +22,8 @@ import {
 } from 'lucide-react';
 import type { CorpusEntry, SynthResult } from './lib/types';
 import { getAllEntries } from './lib/store';
-import { loadManifest, synthesize } from './lib/tts';
+import { loadManifest, normalizeText, synthesize } from './lib/tts';
+import logo from './assets/images/logo.png';
 import PipelinePanel from './components/PipelinePanel';
 import FeaturesPanel from './components/FeaturesPanel';
 import CorpusPanel from './components/CorpusPanel';
@@ -67,10 +68,6 @@ const DEFAULT_VOICES: VoiceOption[] = [
   }
 ];
 
-const LANGUAGES = [
-  { code: 'vi-VN', name: 'Vietnamese (Tiếng Việt)', flag: '🇻🇳' },
-];
-
 const SPEED_OPTIONS = [0.75, 1.0, 1.25, 1.5, 2.0];
 
 const SETTINGS_TABS = [
@@ -96,9 +93,7 @@ export default function App() {
 
   // Input & Selection State
   const [text, setText] = useState<string>('');
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('Vietnamese (Tiếng Việt)');
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>('nu');
-  const [isLangOpen, setIsLangOpen] = useState<boolean>(false);
   const [isVoiceDropdownOpen, setIsVoiceDropdownOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
@@ -166,6 +161,43 @@ export default function App() {
     const all = own.length ? own : entries.map((e) => e.word);
     return [...new Set(all)].sort((a, b) => a.localeCompare(b, 'vi'));
   }, [entries, selectedVoiceId]);
+
+  // Kiểm tra trực tiếp từ nhập vào có nằm trong dataset không (chỉ cảnh báo khi không có)
+  const datasetWarning = useMemo(() => {
+    const normalized = normalizeText(text);
+    if (!normalized) return '';
+    if (!entries.length) {
+      return 'Từ này không nằm trong dataset (dataset hiện đang trống).';
+    }
+    const validWords = new Set<string>();
+    let maxN = 1;
+    for (const e of entries) {
+      if (fallbackSpeaker || e.speaker === selectedVoiceId) {
+        validWords.add(e.word);
+        maxN = Math.max(maxN, e.word.split(' ').length);
+      }
+    }
+    const tokens = normalized.split(' ').filter(Boolean);
+    const missing: string[] = [];
+    for (let i = 0; i < tokens.length; ) {
+      let matched = false;
+      for (let n = Math.min(maxN, tokens.length - i); n >= 1; n--) {
+        const candidate = tokens.slice(i, i + n).join(' ');
+        if (validWords.has(candidate)) {
+          i += n;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        missing.push(tokens[i]);
+        i++;
+      }
+    }
+    return missing.length
+      ? `Từ không nằm trong dataset: "${missing.join(', ')}"`
+      : '';
+  }, [text, entries, selectedVoiceId, fallbackSpeaker]);
 
   // Waveform bars lấy từ tín hiệu tổng hợp thật (36 cột, biên độ đỉnh)
   const waveformBars = useMemo(() => {
@@ -337,10 +369,12 @@ export default function App() {
         
         {/* Header Card */}
         <div className="flex items-center justify-between pb-6 border-b border-white/10">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-400 to-indigo-500 flex items-center justify-center shadow-md shadow-indigo-500/30">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
+          <div className="flex items-center gap-3">
+            <img
+              src={logo}
+              alt="VietVoice Logo"
+              className="w-9 h-9 rounded-xl object-cover shadow-md shadow-indigo-500/30 border border-white/20"
+            />
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               VietVoice
             </h1>
@@ -363,47 +397,20 @@ export default function App() {
           
           {/* Left Column: Language & Text Input */}
           <div className="flex flex-col gap-3">
-            {/* Language Dropdown */}
-            <div className="relative">
+            {/* Language Box (Mặc định Tiếng Việt) */}
+            <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5 ml-1">
                 Language
               </label>
-              <button
-                type="button"
-                onClick={() => setIsLangOpen(!isLangOpen)}
-                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-medium text-white transition-all backdrop-blur-md"
-              >
+              <div className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm font-medium text-white backdrop-blur-md">
                 <span className="truncate flex items-center gap-2">
-                  <span>{LANGUAGES.find(l => l.name === selectedLanguage)?.flag || '🌐'}</span>
-                  {selectedLanguage}
+                  <span>🇻🇳</span>
+                  <span>Tiếng Việt</span>
                 </span>
-                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isLangOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {/* Language Menu */}
-              {isLangOpen && (
-                <div className="absolute z-30 mt-1.5 w-full rounded-xl bg-[#1e2238]/95 backdrop-blur-xl border border-white/15 shadow-2xl py-1.5 animate-in fade-in zoom-in-95 duration-150">
-                  {LANGUAGES.map((lang) => (
-                    <button
-                      key={lang.code}
-                      type="button"
-                      onClick={() => {
-                        setSelectedLanguage(lang.name);
-                        setIsLangOpen(false);
-                      }}
-                      className="w-full text-left px-3.5 py-2 text-xs sm:text-sm text-slate-200 hover:text-white hover:bg-white/10 flex items-center justify-between transition-colors"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span>{lang.flag}</span>
-                        {lang.name}
-                      </span>
-                      {selectedLanguage === lang.name && (
-                        <Check className="w-4 h-4 text-cyan-400" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
+                <span className="text-[10px] font-mono text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                  Mặc định
+                </span>
+              </div>
             </div>
 
             {/* Textarea Input with Character Counter */}
@@ -461,8 +468,10 @@ export default function App() {
                 </div>
               )}
             </div>
-            {statusMsg && (
-              <p className="text-[11px] text-amber-300 ml-1">{statusMsg}</p>
+            {(datasetWarning || statusMsg) && (
+              <p className="text-[11px] text-amber-300 font-medium ml-1">
+                ⚠️ {datasetWarning || statusMsg}
+              </p>
             )}
           </div>
 
@@ -726,16 +735,16 @@ export default function App() {
             {/* Volume & Speed Controls */}
             <div className="flex items-center gap-3">
               {/* Volume Slider & Toggle */}
-              <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full backdrop-blur-md">
+              <div className="flex items-center gap-2.5 bg-white/15 border border-white/25 px-3 py-1.5 rounded-full backdrop-blur-md shadow-sm">
                 <button
                   onClick={() => setIsMuted(!isMuted)}
                   title={isMuted ? 'Unmute' : 'Mute'}
-                  className="text-slate-300 hover:text-white transition"
+                  className="p-1 rounded-full bg-amber-400/20 hover:bg-amber-400/35 text-amber-300 hover:text-amber-200 transition"
                 >
                   {isMuted || volume === 0 ? (
                     <VolumeX className="w-4 h-4 text-rose-400" />
                   ) : (
-                    <Volume2 className="w-4 h-4 text-cyan-400" />
+                    <Volume2 className="w-4 h-4 text-amber-300" />
                   )}
                 </button>
                 <input
@@ -747,7 +756,10 @@ export default function App() {
                     setVolume(Number(e.target.value));
                     if (isMuted) setIsMuted(false);
                   }}
-                  className="w-16 h-1 accent-cyan-400"
+                  className="w-20 h-1.5 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, #fbbf24 0%, #f472b6 ${isMuted ? 0 : volume}%, rgba(255, 255, 255, 0.28) ${isMuted ? 0 : volume}%, rgba(255, 255, 255, 0.28) 100%)`
+                  }}
                   title={`Volume: ${isMuted ? 0 : volume}%`}
                 />
               </div>

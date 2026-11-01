@@ -156,6 +156,140 @@ export function fadeEdges(x: Float32Array, ms = 5): Float32Array {
   return out;
 }
 
+/* ---------------- Studio Audio Processor (Tương tự VocalSlice Studio) ---------------- */
+
+/** Loại bỏ tiếng quạt, xì xào, gió và tiếng thốc micro dưới cutoff (mặc định 75Hz) */
+export function applyHighpassFilter(audio: Float32Array, sampleRate = SR, cutoff = 75): Float32Array {
+  const w0 = (2 * Math.PI * cutoff) / sampleRate;
+  const alpha = Math.sin(w0) / Math.SQRT2;
+  const cosw0 = Math.cos(w0);
+
+  const b0 = (1 + cosw0) / 2;
+  const b1 = -(1 + cosw0);
+  const b2 = (1 + cosw0) / 2;
+  const a0 = 1 + alpha;
+  const a1 = -2 * cosw0;
+  const a2 = 1 - alpha;
+
+  const out = new Float32Array(audio.length);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < audio.length; i++) {
+    const x0 = audio[i];
+    const y0 = (b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0;
+    out[i] = y0;
+    x2 = x1;
+    x1 = x0;
+    y2 = y1;
+    y1 = y0;
+  }
+  return out;
+}
+
+/** Vuốt êm cosine fade-in và fade-out chống tiếng lụp bụp / click ở mép cắt */
+export function applyCosineFades(audio: Float32Array, sampleRate = SR, fadeMs = 12): Float32Array {
+  const fadeSamples = Math.floor(sampleRate * (fadeMs / 1000));
+  if (audio.length <= fadeSamples * 2) return audio;
+  const out = audio.slice();
+  for (let i = 0; i < fadeSamples; i++) {
+    const fadeIn = 0.5 * (1 - Math.cos((Math.PI * i) / fadeSamples));
+    const fadeOut = 0.5 * (1 + Math.cos((Math.PI * i) / fadeSamples));
+    out[i] *= fadeIn;
+    out[out.length - 1 - i] *= fadeOut;
+  }
+  return out;
+}
+
+/** Chuẩn hóa biên độ đỉnh về targetPeakDb (-1.0 dBFS) để đồng đều âm lượng phòng thu */
+export function normalizePeak(audio: Float32Array, targetPeakDb = -1.0): Float32Array {
+  let maxVal = 0;
+  for (let i = 0; i < audio.length; i++) {
+    const abs = Math.abs(audio[i]);
+    if (abs > maxVal) maxVal = abs;
+  }
+  if (maxVal <= 1e-6) return audio;
+  const targetAmp = Math.pow(10, targetPeakDb / 20);
+  const scale = targetAmp / maxVal;
+  const out = new Float32Array(audio.length);
+  for (let i = 0; i < audio.length; i++) {
+    out[i] = Math.max(-1, Math.min(1, audio[i] * scale));
+  }
+  return out;
+}
+
+/** 
+ * Tự động cắt khoảng lặng có đệm an toàn 100ms (padding) + lọc Highpass 75Hz + Cosine Fade + Peak Normalize
+ * Thuật toán tương tự trim_single_word_audio trong VocalSlice Studio
+ */
+export function processStudioWordAudio(
+  rawAudio: Float32Array,
+  sampleRate = SR,
+  opts?: { silenceThreshDb?: number; paddingMs?: number; filterLow?: boolean }
+): { audio: Float32Array; duration: number; rmsDb: number; peakDb: number } {
+  const silenceThreshDb = opts?.silenceThreshDb ?? -42.0;
+  const paddingMs = opts?.paddingMs ?? 100.0;
+  const filterLow = opts?.filterLow ?? true;
+
+  let audio = filterLow ? applyHighpassFilter(rawAudio, sampleRate, 75) : rawAudio;
+
+  const frameLen = Math.floor(sampleRate * 0.02); // 20ms
+  const hopLen = Math.floor(sampleRate * 0.01);   // 10ms
+  const totalSamples = audio.length;
+
+  if (totalSamples < frameLen) {
+    return { audio, duration: totalSamples / sampleRate, rmsDb: -30, peakDb: -6 };
+  }
+
+  const numFrames = 1 + Math.floor((totalSamples - frameLen) / hopLen);
+  const energiesDb: number[] = [];
+  let firstSpeech = -1;
+  let lastSpeech = -1;
+
+  for (let i = 0; i < numFrames; i++) {
+    const start = i * hopLen;
+    const end = start + frameLen;
+    let sum = 0;
+    for (let j = start; j < end; j++) sum += audio[j] * audio[j];
+    const rms = Math.sqrt(sum / frameLen + 1e-12);
+    const db = 20 * Math.log10(rms);
+    energiesDb.push(db);
+    if (db >= silenceThreshDb) {
+      if (firstSpeech === -1) firstSpeech = i;
+      lastSpeech = i;
+    }
+  }
+
+  let trimmed: Float32Array;
+  if (firstSpeech === -1) {
+    trimmed = audio;
+  } else {
+    const padSamples = Math.floor(sampleRate * (paddingMs / 1000));
+    const startSamp = Math.max(0, firstSpeech * hopLen - padSamples);
+    const endSamp = Math.min(totalSamples, (lastSpeech + 1) * hopLen + padSamples);
+    trimmed = audio.slice(startSamp, endSamp);
+  }
+
+  if (trimmed.length < Math.floor(sampleRate * 0.08)) {
+    trimmed = audio;
+  }
+
+  trimmed = applyCosineFades(trimmed, sampleRate, 12);
+  trimmed = normalizePeak(trimmed, -1.0);
+
+  let sqSum = 0;
+  let peak = 0;
+  for (let i = 0; i < trimmed.length; i++) {
+    const v = trimmed[i];
+    sqSum += v * v;
+    if (Math.abs(v) > peak) peak = Math.abs(v);
+  }
+  const rmsVal = Math.sqrt(sqSum / trimmed.length + 1e-12);
+  const rmsDb = Math.round(20 * Math.log10(rmsVal) * 10) / 10;
+  const peakDb = Math.round(20 * Math.log10(peak + 1e-6) * 10) / 10;
+  const duration = Math.round((trimmed.length / sampleRate) * 100) / 100;
+
+  return { audio: trimmed, duration, rmsDb, peakDb };
+}
+
 /* ---------------- FFT / STFT / Mel / MFCC ---------------- */
 
 function fft(re: Float64Array, im: Float64Array) {
