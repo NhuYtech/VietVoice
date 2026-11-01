@@ -822,8 +822,12 @@ export default function App() {
 
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <Sliders className="w-5 h-5 text-cyan-400" />
+              <div className="flex items-center gap-2.5">
+                <img
+                  src={logo}
+                  alt="VietVoice Logo"
+                  className="w-6 h-6 rounded-lg object-cover shadow-sm"
+                />
                 <h3 className="text-lg font-bold">VietVoice</h3>
               </div>
               <button
