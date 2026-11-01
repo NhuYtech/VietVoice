@@ -487,7 +487,7 @@ export default function App() {
             {/* Voice Dropdown */}
             <div className="relative">
               <label className="block text-xs font-medium text-slate-300 mb-1.5 ml-1">
-                Voice
+                Voice Type
               </label>
               <button
                 type="button"
@@ -535,9 +535,6 @@ export default function App() {
 
             {/* Voice Avatars Row */}
             <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-              {/* <span className="block text-[11px] font-medium text-slate-300 uppercase tracking-wider mb-2.5">
-                Voice Type
-              </span> */}
               <div className="grid grid-cols-2 gap-3">
                 {voices.map((v) => {
                   const isActive = selectedVoiceId === v.id;
