@@ -33,6 +33,7 @@ let playSrc: AudioBufferSourceNode | null = null;
 export function stopPlayback() {
   try {
     playSrc?.stop();
+    playSrc?.disconnect();
   } catch {
     /* đã dừng */
   }
@@ -42,16 +43,20 @@ export function stopPlayback() {
 /** Phát nhanh một đoạn mẫu (dùng cho nghe thử từng từ). */
 export function playSamples(x: Float32Array, sr = SR, onEnded?: () => void) {
   stopPlayback();
+  if (!x || x.length === 0) {
+    onEnded?.();
+    return;
+  }
   if (!playCtx) {
     const Ctx = window.AudioContext || (window as any).webkitAudioContext;
     playCtx = new Ctx();
   }
-  playCtx!.resume();
-  const buf = playCtx!.createBuffer(1, x.length, sr);
-  buf.copyToChannel(x, 0);
-  const src = playCtx!.createBufferSource();
+  playCtx.resume().catch(() => {});
+  const buf = playCtx.createBuffer(1, Math.max(1, x.length), sr);
+  buf.getChannelData(0).set(x);
+  const src = playCtx.createBufferSource();
   src.buffer = buf;
-  src.connect(playCtx!.destination);
+  src.connect(playCtx.destination);
   src.onended = () => {
     if (playSrc === src) playSrc = null;
     onEnded?.();
