@@ -399,212 +399,130 @@ export default function App() {
           </button>
         </div>
 
-        {/* Input & Voice Selection Section (2-Column Grid) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
-
-          {/* Left Column: Language & Text Input */}
-          <div className="flex flex-col gap-3">
-            {/* Language Box (Mặc định Tiếng Việt) */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-900 mb-1.5 ml-1">
-                Language
-              </label>
-              <div className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm font-medium text-white backdrop-blur-md">
-                <span className="truncate flex items-center gap-2">
-                  <span>🇻🇳</span>
-                  <span>Tiếng Việt</span>
-                </span>
-                <span className="text-[10px] font-mono text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded-full border border-cyan-500/20">
-                  Mặc định
-                </span>
-              </div>
+        {/* Top Selectors Row: Language & Voice Type Dropdown */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+          {/* Language Box (Mặc định Tiếng Việt) */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-900 mb-1.5 ml-1">
+              Language
+            </label>
+            <div className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm font-medium text-white backdrop-blur-md">
+              <span className="truncate flex items-center gap-2">
+                <span>🇻🇳</span>
+                <span>Tiếng Việt</span>
+              </span>
+              <span className="text-[10px] font-mono text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                Mặc định
+              </span>
             </div>
+          </div>
 
-            {/* Textarea Input with Character Counter */}
-            <div className="relative flex flex-col flex-1">
-              <label className="block text-xs font-semibold text-slate-900 mb-1.5 ml-1 flex items-center justify-between">
-                <span>Prompt / Text</span>
-                <div className="flex items-center gap-2">
+          {/* Voice Type Dropdown */}
+          <div className="relative">
+            <label className="block text-xs font-semibold text-slate-900 mb-1.5 ml-1">
+              Voice Type
+            </label>
+            <button
+              type="button"
+              onClick={() => setIsVoiceDropdownOpen(!isVoiceDropdownOpen)}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-medium text-white transition-all backdrop-blur-md"
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: selectedVoice.accentColor }} />
+                <span className="font-semibold">{selectedVoice.name}</span>
+                <span className="text-xs text-slate-900 font-medium">({selectedVoice.tone.split('&')[0]})</span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-900 transition-transform duration-200 ${isVoiceDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Voice Dropdown Options */}
+            {isVoiceDropdownOpen && (
+              <div className="absolute z-30 mt-1.5 w-full rounded-xl bg-[#1e2238]/95 backdrop-blur-xl border border-white/15 shadow-2xl py-1.5 animate-in fade-in zoom-in-95 duration-150">
+                {voices.map((v) => (
                   <button
-                    onClick={() => setIsSettingsOpen(true)}
-                    className="text-[11px] text-slate-900 hover:text-black underline font-medium transition"
+                    key={v.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedVoiceId(v.id);
+                      setIsVoiceDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs sm:text-sm text-slate-200 hover:text-white hover:bg-white/10 flex items-center justify-between transition-colors"
                   >
-                    + Thu âm ({entries.length})
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-6 h-6 rounded-full bg-gradient-to-tr ${v.avatarBg} flex items-center justify-center text-[10px] font-bold text-white`}>
+                        {v.name[0]}
+                      </div>
+                      <div>
+                        <div className="font-medium">{v.name}</div>
+                        <div className="text-[10px] text-slate-400">{v.tone}</div>
+                      </div>
+                    </div>
+                    {selectedVoiceId === v.id && (
+                      <Check className="w-4 h-4 text-blue-400" />
+                    )}
                   </button>
-                  {selectedVoice.sampleText && (
-                    <button
-                      onClick={() => setText(selectedVoice.sampleText)}
-                      className="text-[11px] text-slate-900 hover:text-black underline font-medium transition"
-                    >
-                      Load Sample
-                    </button>
-                  )}
-                </div>
-              </label>
-              <div className="relative flex-1">
-                <textarea
-                  value={text}
-                  onChange={(e) => setText(e.target.value.slice(0, 500))}
-                  placeholder="Nhập một từ hoặc chuỗi từ thuộc danh sách..."
-                  rows={4}
-                  className="w-full h-full min-h-[115px] resize-none rounded-2xl bg-black/20 border border-white/10 p-3.5 text-sm text-white placeholder-slate-700/80 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-transparent transition-all backdrop-blur-md"
-                />
-                {/* Character Counter */}
-                <div className="absolute bottom-2.5 right-3 text-[11px] font-mono text-slate-900 pointer-events-none bg-white/40 px-2 py-0.5 rounded-full border border-white/20">
-                  <span className={text.length >= 480 ? 'text-amber-700 font-bold' : 'text-slate-900 font-semibold'}>
-                    {text.length}
-                  </span>
-                  <span className="text-slate-900">/500</span>
-                </div>
+                ))}
               </div>
-              {availableWords.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1 max-h-14 overflow-y-auto">
-                  {availableWords.slice(0, 24).map((w) => (
-                    <button
-                      key={w}
-                      type="button"
-                      onClick={() => setText((prev) => (prev ? `${prev.trimEnd()} ${w}` : w))}
-                      className="px-2 py-0.5 rounded-full text-[10px] bg-white/10 hover:bg-white/20 border border-white/10 text-slate-900 font-medium transition"
-                    >
-                      {w}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            {(datasetWarning || statusMsg) && (
-              <p className="text-[11px] text-amber-300 font-medium ml-1">
-                ⚠️ {datasetWarning || statusMsg}
-              </p>
             )}
           </div>
+        </div>
 
-          {/* Right Column: Voice Dropdown & Voice Avatars */}
-          <div className="flex flex-col gap-3 justify-between">
-            {/* Voice Dropdown */}
-            <div className="relative">
-              <label className="block text-xs font-semibold text-slate-900 mb-1.5 ml-1">
-                Voice Type
-              </label>
+        {/* Text Input Section (Full Width) */}
+        <div className="mt-4 flex flex-col gap-2">
+          <label className="block text-xs font-semibold text-slate-900 ml-1 flex items-center justify-between">
+            <span>Từ cần phát âm (Text Input)</span>
+            <div className="flex items-center gap-2">
               <button
-                type="button"
-                onClick={() => setIsVoiceDropdownOpen(!isVoiceDropdownOpen)}
-                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-medium text-white transition-all backdrop-blur-md"
+                onClick={() => setIsSettingsOpen(true)}
+                className="text-[11px] text-slate-900 hover:text-black underline font-medium transition"
               >
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: selectedVoice.accentColor }} />
-                  <span className="font-semibold">{selectedVoice.name}</span>
-                  <span className="text-xs text-slate-900 font-medium">({selectedVoice.tone.split('&')[0]})</span>
-                </div>
-                <ChevronDown className={`w-4 h-4 text-slate-900 transition-transform duration-200 ${isVoiceDropdownOpen ? 'rotate-180' : ''}`} />
+                + Thu âm ({entries.length})
               </button>
-
-              {/* Voice Dropdown Options */}
-              {isVoiceDropdownOpen && (
-                <div className="absolute z-30 mt-1.5 w-full rounded-xl bg-[#1e2238]/95 backdrop-blur-xl border border-white/15 shadow-2xl py-1.5 animate-in fade-in zoom-in-95 duration-150">
-                  {voices.map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedVoiceId(v.id);
-                        setIsVoiceDropdownOpen(false);
-                      }}
-                      className="w-full text-left px-3.5 py-2 text-xs sm:text-sm text-slate-200 hover:text-white hover:bg-white/10 flex items-center justify-between transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-6 h-6 rounded-full bg-gradient-to-tr ${v.avatarBg} flex items-center justify-center text-[10px] font-bold text-white`}>
-                          {v.name[0]}
-                        </div>
-                        <div>
-                          <div className="font-medium">{v.name}</div>
-                          <div className="text-[10px] text-slate-400">{v.tone}</div>
-                        </div>
-                      </div>
-                      {selectedVoiceId === v.id && (
-                        <Check className="w-4 h-4 text-blue-400" />
-                      )}
-                    </button>
-                  ))}
-                </div>
+              {selectedVoice.sampleText && (
+                <button
+                  onClick={() => setText(selectedVoice.sampleText)}
+                  className="text-[11px] text-slate-900 hover:text-black underline font-medium transition"
+                >
+                  Load Sample
+                </button>
               )}
             </div>
-
-            {/* Voice Avatars Row */}
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-              <div className="grid grid-cols-2 gap-3">
-                {voices.map((v) => {
-                  const isActive = selectedVoiceId === v.id;
-                  return (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => setSelectedVoiceId(v.id)}
-                      className={`group flex flex-col items-center p-2.5 rounded-xl transition-all duration-200 relative ${isActive
-                        ? 'bg-white/15 border border-white/20 shadow-inner'
-                        : 'hover:bg-white/5 border border-transparent'
-                        }`}
-                    >
-                      {/* Avatar Circle with Cartoon Styled Illustration */}
-                      <div
-                        className={`relative w-12 h-12 rounded-full flex items-center justify-center p-0.5 transition-all duration-300 ${isActive
-                          ? 'ring-2 ring-blue-400 ring-offset-2 ring-offset-transparent shadow-lg shadow-blue-500/40 scale-105'
-                          : 'opacity-75 group-hover:opacity-100 group-hover:scale-105'
-                          }`}
-                      >
-                        <div className={`w-full h-full rounded-full bg-gradient-to-br ${v.avatarBg} flex items-center justify-center overflow-hidden`}>
-                          {/* Illustrated cartoon avatar representation */}
-                          {v.style === 'nu' && (
-                            <svg className="w-9 h-9" viewBox="0 0 36 36" fill="none">
-                              <circle cx="18" cy="18" r="16" fill="url(#nu-grad)" fillOpacity="0.4" />
-                              <circle cx="18" cy="14" r="7" fill="#fed7aa" />
-                              <path d="M12 11c0-4 12-4 12 0v4c0 1-1 3-3 3h-6c-2 0-3-2-3-3v-4z" fill="#78350f" />
-                              <circle cx="15.5" cy="14.5" r="1" fill="#1e293b" />
-                              <circle cx="20.5" cy="14.5" r="1" fill="#1e293b" />
-                              <path d="M16 17c.8.6 3.2.6 4 0" stroke="#b91c1c" strokeWidth="1.2" strokeLinecap="round" />
-                              <path d="M9 30c0-6 4-9 9-9s9 3 9 9" fill="#fb7185" />
-                              <defs>
-                                <linearGradient id="nu-grad" x1="0" y1="0" x2="36" y2="36">
-                                  <stop stopColor="#f43f5e" />
-                                  <stop offset="1" stopColor="#818cf8" />
-                                </linearGradient>
-                              </defs>
-                            </svg>
-                          )}
-                          {v.style === 'nam' && (
-                            <svg className="w-9 h-9" viewBox="0 0 36 36" fill="none">
-                              <circle cx="18" cy="18" r="16" fill="url(#nam-grad)" fillOpacity="0.4" />
-                              <circle cx="18" cy="14" r="7" fill="#ffedd5" />
-                              <path d="M11 12c1-4 13-5 14 0v3h-14v-3z" fill="#1e293b" />
-                              <circle cx="15" cy="14.5" r="1" fill="#0f172a" />
-                              <circle cx="21" cy="14.5" r="1" fill="#0f172a" />
-                              <path d="M16.5 17.5h3" stroke="#9a3412" strokeWidth="1.2" strokeLinecap="round" />
-                              <path d="M9 30c0-6 4-9 9-9s9 3 9 9" fill="#0284c7" />
-                              <defs>
-                                <linearGradient id="nam-grad" x1="0" y1="0" x2="36" y2="36">
-                                  <stop stopColor="#0284c7" />
-                                  <stop offset="1" stopColor="#6366f1" />
-                                </linearGradient>
-                              </defs>
-                            </svg>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Name & Active Indicator */}
-                      <span className={`mt-1.5 text-xs transition-colors ${isActive ? 'text-white font-bold' : 'text-slate-900 font-semibold group-hover:text-black'
-                        }`}>
-                        {v.name}
-                      </span>
-                      <span className="text-[10px] text-slate-800 font-medium">
-                        {v.gender}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+          </label>
+          <div className="relative">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value.slice(0, 500))}
+              placeholder="Nhập từ cần phát âm thuộc danh sách (vd: ba, bác, cảng, đêm...)"
+              rows={3}
+              className="w-full min-h-[90px] resize-none rounded-2xl bg-black/20 border border-white/10 p-3.5 text-sm text-white placeholder-slate-700/80 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-transparent transition-all backdrop-blur-md"
+            />
+            {/* Character Counter */}
+            <div className="absolute bottom-2.5 right-3 text-[11px] font-mono text-slate-900 pointer-events-none bg-white/40 px-2 py-0.5 rounded-full border border-white/20">
+              <span className={text.length >= 480 ? 'text-amber-700 font-bold' : 'text-slate-900 font-semibold'}>
+                {text.length}
+              </span>
+              <span className="text-slate-900">/500</span>
             </div>
           </div>
+          {availableWords.length > 0 && (
+            <div className="flex flex-wrap gap-1 max-h-14 overflow-y-auto">
+              {availableWords.slice(0, 24).map((w) => (
+                <button
+                  key={w}
+                  type="button"
+                  onClick={() => setText(w)}
+                  className="px-2 py-0.5 rounded-full text-[10px] bg-white/10 hover:bg-white/20 border border-white/10 text-slate-900 font-medium transition"
+                >
+                  {w}
+                </button>
+              ))}
+            </div>
+          )}
+          {(datasetWarning || statusMsg) && (
+            <p className="text-[11px] text-amber-300 font-medium ml-1">
+              ⚠️ {datasetWarning || statusMsg}
+            </p>
+          )}
         </div>
 
         {/* Audio Waveform Card */}

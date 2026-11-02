@@ -211,3 +211,4 @@ export function wordAndCodeFromFilename(filename: string): { word: string; code:
   const code = word.split(' ').map(encodeVnWord).join('_');
   return { word, code };
 }
+
