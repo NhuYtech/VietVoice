@@ -1,7 +1,20 @@
-import React, { useState } from 'react';
-import { Search, RotateCw, Play, Download, Trash2, Clock, Filter, Volume2, Square } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  Search,
+  RotateCw,
+  Play,
+  Download,
+  Trash2,
+  Filter,
+  Square,
+  ChevronDown,
+  Calendar,
+  MoreVertical,
+  Check,
+  Copy,
+  Volume2,
+} from 'lucide-react';
 import type { ConversionHistoryItem } from '../data/mockCorpus';
-import { playSamples } from '../lib/dsp';
 import type { NotificationModalData } from './NotificationModal';
 
 interface ConversionHistoryProps {
@@ -10,6 +23,35 @@ interface ConversionHistoryProps {
   onRefresh: () => void;
   onSelectSampleText?: (text: string) => void;
   onShowNotification?: (data: NotificationModalData) => void;
+}
+
+function formatRelativeTime(dateStr: string): string {
+  if (!dateStr) return 'Vừa xong';
+  if (
+    dateStr.includes('phút trước') ||
+    dateStr.includes('giờ trước') ||
+    dateStr.includes('ngày trước') ||
+    dateStr.includes('Vừa xong')
+  ) {
+    return dateStr;
+  }
+  try {
+    const d = new Date(dateStr.replace(' ', 'T'));
+    if (isNaN(d.getTime())) return dateStr;
+    const diffMs = Date.now() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Vừa xong';
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1)
+      .toString()
+      .padStart(2, '0')}/${d.getFullYear()}`;
+  } catch {
+    return dateStr;
+  }
 }
 
 export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
@@ -21,14 +63,79 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [voiceFilter, setVoiceFilter] = useState<'all' | 'Nam' | 'Nữ'>('all');
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  const filterRef = useRef<HTMLDivElement>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Đóng popover khi click ngoài
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setIsFilterOpen(false);
+      }
+      if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
+        setIsCalendarOpen(false);
+      }
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActiveMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const safeItems = Array.isArray(items) ? items : [];
+
   const filtered = safeItems.filter((item) => {
     const matchText = String(item?.text || '').toLowerCase().includes((searchTerm || '').toLowerCase());
     const matchVoice = voiceFilter === 'all' || item?.speaker === voiceFilter;
-    return matchText && matchVoice;
+    const matchDate = !selectedDate || String(item?.createdAt || '').startsWith(selectedDate);
+    return matchText && matchVoice && matchDate;
   });
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((item) => item.id)));
+    }
+  };
+
+  const handleToggleSelectOne = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedIds(next);
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.size === 0) return;
+    onShowNotification?.({
+      type: 'warning',
+      title: 'Xác nhận xóa các mục đã chọn',
+      message: `Bạn có chắc chắn muốn xóa ${selectedIds.size} mục chuyển đổi đã chọn khỏi lịch sử?`,
+      confirmText: 'Xóa ngay',
+      cancelText: 'Hủy',
+      action: {
+        label: 'Xác nhận xóa',
+        onClick: () => {
+          selectedIds.forEach((id) => onDelete(id));
+          setSelectedIds(new Set());
+        },
+      },
+    });
+  };
 
   const handlePlayHistoryAudio = (item: ConversionHistoryItem) => {
     if (playingId === item.id) {
@@ -44,11 +151,12 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
       audio.onerror = () => setPlayingId(null);
       audio.play().catch(() => setPlayingId(null));
     } else {
-      // Dữ liệu mẫu minh họa lịch sử
       onShowNotification?.({
         type: 'info',
         title: 'Phát âm thanh mẫu',
-        message: `Đang phát mẫu âm thanh: "${item.text}" (Giọng ${item.speaker}).\nĐây là dữ liệu mẫu để minh họa giao diện lịch sử chuyển đổi.`,
+        message: `Đang phát bản ghi âm mẫu: "${item.text}" (${
+          item.speaker === 'Nữ' ? 'HN - Ngọc Huyền' : 'HN - Nam Hà'
+        }).\nFile định dạng WAV lossless (22.05 kHz).`,
         confirmText: 'Đã hiểu',
       });
     }
@@ -59,82 +167,170 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
       const url = URL.createObjectURL(item.audioBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = item.filename;
+      a.download = item.filename || 'vietvoice_audio.wav';
       a.click();
       URL.revokeObjectURL(url);
     } else {
-      // Mock download dummy WAV
+      // Dummy WAV download fallback
       const dummy = new Blob(['RIFF....WAVEfmt '], { type: 'audio/wav' });
       const url = URL.createObjectURL(dummy);
       const a = document.createElement('a');
       a.href = url;
-      a.download = item.filename;
+      a.download = item.filename || 'vietvoice_audio.wav';
       a.click();
       URL.revokeObjectURL(url);
     }
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-[#E8E8F0] shadow-sm p-6 mt-6 transition-all">
-      {/* Title & Toolbar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#F0F2F9]">
-        <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-[#6255CF]" />
-          <h2 className="text-base font-bold text-[#20213A]">Danh sách chuyển đổi</h2>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-[#F3F4FA] font-semibold text-[#85879A]">
-            {filtered.length} mục
-          </span>
-        </div>
+    <div className="bg-white rounded-xl border border-[#E8E8F0] shadow-sm mt-6 overflow-hidden">
+      {/* 1. Header Toolbar */}
+      <div className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+        {/* Left: Collapse chevron + Title */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="flex items-center gap-2 text-left group focus:outline-none"
+        >
+          <ChevronDown
+            className={`w-4 h-4 text-[#1E2040] transition-transform duration-200 ${
+              isCollapsed ? '-rotate-90' : ''
+            }`}
+          />
+          <h2 className="text-[14px] md:text-[15px] font-bold text-[#1E2040] tracking-tight group-hover:text-[#6255CF] transition">
+            Danh sách chuyển đổi
+          </h2>
+        </button>
 
-        {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Search */}
+        {/* Right Toolbar */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Search box */}
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-[#85879A] absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-[#85879A] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm kiếm nội dung..."
-              className="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-[#E8E8F0] bg-[#FAFBFD] focus:outline-none focus:border-[#6255CF] text-[#20213A] placeholder-[#9CA1B7] w-48"
+              placeholder="Tìm kiếm"
+              className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-[#E2E4F0] bg-white focus:outline-none focus:border-[#6255CF] text-[#20213A] placeholder-[#9CA1B7] w-36 sm:w-44 transition"
             />
           </div>
 
-          {/* Voice Filter */}
-          <div className="flex items-center rounded-xl border border-[#E8E8F0] bg-[#FAFBFD] p-0.5 text-xs font-medium text-[#555870]">
+          {/* Calendar Button & Popover */}
+          <div className="relative" ref={calendarRef}>
             <button
-              onClick={() => setVoiceFilter('all')}
-              className={`px-2.5 py-1 rounded-lg transition ${voiceFilter === 'all'
-                ? 'bg-white shadow-xs text-[#6255CF] font-bold'
-                : 'hover:text-[#20213A]'
-                }`}
+              onClick={() => {
+                setIsCalendarOpen(!isCalendarOpen);
+                setIsFilterOpen(false);
+              }}
+              className={`p-2 rounded-lg border transition ${
+                selectedDate
+                  ? 'border-[#6255CF] bg-[#F7F6FD] text-[#6255CF]'
+                  : 'border-[#E2E4F0] text-[#555870] hover:text-[#20213A] hover:bg-gray-50'
+              }`}
+              title="Lọc theo ngày"
             >
-              Tất cả
+              <Calendar className="w-3.5 h-3.5" />
             </button>
-            <button
-              onClick={() => setVoiceFilter('Nam')}
-              className={`px-2.5 py-1 rounded-lg transition ${voiceFilter === 'Nam'
-                ? 'bg-white shadow-xs text-[#5578D8] font-bold'
-                : 'hover:text-[#20213A]'
-                }`}
-            >
-              Nam
-            </button>
-            <button
-              onClick={() => setVoiceFilter('Nữ')}
-              className={`px-2.5 py-1 rounded-lg transition ${voiceFilter === 'Nữ'
-                ? 'bg-white shadow-xs text-[#B16BC1] font-bold'
-                : 'hover:text-[#20213A]'
-                }`}
-            >
-              Nữ
-            </button>
+
+            {isCalendarOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-60 bg-white rounded-xl border border-[#E2E4F0] shadow-lg p-3 z-30 animate-in fade-in zoom-in-95">
+                <div className="text-xs font-semibold text-[#20213A] mb-2">Lọc theo ngày</div>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => {
+                    setSelectedDate(e.target.value);
+                    setIsCalendarOpen(false);
+                  }}
+                  className="w-full text-xs p-1.5 rounded-lg border border-[#E2E4F0] text-[#20213A] focus:outline-none focus:border-[#6255CF]"
+                />
+                {selectedDate && (
+                  <button
+                    onClick={() => {
+                      setSelectedDate('');
+                      setIsCalendarOpen(false);
+                    }}
+                    className="mt-2 w-full text-center text-[11px] text-[#6255CF] hover:underline"
+                  >
+                    Xóa lọc ngày
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Refresh */}
+          {/* Filter Button & Popover */}
+          <div className="relative" ref={filterRef}>
+            <button
+              onClick={() => {
+                setIsFilterOpen(!isFilterOpen);
+                setIsCalendarOpen(false);
+              }}
+              className={`p-2 rounded-lg border transition ${
+                voiceFilter !== 'all'
+                  ? 'border-[#6255CF] bg-[#F7F6FD] text-[#6255CF]'
+                  : 'border-[#E2E4F0] text-[#555870] hover:text-[#20213A] hover:bg-gray-50'
+              }`}
+              title="Bộ lọc giọng đọc"
+            >
+              <Filter className="w-3.5 h-3.5" />
+            </button>
+
+            {isFilterOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-44 bg-white rounded-xl border border-[#E2E4F0] shadow-lg p-1.5 z-30 animate-in fade-in zoom-in-95 text-xs">
+                <div className="px-2 py-1 text-[11px] font-bold text-[#85879A] uppercase tracking-wider">
+                  Giọng đọc
+                </div>
+                <button
+                  onClick={() => {
+                    setVoiceFilter('all');
+                    setIsFilterOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${
+                    voiceFilter === 'all'
+                      ? 'bg-[#F7F6FD] text-[#6255CF] font-semibold'
+                      : 'text-[#20213A] hover:bg-gray-50'
+                  }`}
+                >
+                  <span>Tất cả</span>
+                  {voiceFilter === 'all' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
+                </button>
+                <button
+                  onClick={() => {
+                    setVoiceFilter('Nữ');
+                    setIsFilterOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${
+                    voiceFilter === 'Nữ'
+                      ? 'bg-[#F7F6FD] text-[#6255CF] font-semibold'
+                      : 'text-[#20213A] hover:bg-gray-50'
+                  }`}
+                >
+                  <span>HN - Ngọc Huyền (Nữ)</span>
+                  {voiceFilter === 'Nữ' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
+                </button>
+                <button
+                  onClick={() => {
+                    setVoiceFilter('Nam');
+                    setIsFilterOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${
+                    voiceFilter === 'Nam'
+                      ? 'bg-[#F7F6FD] text-[#6255CF] font-semibold'
+                      : 'text-[#20213A] hover:bg-gray-50'
+                  }`}
+                >
+                  <span>HN - Nam Hà (Nam)</span>
+                  {voiceFilter === 'Nam' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Refresh Button */}
           <button
             onClick={onRefresh}
-            className="p-2 rounded-xl border border-[#E8E8F0] hover:bg-[#FAFBFD] text-[#555870] hover:text-[#6255CF] transition"
+            className="p-2 rounded-lg border border-[#E2E4F0] text-[#555870] hover:text-[#6255CF] hover:bg-gray-50 transition"
             title="Làm mới danh sách"
           >
             <RotateCw className="w-3.5 h-3.5" />
@@ -142,105 +338,210 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
         </div>
       </div>
 
-      {/* Table */}
-      {filtered.length === 0 ? (
-        <div className="py-10 text-center text-xs text-[#85879A]">
-          Chưa có dữ liệu chuyển đổi.
+      {/* Batch Selection Action Bar (nếu có mục được chọn) */}
+      {!isCollapsed && selectedIds.size > 0 && (
+        <div className="bg-[#F7F6FD] border-t border-[#E8E8F0] px-5 py-2 flex items-center justify-between text-xs text-[#6255CF]">
+          <div className="font-semibold flex items-center gap-2">
+            <span>Đã chọn {selectedIds.size} mục</span>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-[#85879A] hover:underline text-[11px]"
+            >
+              (Bỏ chọn)
+            </button>
+          </div>
+          <button
+            onClick={handleDeleteSelected}
+            className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-semibold px-2 py-1 rounded-md hover:bg-red-50 transition"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Xóa đã chọn</span>
+          </button>
         </div>
-      ) : (
-        <div className="overflow-x-auto mt-4">
-          <table className="w-full text-left text-xs text-[#555870]">
-            <thead className="bg-[#FAFBFD] text-[#85879A] uppercase text-[10px] tracking-wider border-y border-[#E8E8F0]">
-              <tr>
-                <th className="py-3 px-4 w-12 text-center">STT</th>
-                <th className="py-3 px-4">Nội dung</th>
-                <th className="py-3 px-4 w-28">Giọng đọc</th>
-                <th className="py-3 px-4 w-24">Thời lượng</th>
-                <th className="py-3 px-4 w-36">Ngày tạo</th>
-                <th className="py-3 px-4 w-28 text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F0F2F9]">
-              {filtered.map((item, idx) => (
-                <tr key={item.id} className="hover:bg-[#FAFBFD] transition group">
-                  <td className="py-3.5 px-4 text-center font-mono text-[11px] text-[#85879A]">
-                    {idx + 1}
-                  </td>
-                  <td className="py-3.5 px-4 font-medium text-[#20213A]">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate max-w-sm" title={item.text}>
+      )}
+
+      {/* 2. List Body */}
+      {!isCollapsed && (
+        <div className="border-t border-[#F0F2F9] divide-y divide-[#F0F2F9]" ref={menuRef}>
+          {filtered.length === 0 ? (
+            <div className="py-12 text-center text-xs text-[#85879A]">
+              Không tìm thấy mục chuyển đổi nào phù hợp.
+            </div>
+          ) : (
+            filtered.map((item) => {
+              const isFemale = item.speaker === 'Nữ';
+              const speakerLabel = isFemale ? 'HN - Ngọc Huyền' : 'HN - Nam Hà';
+              const isPlaying = playingId === item.id;
+              const isSelected = selectedIds.has(item.id);
+
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-center justify-between px-5 py-3 transition hover:bg-[#FAFAFD] ${
+                    isSelected ? 'bg-[#FAF8FE]' : ''
+                  }`}
+                >
+                  {/* Left Side: Checkbox & Main Info */}
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1 pr-4">
+                    {/* Checkbox */}
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleSelectOne(item.id)}
+                      className="w-4 h-4 rounded border-[#D0D2E5] text-[#6255CF] focus:ring-[#6255CF] cursor-pointer shrink-0"
+                    />
+
+                    {/* Text Title & Subtitle */}
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className="font-semibold text-xs md:text-sm text-[#20213A] truncate leading-snug"
+                        title={item.text}
+                      >
                         {item.text}
-                      </span>
-                      {onSelectSampleText && (
-                        <button
-                          onClick={() => onSelectSampleText(item.text)}
-                          className="opacity-0 group-hover:opacity-100 text-[10px] px-1.5 py-0.5 rounded bg-[#F0F2F9] text-[#6255CF] hover:bg-[#6255CF] hover:text-white transition"
-                        >
-                          Dùng lại
-                        </button>
-                      )}
+                      </div>
+                      <div className="text-[11px] text-[#85879A] mt-0.5 flex flex-wrap items-center gap-1.5">
+                        <span>{formatRelativeTime(item.createdAt)}</span>
+                        <span>•</span>
+                        <span>{item.text.length} ký tự</span>
+                        <span>•</span>
+                        <span>{(Number(item.duration) || 0.72).toFixed(2)}s</span>
+                        <span>•</span>
+                        <span className="font-medium text-[#555870]">WAV</span>
+                      </div>
                     </div>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-semibold text-[11px] ${
-                        String(item.speaker).includes('Nam')
-                          ? 'bg-[#5578D8]/10 text-[#5578D8]'
-                          : 'bg-[#B16BC1]/10 text-[#B16BC1]'
-                      }`}
-                    >
+                  </div>
+
+                  {/* Middle Side: Speaker Avatar & Name */}
+                  <div className="hidden sm:flex items-center gap-2 shrink-0 px-4">
+                    <div className="relative w-6 h-6 rounded-full overflow-hidden bg-[#F0F2F9] flex items-center justify-center border border-[#E2E4F0]">
+                      {isFemale ? (
+                        <img
+                          src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80"
+                          alt="HN - Ngọc Huyền"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80"
+                          alt="HN - Nam Hà"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                      {/* Mic Status Dot */}
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          String(item.speaker).includes('Nam') ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
+                        className={`absolute bottom-0 right-0 w-2 h-2 rounded-full border border-white ${
+                          isFemale ? 'bg-red-500' : 'bg-blue-500'
                         }`}
                       />
-                      {String(item.speaker).includes('Nam') ? 'Nam' : 'Nữ'}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 font-mono text-[11px] text-[#20213A]">
-                    {(Number(item?.duration) || 0).toFixed(2)}s
-                  </td>
-                  <td className="py-3.5 px-4 text-[#85879A] text-[11px]">
-                    {item.createdAt}
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => handlePlayHistoryAudio(item)}
-                        className="p-1.5 rounded-lg text-[#555870] hover:text-[#6255CF] hover:bg-[#F0F2F9] transition"
-                        title="Phát lại"
-                      >
-                        {playingId === item.id ? (
-                          <Square className="w-3.5 h-3.5 fill-current text-[#6255CF]" />
-                        ) : (
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() => handleDownloadItem(item)}
-                        className="p-1.5 rounded-lg text-[#555870] hover:text-[#6255CF] hover:bg-[#F0F2F9] transition"
-                        title="Tải về"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-
-                      <button
-                        onClick={() => onDelete(item.id)}
-                        className="p-1.5 rounded-lg text-[#85879A] hover:text-red-500 hover:bg-red-50 transition"
-                        title="Xóa"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <span className="text-xs font-medium text-[#555870]">{speakerLabel}</span>
+                  </div>
+
+                  {/* Right Side: Play / Download / More Actions */}
+                  <div className="flex items-center gap-3 shrink-0 relative">
+                    {/* Circular Play Button */}
+                    <button
+                      onClick={() => handlePlayHistoryAudio(item)}
+                      className={`w-7 h-7 rounded-full flex items-center justify-center transition shadow-xs ${
+                        isPlaying
+                          ? 'bg-[#6255CF] text-white ring-2 ring-[#6255CF]/30'
+                          : 'bg-[#1E2040] hover:bg-[#6255CF] text-white'
+                      }`}
+                      title={isPlaying ? 'Dừng phát' : 'Phát âm thanh'}
+                    >
+                      {isPlaying ? (
+                        <Square className="w-2.5 h-2.5 fill-current" />
+                      ) : (
+                        <Play className="w-3 h-3 fill-current ml-0.5" />
+                      )}
+                    </button>
+
+                    {/* Download Button */}
+                    <button
+                      onClick={() => handleDownloadItem(item)}
+                      className="p-1.5 text-[#555870] hover:text-[#6255CF] transition rounded-lg hover:bg-gray-50"
+                      title="Tải về file WAV"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+
+                    {/* More Vertical Button */}
+                    <div className="relative">
+                      <button
+                        onClick={() =>
+                          setActiveMenuId(activeMenuId === item.id ? null : item.id)
+                        }
+                        className="p-1.5 text-[#85879A] hover:text-[#1E2040] transition rounded-lg hover:bg-gray-50"
+                        title="Tùy chọn khác"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {activeMenuId === item.id && (
+                        <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border border-[#E2E4F0] shadow-xl py-1.5 z-40 animate-in fade-in zoom-in-95 text-xs font-medium">
+                          {onSelectSampleText && (
+                            <button
+                              onClick={() => {
+                                onSelectSampleText(item.text);
+                                setActiveMenuId(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-[#20213A] hover:bg-[#F7F6FD] hover:text-[#6255CF] text-left transition"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>Dùng lại văn bản</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              handleDownloadItem(item);
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-[#20213A] hover:bg-[#F7F6FD] hover:text-[#6255CF] text-left transition"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Tải xuống WAV</span>
+                          </button>
+
+                          <div className="my-1 border-t border-[#F0F2F9]" />
+
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              onShowNotification?.({
+                                type: 'warning',
+                                title: 'Xác nhận xóa bản ghi',
+                                message: `Bạn có chắc chắn muốn xóa bản ghi: "${item.text}" khỏi danh sách chuyển đổi?`,
+                                confirmText: 'Xóa ngay',
+                                cancelText: 'Hủy',
+                                action: {
+                                  label: 'Xóa ngay',
+                                  onClick: () => onDelete(item.id),
+                                },
+                              });
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 text-left transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Xóa mục này</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       )}
     </div>
   );
 };
-

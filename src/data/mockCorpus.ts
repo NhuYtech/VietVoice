@@ -155,11 +155,20 @@ export const MOCK_CORPUS_ITEMS: CorpusItem[] = [
  */
 export const INITIAL_CONVERSION_HISTORY: ConversionHistoryItem[] = [
   {
+    id: 'hist-0',
+    text: 'xin chào mừng bạn đến với VietVoice',
+    speaker: 'Nữ',
+    duration: 1.85,
+    createdAt: '4 phút trước',
+    filename: 'xin_chao_mung_ban_den_voi_vietvoice.wav',
+    status: 'completed'
+  },
+  {
     id: 'hist-1',
     text: 'Xin chào',
     speaker: 'Nam',
     duration: 0.72,
-    createdAt: '2026-11-02 14:20',
+    createdAt: '15 phút trước',
     filename: 'xin0_chao2.wav',
     status: 'completed'
   },
