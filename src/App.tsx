@@ -219,7 +219,7 @@ export const App: React.FC = () => {
         />
 
         {/* Workspace Body */}
-        <main className="p-8 max-w-6xl w-full mx-auto">
+        <main className="p-6 md:p-8 max-w-[1400px] w-full mx-auto">
           {currentTab === 'tts' && (
             <div>
               {/* Main Editor Card */}

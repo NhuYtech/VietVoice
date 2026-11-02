@@ -19,7 +19,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, corpu
     },
     {
       id: 'corpus' as NavTab,
-      label: 'Ngữ liệu',
+      label: 'Dữ liệu',
       icon: Database,
       desc: 'Quản lý từ vựng & âm thanh',
       badge: corpusCount > 0 ? corpusCount : undefined,
@@ -62,11 +62,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, corpu
               <button
                 key={item.id}
                 onClick={() => onSelectTab(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${
-                  isActive
-                    ? 'bg-[#6255CF] text-white shadow-sm shadow-[#6255CF]/25'
-                    : 'text-[#555870] hover:text-[#20213A] hover:bg-[#F4F5FB]'
-                }`}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${isActive
+                  ? 'bg-[#6255CF] text-white shadow-sm shadow-[#6255CF]/25'
+                  : 'text-[#555870] hover:text-[#20213A] hover:bg-[#F4F5FB]'
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#85879A]'}`} />
@@ -77,9 +76,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, corpu
 
                 {item.badge !== undefined && (
                   <span
-                    className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-[#EAEBF4] text-[#60637A]'
-                    }`}
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${isActive ? 'bg-white/20 text-white' : 'bg-[#EAEBF4] text-[#60637A]'
+                      }`}
                   >
                     {item.badge}
                   </span>
@@ -97,7 +95,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, corpu
             <Sparkles className="w-3.5 h-3.5" />
             <span>Give Vietnamese Text a Voice</span>
           </div>
-          <p className="text-xs font-medium text-[#20213A] leading-snug">Đồ án — Xử lý tiếng nói</p>
+          <p className="text-xs font-medium text-[#20213A] leading-snug">Học phần — Hệ cơ sở dữ liệu đa phương tiện</p>
           <p className="text-[11px] text-[#85879A] mt-1">Concatenative Word-Level TTS</p>
         </div>
       </div>

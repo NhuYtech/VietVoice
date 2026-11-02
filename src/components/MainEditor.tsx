@@ -76,13 +76,13 @@ export const MainEditor: React.FC<MainEditorProps> = ({
       </div>
 
       {/* Large Text Area */}
-      <div className="p-6">
+      <div className="p-7">
         <textarea
           value={text}
           onChange={(e) => onChangeText(e.target.value)}
           placeholder="Nhập văn bản tiếng Việt bạn muốn chuyển thành âm thanh..."
-          rows={5}
-          className="w-full resize-none text-base text-[#20213A] placeholder-[#9AA0B4] focus:outline-none leading-relaxed bg-transparent"
+          rows={6}
+          className="w-full resize-none text-[17px] text-[#20213A] placeholder-[#9AA0B4] focus:outline-none leading-relaxed bg-transparent min-h-[160px]"
         />
 
         {/* Word / Char Counters & Status */}
