@@ -2,7 +2,7 @@ import type { CorpusEntry, SynthResult } from '../lib/types';
 import { synthesize, normalizeText } from '../lib/tts';
 import { INITIAL_CONVERSION_HISTORY, type ConversionHistoryItem } from '../data/mockCorpus';
 
-const STORAGE_KEY = 'amtu_conversion_history';
+const STORAGE_KEY = 'vietvoice_conversion_history';
 
 /**
  * Lấy lịch sử chuyển đổi từ LocalStorage (hoặc khởi tạo với dữ liệu mẫu)
@@ -25,7 +25,7 @@ export function getStoredHistory(): ConversionHistoryItem[] {
       speaker: (item?.speaker === 'Nữ 01' ? 'Nữ 01' : 'Nam 01') as 'Nam 01' | 'Nữ 01',
       duration: typeof item?.duration === 'number' && !isNaN(item.duration) ? item.duration : 0.6,
       createdAt: String(item?.createdAt || '2026-11-02 12:00'),
-      filename: String(item?.filename || 'amtu_audio.wav'),
+      filename: String(item?.filename || 'vietvoice_audio.wav'),
       status: item?.status === 'failed' ? 'failed' : 'completed',
     }));
   } catch (err) {
@@ -71,7 +71,7 @@ export function addHistoryEntry(
   ).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   const cleanText = (text || '').trim().slice(0, 15).replace(/\s+/g, '_').toLowerCase();
-  const filename = `amtu_${speaker === 'Nam 01' ? 'nam' : 'nu'}_${cleanText || 'audio'}.wav`;
+  const filename = `vietvoice_${speaker === 'Nam 01' ? 'nam' : 'nu'}_${cleanText || 'audio'}.wav`;
 
   const newItem: ConversionHistoryItem = {
     id: `conv-${Date.now()}`,

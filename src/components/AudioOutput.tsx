@@ -97,7 +97,7 @@ export const AudioOutput: React.FC<AudioOutputProps> = ({
           </div>
           <h3 className="text-sm font-semibold text-[#20213A]">Chưa có âm thanh</h3>
           <p className="text-xs text-[#85879A] mt-1 max-w-sm">
-            Nhập văn bản tiếng Việt và chọn giọng đọc để bắt đầu chuyển đổi bằng bộ dữ liệu ngữ liệu thu âm.
+            Nhập văn bản tiếng Việt và chọn giọng đọc để VietVoice bắt đầu chuyển đổi thành giọng nói tự nhiên từ ngữ liệu thu âm.
           </p>
         </div>
       ) : (
@@ -179,7 +179,7 @@ export const AudioOutput: React.FC<AudioOutputProps> = ({
                 <p className="text-xs font-bold text-[#20213A]">
                   {isPlaying ? 'Đang phát âm thanh...' : 'Sẵn sàng phát'}
                 </p>
-                <p className="text-[11px] text-[#85879A]">Bộ ghép nối Web Audio 22.05 kHz</p>
+                <p className="text-[11px] text-[#85879A]">VietVoice Concatenative Engine • 22.05 kHz</p>
               </div>
             </div>
 

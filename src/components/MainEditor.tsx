@@ -19,7 +19,7 @@ const EXAMPLES = [
   'Xin chào',
   'Việt Nam',
   'Công nghệ thông tin',
-  'Chào mừng bạn đến với Âm Tự',
+  'Chào mừng bạn đến với VietVoice',
 ];
 
 export const MainEditor: React.FC<MainEditorProps> = ({

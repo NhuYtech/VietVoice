@@ -124,7 +124,7 @@ export const App: React.FC = () => {
     const a = document.createElement('a');
     a.href = url;
     const clean = activeResult.text.slice(0, 15).replace(/\s+/g, '_').toLowerCase();
-    a.download = `amtu_${selectedVoice === 'Nam 01' ? 'nam' : 'nu'}_${clean || 'audio'}.wav`;
+    a.download = `vietvoice_${selectedVoice === 'Nam 01' ? 'nam' : 'nu'}_${clean || 'audio'}.wav`;
     a.click();
     URL.revokeObjectURL(url);
   };

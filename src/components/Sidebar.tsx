@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, Database, Info, Sparkles, Mic2 } from 'lucide-react';
+import { Volume2, Database, Info, Sparkles } from 'lucide-react';
 
 export type NavTab = 'tts' | 'corpus' | 'about';
 
@@ -37,17 +37,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, corpu
       {/* Brand Header */}
       <div>
         <div className="h-[72px] px-5 flex items-center gap-3 border-b border-[#E8E8F0]">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#6255CF] to-[#8C7EFF] flex items-center justify-center text-white shadow-sm shadow-[#6255CF]/20">
-            <Mic2 className="w-5 h-5" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="VietVoice Logo"
+            className="w-10 h-10 rounded-xl object-contain shadow-sm border border-[#E8E8F0] bg-white flex-shrink-0"
+          />
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-lg text-[#20213A] tracking-tight">Âm Tự</span>
+              <span className="font-bold text-lg text-[#20213A] tracking-tight">VietVoice</span>
               <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#6255CF]/10 text-[#6255CF]">
                 TTS
               </span>
             </div>
-            <p className="text-[11px] text-[#85879A] leading-tight">Vietnamese TTS</p>
+            <p className="text-[11px] text-[#85879A] leading-tight font-medium">Vietnamese TTS</p>
           </div>
         </div>
 
@@ -93,13 +95,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, corpu
         <div className="rounded-xl bg-[#F7F8FC] border border-[#E8E8F0] p-3 text-left">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-[#6255CF] mb-1">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Đồ án học phần</span>
+            <span>Give Vietnamese Text a Voice</span>
           </div>
-          <p className="text-xs font-medium text-[#20213A] leading-snug">Xử lý tiếng nói (Speech Processing)</p>
+          <p className="text-xs font-medium text-[#20213A] leading-snug">Đồ án — Xử lý tiếng nói</p>
           <p className="text-[11px] text-[#85879A] mt-1">Concatenative Word-Level TTS</p>
         </div>
       </div>
     </aside>
   );
 };
-

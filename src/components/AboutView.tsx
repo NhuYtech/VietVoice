@@ -82,13 +82,13 @@ export const AboutView: React.FC = () => {
       <div className="bg-white rounded-2xl border border-[#E8E8F0] p-7 shadow-sm">
         <div className="flex items-center gap-2.5 text-[#6255CF] mb-2 font-semibold text-xs uppercase tracking-wider">
           <Info className="w-4 h-4" />
-          <span>Báo cáo tóm tắt kiến trúc hệ thống</span>
+          <span>VietVoice — Give Vietnamese Text a Voice</span>
         </div>
         <h2 className="text-xl font-bold text-[#20213A] mb-3">
-          Âm Tự — Hệ thống chuyển đổi văn bản thành âm thanh tiếng Việt mức từ
+          VietVoice — Hệ thống chuyển đổi văn bản thành âm thanh tiếng Việt mức từ
         </h2>
         <p className="text-sm text-[#555870] leading-relaxed">
-          Đề tài nghiên cứu và xây dựng hệ thống Text-to-Speech (TTS) sử dụng phương pháp <strong>ghép nối ngữ liệu (Concatenative Speech Synthesis)</strong> ở mức từ (word-level). Hệ thống sử dụng bộ dữ liệu âm thanh song song được thu âm trực tiếp bởi các thành viên, hỗ trợ hai phiên bản giọng đọc <strong>Nam 01</strong> và <strong>Nữ 01</strong>.
+          <strong>VietVoice</strong> là hệ thống chuyển đổi văn bản thành âm thanh (Text-to-Speech) tiếng Việt sử dụng phương pháp <strong>ghép nối ngữ liệu (Concatenative Speech Synthesis)</strong> ở mức từ (word-level). Hệ thống sử dụng bộ dữ liệu âm thanh song song được thu âm trực tiếp bởi các thành viên, hỗ trợ hai phiên bản giọng đọc <strong>Nam 01</strong> (Male) và <strong>Nữ 01</strong> (Female).
         </p>
       </div>
 

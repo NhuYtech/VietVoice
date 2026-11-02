@@ -7,6 +7,17 @@ export default {
   theme: {
     extend: {
       colors: {
+        vietvoice: {
+          primary: '#6255CF',
+          primaryHover: '#5144BD',
+          bg: '#F7F8FC',
+          surface: '#FFFFFF',
+          text: '#20213A',
+          subtext: '#85879A',
+          border: '#E8E8F0',
+          male: '#5578D8',
+          female: '#B16BC1',
+        },
         amtu: {
           primary: '#6255CF',
           primaryHover: '#5144BD',

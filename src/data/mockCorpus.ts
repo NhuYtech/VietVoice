@@ -70,11 +70,11 @@ export const MOCK_CORPUS_ITEMS: CorpusItem[] = [
   },
   {
     id: 'mock-5',
-    word: 'âm tự',
-    code: 'a+m0_tuu5',
+    word: 'tiếng việt',
+    code: 'tie+ng1_vie+t5',
     speaker: 'Nữ 01',
-    filename: 'am_tu_nu.wav',
-    duration: 0.64,
+    filename: 'tieng_viet_nu.wav',
+    duration: 0.74,
     createdAt: '2026-11-01 10:45',
     isMock: true
   },
