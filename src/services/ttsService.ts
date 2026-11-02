@@ -135,6 +135,7 @@ export function inspectVocabularyWithVoice(
   wrongVoiceMessage?: string;
   hasMissing: boolean;
   missingTokens: string[];
+  missingMessage?: string;
   canConvert: boolean;
 } {
   const norm = normalizeText(text || '');
@@ -235,6 +236,11 @@ export function inspectVocabularyWithVoice(
     wrongVoiceMessage = `Từ "${wrongVoiceWords.join(', ')}" có file thu âm là Giọng ${otherVoice}. Vui lòng chọn "Giọng ${otherVoice}" rồi mới nhấn Chuyển thành âm thanh!`;
   }
 
+  let missingMessage: string | undefined;
+  if (hasMissing) {
+    missingMessage = `Từ "${missingTokens.join(', ')}" chưa có bản thu âm trong hệ thống ngữ liệu. Vui lòng vào mục "Ngữ liệu" để thu âm từ này trước khi chuyển thành âm thanh!`;
+  }
+
   return {
     tokens,
     wordChecks,
@@ -244,6 +250,7 @@ export function inspectVocabularyWithVoice(
     wrongVoiceMessage,
     hasMissing,
     missingTokens,
+    missingMessage,
     canConvert,
   };
 }
@@ -301,7 +308,9 @@ export async function performSynthesis(
   if (voiceCheck.hasMissing) {
     return {
       success: false,
-      error: `Các từ (${voiceCheck.missingTokens.join(', ')}) chưa có trong ngữ liệu thu âm. Vui lòng vào mục "Ngữ liệu" để thu âm thêm.`,
+      error:
+        voiceCheck.missingMessage ||
+        `Từ "${voiceCheck.missingTokens.join(', ')}" chưa có bản thu âm trong ngữ liệu. Vui lòng vào mục "Ngữ liệu" để thu âm thêm trước khi chuyển thành âm thanh!`,
       missingTokens: voiceCheck.missingTokens,
     };
   }

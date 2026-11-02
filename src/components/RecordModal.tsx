@@ -10,6 +10,7 @@ interface RecordModalProps {
   onClose: () => void;
   onSaved: () => void;
   defaultSpeaker?: 'Nam' | 'Nữ';
+  initialWord?: string;
 }
 
 export const RecordModal: React.FC<RecordModalProps> = ({
@@ -17,8 +18,9 @@ export const RecordModal: React.FC<RecordModalProps> = ({
   onClose,
   onSaved,
   defaultSpeaker = 'Nam',
+  initialWord = '',
 }) => {
-  const [wordInput, setWordInput] = useState('');
+  const [wordInput, setWordInput] = useState(initialWord);
   const [speaker, setSpeaker] = useState<'Nam' | 'Nữ'>(defaultSpeaker);
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -48,13 +50,14 @@ export const RecordModal: React.FC<RecordModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setWordInput('');
+      setWordInput(initialWord || '');
+      setSpeaker(defaultSpeaker);
       setAudioBlob(null);
       setAudioUrl(null);
       setErrorMsg('');
       setIsRecording(false);
     }
-  }, [isOpen]);
+  }, [isOpen, initialWord, defaultSpeaker]);
 
   // Clean up
   useEffect(() => {

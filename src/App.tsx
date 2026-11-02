@@ -32,6 +32,7 @@ export const App: React.FC = () => {
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [isPlayingPreview, setIsPlayingPreview] = useState<'Nam' | 'Nữ' | null>(null);
   const [notificationModal, setNotificationModal] = useState<NotificationModalData | null>(null);
+  const [recordInitialWord, setRecordInitialWord] = useState('');
 
   // Tải danh sách ngữ liệu từ IndexedDB và manifest ban đầu
   const loadCorpus = useCallback(async () => {
@@ -75,9 +76,14 @@ export const App: React.FC = () => {
       const res = await performSynthesis(inputText, selectedVoice, realEntries);
 
       if (!res.success || !res.result) {
+        const isMissing = Boolean(res.missingTokens && res.missingTokens.length > 0 && !res.suggestedVoice);
         setNotificationModal({
           type: 'warning',
-          title: res.suggestedVoice ? 'Ràng buộc giọng đọc' : 'Chưa thể chuyển đổi',
+          title: res.suggestedVoice
+            ? 'Ràng buộc giọng đọc'
+            : isMissing
+            ? 'Từ chưa có bản ghi âm'
+            : 'Chưa thể chuyển đổi',
           message:
             res.error ||
             'Không thể tổng hợp từ văn bản này do chưa có file âm thanh trong ngữ liệu.',
@@ -86,6 +92,14 @@ export const App: React.FC = () => {
                 label: `Chọn Giọng ${res.suggestedVoice} ngay`,
                 onClick: () => {
                   setSelectedVoice(res.suggestedVoice!);
+                },
+              }
+            : isMissing && res.missingTokens && res.missingTokens.length > 0
+            ? {
+                label: `Thu âm từ "${res.missingTokens[0]}" ngay`,
+                onClick: () => {
+                  setRecordInitialWord(res.missingTokens![0]);
+                  setIsRecordModalOpen(true);
                 },
               }
             : undefined,
@@ -219,6 +233,10 @@ export const App: React.FC = () => {
                 entries={realEntries}
                 onPlayPreviewVoice={handlePlayPreviewVoice}
                 isPlayingPreview={isPlayingPreview}
+                onOpenRecordModal={(word) => {
+                  setRecordInitialWord(word || '');
+                  setIsRecordModalOpen(true);
+                }}
               />
 
               {/* Audio Result Section */}
@@ -245,7 +263,10 @@ export const App: React.FC = () => {
           {currentTab === 'corpus' && (
             <CorpusView
               realEntries={realEntries}
-              onOpenRecordModal={() => setIsRecordModalOpen(true)}
+              onOpenRecordModal={() => {
+                setRecordInitialWord('');
+                setIsRecordModalOpen(true);
+              }}
               onRefresh={loadCorpus}
               onShowNotification={setNotificationModal}
             />
@@ -258,6 +279,7 @@ export const App: React.FC = () => {
       {/* 3. Studio Record Modal */}
       <RecordModal
         isOpen={isRecordModalOpen}
+        initialWord={recordInitialWord}
         onClose={() => setIsRecordModalOpen(false)}
         onSaved={() => {
           loadCorpus();

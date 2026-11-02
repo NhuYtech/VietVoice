@@ -13,6 +13,7 @@ interface MainEditorProps {
   entries: CorpusEntry[];
   onPlayPreviewVoice: (voice: 'Nam' | 'Nữ') => void;
   isPlayingPreview: 'Nam' | 'Nữ' | null;
+  onOpenRecordModal?: (word?: string) => void;
 }
 
 const EXAMPLES = [
@@ -32,6 +33,7 @@ export const MainEditor: React.FC<MainEditorProps> = ({
   entries,
   onPlayPreviewVoice,
   isPlayingPreview,
+  onOpenRecordModal,
 }) => {
   const charCount = text.length;
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
@@ -133,14 +135,18 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                         );
                       }
                       return (
-                        <span
+                        <button
                           key={`${check.token}-${idx}`}
-                          className="px-2.5 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200"
-                          title={`Từ '${check.token}' chưa có trong bộ dữ liệu thu âm`}
+                          type="button"
+                          onClick={() => onOpenRecordModal && onOpenRecordModal(check.token)}
+                          className="px-2.5 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1 bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100 transition cursor-pointer shadow-xs"
+                          title={`Từ '${check.token}' chưa có bản thu âm. Nhấn để thu âm ngay!`}
                         >
-                          <span className="text-slate-400 font-bold">✕</span> {check.token}
-                          <span className="text-[10px] text-slate-500">(chưa có)</span>
-                        </span>
+                          <span className="text-rose-500 font-bold">✕</span> {check.token}
+                          <span className="text-[10px] text-rose-600 font-normal underline ml-0.5">
+                            (Chưa có bản ghi)
+                          </span>
+                        </button>
                       );
                     })
                   ) : (
@@ -152,10 +158,10 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                           className={`px-2.5 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 ${
                             isAvailable
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-amber-50 text-amber-800 border border-amber-200'
+                              : 'bg-rose-50 text-rose-800 border border-rose-200'
                           }`}
                         >
-                          {isAvailable ? '✓' : '!'} {tok}
+                          {isAvailable ? '✓' : '✕'} {tok}
                         </span>
                       );
                     })
@@ -183,6 +189,31 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                   >
                     <span>Chọn Giọng {vocabCheck.suggestedVoice} ngay</span>
                     <span>→</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Thông báo từ chưa có bản ghi âm */}
+            {vocabCheck.hasMissing && (
+              <div className="p-3 rounded-xl bg-gradient-to-r from-rose-50 to-red-50 border border-rose-300 text-rose-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5 sm:mt-0" />
+                  <div className="text-xs leading-relaxed">
+                    <span className="font-bold text-rose-900">Chưa có bản ghi: </span>
+                    {vocabCheck.missingMessage ||
+                      `Từ "${vocabCheck.missingTokens.join(', ')}" chưa có bản thu âm trong hệ thống ngữ liệu. Vui lòng thu âm từ này trước khi chuyển đổi!`}
+                  </div>
+                </div>
+
+                {onOpenRecordModal && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenRecordModal(vocabCheck.missingTokens[0])}
+                    className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-semibold text-xs transition shadow-sm flex items-center gap-1.5 flex-shrink-0"
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                    <span>Thu âm từ này ngay</span>
                   </button>
                 )}
               </div>
