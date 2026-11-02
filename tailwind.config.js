@@ -7,10 +7,21 @@ export default {
   theme: {
     extend: {
       colors: {
+        amtu: {
+          primary: '#6255CF',
+          primaryHover: '#5144BD',
+          bg: '#F7F8FC',
+          surface: '#FFFFFF',
+          text: '#20213A',
+          subtext: '#85879A',
+          border: '#E8E8F0',
+          male: '#5578D8',
+          female: '#B16BC1',
+        },
         brand: {
           cyan: '#06b6d4',
           magenta: '#ec4899',
-          indigo: '#6366f1',
+          indigo: '#6255CF',
           violet: '#8b5cf6',
         }
       },

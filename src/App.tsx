@@ -1,775 +1,279 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import {
-  ChevronDown,
-  Sparkles,
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Volume2,
-  VolumeX,
-  X,
-  Check,
-  RotateCcw,
-  Headphones,
-  Download,
-  Mic,
-  Loader2
-} from 'lucide-react';
-import type { CorpusEntry, SynthResult } from './lib/types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Sidebar, type NavTab } from './components/Sidebar';
+import { Header } from './components/Header';
+import { MainEditor } from './components/MainEditor';
+import { AudioOutput } from './components/AudioOutput';
+import { ConversionHistory } from './components/ConversionHistory';
+import { CorpusView } from './components/CorpusView';
+import { AboutView } from './components/AboutView';
+import { RecordModal } from './components/RecordModal';
 import { getAllEntries } from './lib/store';
-import { loadManifest, normalizeText, synthesize } from './lib/tts';
-import { encodeVnWord, isVniCode, decodeVnWord } from './lib/vniCodec';
-import logo from './assets/images/logo.png';
-import CorpusPanel from './components/CorpusPanel';
+import { loadManifest } from './lib/tts';
+import { playSamples, decodeBlob } from './lib/dsp';
+import type { CorpusEntry, SynthResult } from './lib/types';
+import {
+  getStoredHistory,
+  addHistoryEntry,
+  removeHistoryEntry,
+  performSynthesis,
+  mapSpeakerToCore,
+} from './services/ttsService';
+import type { ConversionHistoryItem } from './data/mockCorpus';
+import { AlertCircle, CheckCircle2, X } from 'lucide-react';
 
-interface VoiceOption {
-  id: string;
-  name: string;
-  gender: string;
-  tags: string[];
-  tone: string;
-  avatarBg: string;
-  accentColor: string;
-  sampleText: string;
-  style: 'nu' | 'nam';
-}
+export const App: React.FC = () => {
+  const [currentTab, setCurrentTab] = useState<NavTab>('tts');
+  const [inputText, setInputText] = useState('Xin chào Việt Nam');
+  const [selectedVoice, setSelectedVoice] = useState<'Nam 01' | 'Nữ 01'>('Nam 01');
+  const [isConverting, setIsConverting] = useState(false);
+  const [activeResult, setActiveResult] = useState<SynthResult | null>(null);
+  const [historyItems, setHistoryItems] = useState<ConversionHistoryItem[]>([]);
+  const [realEntries, setRealEntries] = useState<CorpusEntry[]>([]);
+  const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
+  const [isPlayingPreview, setIsPlayingPreview] = useState<'Nam 01' | 'Nữ 01' | null>(null);
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'warning' | 'error';
+    message: string;
+  } | null>(null);
 
-const AVATARS = [
-  { avatarBg: 'from-pink-500 via-rose-500 to-indigo-600', accentColor: '#ec4899', style: 'nu' as const },
-  { avatarBg: 'from-blue-600 via-cyan-500 to-indigo-800', accentColor: '#06b6d4', style: 'nam' as const }
-];
-
-// Hiển thị khi chưa có ngữ liệu; khi có ngữ liệu, danh sách giọng lấy từ người thu âm thực tế.
-const DEFAULT_VOICES: VoiceOption[] = [
-  {
-    id: 'nu',
-    name: 'Giọng Nữ',
-    gender: 'Nữ',
-    tags: [],
-    tone: 'Chưa có ngữ liệu',
-    sampleText: '',
-    ...AVATARS[0]
-  },
-  {
-    id: 'nam',
-    name: 'Giọng Nam',
-    gender: 'Nam',
-    tags: [],
-    tone: 'Chưa có ngữ liệu',
-    sampleText: '',
-    ...AVATARS[1]
-  }
-];
-
-const SPEED_OPTIONS = [0.75, 1.0, 1.25, 1.5, 2.0];
-
-const DEFAULT_BARS = [
-  22, 38, 55, 78, 92, 45, 68, 88, 100, 60, 35, 70, 85, 95, 50, 30, 65, 82,
-  90, 75, 40, 60, 95, 80, 52, 38, 72, 86, 64, 42, 58, 74, 90, 65, 38, 24
-];
-
-export default function App() {
-  // Corpus (ngữ liệu thu âm thật) & kết quả tổng hợp
-  const [entries, setEntries] = useState<CorpusEntry[]>([]);
-  const [lastResult, setLastResult] = useState<SynthResult | null>(null);
-  const [statusMsg, setStatusMsg] = useState<string>('');
-
-  // Input & Selection State
-  const [text, setText] = useState<string>('');
-  const [selectedVoiceId, setSelectedVoiceId] = useState<string>('nu');
-  const [isVoiceDropdownOpen, setIsVoiceDropdownOpen] = useState<boolean>(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-
-  // Audio Playback & Generation State
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [currentTime, setCurrentTimeState] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(0);
-  const [volume, setVolume] = useState<number>(85);
-  const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [speedIndex, setSpeedIndex] = useState<number>(1); // 1.0x
-
-  // Concatenation settings
-  const [gapMs, setGapMs] = useState<number>(120);
-  const [crossfadeMs, setCrossfadeMs] = useState<number>(20);
-  const [trim, setTrim] = useState<boolean>(true);
-  const [normalize, setNormalize] = useState<boolean>(true);
-  const [fallbackSpeaker, setFallbackSpeaker] = useState<boolean>(true);
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const urlRef = useRef<string>('');
-
-  const refreshEntries = useCallback(async () => {
-    setEntries(await getAllEntries());
-  }, []);
-
-  // Nạp ngữ liệu từ IndexedDB + public/corpus/manifest.json (nếu có)
-  useEffect(() => {
-    (async () => {
-      const existing = await getAllEntries();
-      setEntries(existing);
-      const added = await loadManifest(new Set(existing.map((e) => e.id)));
-      if (added.length) await refreshEntries();
-    })();
-  }, [refreshEntries]);
-
-  const voices: VoiceOption[] = useMemo(() => {
-    const speakers = [...new Set(entries.map((e) => e.speaker))].sort();
-    if (!speakers.length) return DEFAULT_VOICES;
-    return speakers.map((s, i) => {
-      const own = entries.filter((e) => e.speaker === s);
-      return {
-        id: s,
-        name: `Giọng ${s}`,
-        gender: `${own.length} từ`,
-        tags: [],
-        tone: 'Giọng thu âm thật',
-        sampleText: own.slice(0, 3).map((e) => e.word).join(' '),
-        ...AVATARS[i % 2]
-      };
-    });
-  }, [entries]);
-
-  useEffect(() => {
-    if (!voices.some((v) => v.id === selectedVoiceId)) setSelectedVoiceId(voices[0].id);
-  }, [voices, selectedVoiceId]);
-
-  const selectedVoice = useMemo(() => {
-    return voices.find(v => v.id === selectedVoiceId) || voices[0];
-  }, [voices, selectedVoiceId]);
-
-  // Danh sách từ có sẵn cho giọng đang chọn (để gợi ý/bấm chọn nhanh trên UI chính)
-  const availableWords = useMemo(() => {
-    const own = entries.filter((e) => e.speaker === selectedVoiceId).map((e) => e.word);
-    const all = own.length ? own : entries.map((e) => e.word);
-    return [...new Set(all)].sort((a, b) => a.localeCompare(b, 'vi'));
-  }, [entries, selectedVoiceId]);
-
-  // Kiểm tra trực tiếp từ nhập vào có nằm trong dataset không (chỉ cảnh báo khi không có)
-  const datasetWarning = useMemo(() => {
-    const normalized = normalizeText(text);
-    if (!normalized) return '';
-    if (!entries.length) {
-      return 'Từ này không nằm trong dataset.';
-    }
-    const validWords = new Set<string>();
-    let maxN = 1;
-    for (const e of entries) {
-      if (fallbackSpeaker || e.speaker === selectedVoiceId) {
-        validWords.add(e.word);
-        if (e.code) validWords.add(e.code);
-        const c = encodeVnWord(e.word);
-        if (c) validWords.add(c);
-        maxN = Math.max(maxN, e.word.split(' ').length);
-      }
-    }
-    const tokens = normalized.split(' ').filter(Boolean);
-    const missing: string[] = [];
-    for (let i = 0; i < tokens.length;) {
-      let matched = false;
-      for (let n = Math.min(maxN, tokens.length - i); n >= 1; n--) {
-        const candidate = tokens.slice(i, i + n).join(' ');
-        const candidateCode = encodeVnWord(candidate);
-        const decodedCandidate = isVniCode(candidate) ? decodeVnWord(candidate) : '';
-        if (
-          validWords.has(candidate) ||
-          validWords.has(candidateCode) ||
-          (decodedCandidate && validWords.has(decodedCandidate))
-        ) {
-          i += n;
-          matched = true;
-          break;
-        }
-      }
-      if (!matched) {
-        missing.push(tokens[i]);
-        i++;
-      }
-    }
-    return missing.length
-      ? `Từ không nằm trong dataset: "${missing.join(', ')}"`
-      : '';
-  }, [text, entries, selectedVoiceId, fallbackSpeaker]);
-
-  // Waveform bars lấy từ tín hiệu tổng hợp thật (36 cột, biên độ đỉnh)
-  const waveformBars = useMemo(() => {
-    if (!lastResult) return DEFAULT_BARS;
-    const x = lastResult.samples;
-    const n = DEFAULT_BARS.length;
-    const size = Math.max(1, Math.floor(x.length / n));
-    const peaks = Array.from({ length: n }, (_, b) => {
-      let m = 0;
-      for (let i = b * size; i < Math.min(x.length, (b + 1) * size); i++) m = Math.max(m, Math.abs(x[i]));
-      return m;
-    });
-    const max = Math.max(...peaks) || 1;
-    return peaks.map((p) => Math.max(8, Math.round((p / max) * 100)));
-  }, [lastResult]);
-
-  // Format seconds to mm:ss
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const setCurrentTime = (t: number) => {
-    if (audioRef.current) audioRef.current.currentTime = t;
-    setCurrentTimeState(t);
-  };
-
-  // Audio element thật phát file WAV đã tổng hợp
-  useEffect(() => {
-    const a = new Audio();
-    a.onended = () => {
-      setIsPlaying(false);
-      setCurrentTimeState(0);
-    };
-    audioRef.current = a;
-    return () => {
-      a.pause();
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.volume = isMuted ? 0 : volume / 100;
-    a.playbackRate = SPEED_OPTIONS[speedIndex];
-  }, [volume, isMuted, speedIndex, lastResult]);
-
-  // Cập nhật thanh tiến trình theo thời gian phát thật
-  useEffect(() => {
-    if (!isPlaying) return;
-    const id = window.setInterval(() => {
-      if (audioRef.current) setCurrentTimeState(audioRef.current.currentTime);
-    }, 50);
-    return () => clearInterval(id);
-  }, [isPlaying]);
-
-  // Handle Generate: tổng hợp ghép nối từ các file thu âm
-  const handleGenerate = async () => {
-    if (isGenerating) return;
-    const input = text.trim();
-    if (!input) {
-      setStatusMsg('Hãy nhập một từ hoặc chuỗi từ thuộc danh sách ngữ liệu.');
-      return;
-    }
-    if (!entries.length) {
-      setStatusMsg('Chưa có ngữ liệu. Bấm biểu tượng Cài đặt (⚙️) → "Thu âm" để thu âm từ vựng.');
-      return;
-    }
-    setIsGenerating(true);
-    setStatusMsg('');
-    audioRef.current?.pause();
-    setIsPlaying(false);
+  // Tải danh sách ngữ liệu từ IndexedDB và manifest ban đầu
+  const loadCorpus = useCallback(async () => {
     try {
-      const result = await synthesize(input, entries, {
-        speaker: selectedVoiceId,
-        gapMs,
-        crossfadeMs,
-        trim,
-        normalize,
-        fallbackSpeaker
+      const initial = await getAllEntries();
+      const existingIds = new Set(initial.map((e) => e.id));
+      await loadManifest(existingIds).catch(() => []);
+      const entries = await getAllEntries();
+      setRealEntries(entries);
+    } catch (err) {
+      console.error('Lỗi khi nạp ngữ liệu:', err);
+    }
+  }, []);
+
+  // Tải lịch sử chuyển đổi từ LocalStorage
+  const loadHistory = useCallback(() => {
+    const list = getStoredHistory();
+    setHistoryItems(list);
+  }, []);
+
+  useEffect(() => {
+    loadCorpus();
+    loadHistory();
+  }, [loadCorpus, loadHistory]);
+
+  // Xóa thông báo sau 6 giây
+  useEffect(() => {
+    if (!notification) return;
+    const timer = setTimeout(() => setNotification(null), 6000);
+    return () => clearTimeout(timer);
+  }, [notification]);
+
+  // Xử lý tạo âm thanh (Chuyển văn bản)
+  const handleConvert = async () => {
+    if (!inputText.trim()) {
+      setNotification({
+        type: 'warning',
+        message: 'Vui lòng nhập văn bản tiếng Việt để chuyển đổi.',
       });
-      const oov = result.trace.filter((t) => t.status === 'oov').map((t) => t.token);
-      if (result.trace.every((t) => t.status === 'oov')) {
-        setStatusMsg(`Không có từ nào thuộc danh sách ngữ liệu: ${oov.join(', ')}`);
-        return;
+      return;
+    }
+
+    setIsConverting(true);
+    setNotification(null);
+
+    try {
+      const res = await performSynthesis(inputText, selectedVoice, realEntries);
+
+      if (!res.success || !res.result) {
+        setNotification({
+          type: 'warning',
+          message:
+            res.error ||
+            'Không thể tổng hợp từ văn bản này do chưa có file âm thanh trong ngữ liệu.',
+        });
+        setActiveResult(null);
+      } else {
+        setActiveResult(res.result);
+        // Lưu vào lịch sử chuyển đổi
+        const newHist = addHistoryEntry(
+          inputText,
+          selectedVoice,
+          res.result.durationSec,
+          res.result.wav
+        );
+        setHistoryItems((prev) => [newHist, ...prev]);
+
+        setNotification({
+          type: 'success',
+          message: `Đã tạo âm thanh thành công (${res.result.durationSec.toFixed(2)}s)!`,
+        });
       }
-      if (oov.length) setStatusMsg(`Bỏ qua từ ngoài danh sách: ${oov.join(', ')}`);
-      setLastResult(result);
-      setDuration(result.durationSec);
-      setCurrentTimeState(0);
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-      urlRef.current = URL.createObjectURL(result.wav);
-      const a = audioRef.current!;
-      a.src = urlRef.current;
-      a.playbackRate = SPEED_OPTIONS[speedIndex];
-      a.volume = isMuted ? 0 : volume / 100;
-      await a.play();
-      setIsPlaying(true);
-    } catch (e) {
-      setStatusMsg(`Lỗi tổng hợp: ${String(e)}`);
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err?.message || 'Có lỗi xảy ra trong quá trình tổng hợp.',
+      });
     } finally {
-      setIsGenerating(false);
+      setIsConverting(false);
     }
   };
 
-  // Handle Play/Pause: tự động tạo âm thanh nếu chưa có hoặc văn bản thay đổi
-  const handleTogglePlay = () => {
-    if (isGenerating) return;
-    const a = audioRef.current;
-    const isSameTextAndVoice =
-      lastResult &&
-      lastResult.text.trim() === text.trim() &&
-      lastResult.speaker === selectedVoiceId;
+  // Tải file WAV của kết quả hiện tại
+  const handleDownloadActiveResult = () => {
+    if (!activeResult) return;
+    const url = URL.createObjectURL(activeResult.wav);
+    const a = document.createElement('a');
+    a.href = url;
+    const clean = activeResult.text.slice(0, 15).replace(/\s+/g, '_').toLowerCase();
+    a.download = `amtu_${selectedVoice === 'Nam 01' ? 'nam' : 'nu'}_${clean || 'audio'}.wav`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-    if (!isSameTextAndVoice || !a) {
-      handleGenerate();
+  // Xóa mục lịch sử
+  const handleDeleteHistory = (id: string) => {
+    const updated = removeHistoryEntry(id);
+    setHistoryItems(updated);
+  };
+
+  // Nghe thử giọng đọc
+  const handlePlayPreviewVoice = async (voice: 'Nam 01' | 'Nữ 01') => {
+    if (isPlayingPreview === voice) {
+      setIsPlayingPreview(null);
       return;
     }
-    if (isPlaying) {
-      a.pause();
-      setIsPlaying(false);
+
+    const speakerCore = mapSpeakerToCore(voice);
+    const sample = realEntries.find(
+      (e) => e.speaker.toLowerCase() === speakerCore.toLowerCase()
+    );
+
+    if (sample) {
+      try {
+        const samples = await decodeBlob(sample.blob);
+        setIsPlayingPreview(voice);
+        playSamples(samples, 22050, () => setIsPlayingPreview(null));
+      } catch {
+        setIsPlayingPreview(null);
+      }
     } else {
-      a.play();
-      setIsPlaying(true);
+      setIsPlayingPreview(voice);
+      setTimeout(() => setIsPlayingPreview(null), 1000);
+      setNotification({
+        type: 'warning',
+        message: `Chưa có bản thu âm cho ${voice}. Bạn có thể vào mục "Ngữ liệu" để thu âm thêm.`,
+      });
     }
   };
-
-  // Export: tải file WAV đã tổng hợp (theo quy ước mã hóa VNI nếu là từ đơn hoặc chuỗi từ)
-  const handleExport = () => {
-    if (!lastResult) {
-      setStatusMsg('Chưa có âm thanh để xuất. Hãy bấm nút Play để phát trước.');
-      return;
-    }
-    const words = lastResult.text.trim().split(/\s+/).filter(Boolean);
-    let filename = '';
-    if (words.length === 1) {
-      filename = `${encodeVnWord(words[0])}.wav`;
-    } else {
-      const codeSlug = words.slice(0, 4).map(encodeVnWord).join('_');
-      filename = `${codeSlug}.wav`;
-    }
-
-    const link = document.createElement('a');
-    link.href = urlRef.current;
-    link.download = filename;
-    link.click();
-  };
-
-  // Skip Back 5 seconds
-  const handleSkipBack = () => {
-    setCurrentTime(Math.max(0, currentTime - 5));
-  };
-
-  // Skip Forward 5 seconds
-  const handleSkipForward = () => {
-    setCurrentTime(Math.min(duration, currentTime + 5));
-  };
-
-  // Handle Speed Cycle
-  const handleCycleSpeed = () => {
-    setSpeedIndex(prev => (prev + 1) % SPEED_OPTIONS.length);
-  };
-
-  // Scrubber / Waveform Seek
-  const handleSeek = (newFraction: number) => {
-    const target = Math.max(0, Math.min(duration, newFraction * duration));
-    setCurrentTime(target);
-  };
-
-  const progressFraction = duration > 0 ? currentTime / duration : 0;
 
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-x-hidden bg-gradient-to-br from-[#0a164a] via-[#081a66] to-[#050b2f]">
-      {/* Dynamic Background Ambient Blobs matching brand image */}
-      <div className="absolute top-1/4 right-1/4 w-[450px] h-[450px] bg-[#0c2581]/50 rounded-full blur-3xl pointer-events-none animate-pulse-subtle" />
-      <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-[#0284c7]/20 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2 animate-float-slow" />
-      <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-[#9333ea]/15 rounded-full blur-3xl pointer-events-none translate-x-1/3 translate-y-1/3" />
+    <div className="min-h-screen bg-[#F7F8FC] flex text-[#20213A]">
+      {/* 1. Left Fixed Sidebar */}
+      <Sidebar
+        currentTab={currentTab}
+        onSelectTab={(tab) => {
+          setCurrentTab(tab);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        corpusCount={realEntries.length}
+      />
 
-      {/* Main Glassmorphic Dashboard Card (UI duy nhất) */}
-      <div className="relative z-10 w-full max-w-2xl backdrop-blur-xl bg-white/[0.12] border border-white/20 rounded-3xl shadow-2xl p-6 sm:p-8 transition-all duration-300">
+      {/* 2. Main Content Area */}
+      <div className="flex-1 ml-[240px] flex flex-col min-w-0">
+        {/* Top Header */}
+        <Header currentTab={currentTab} />
 
-        {/* Header Card */}
-        <div className="flex items-center justify-between pb-6 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <img
-              src={logo}
-              alt="VietVoice Logo"
-              className="w-10 h-10 rounded-2xl object-cover shadow-lg shadow-indigo-500/25"
-            />
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-              VietVoice
-            </h1>
-          </div>
-
-          {/* Record / Corpus Button */}
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            aria-label="Thu âm ngữ liệu"
-            title="Thu âm ngữ liệu"
-            className="group relative bg-white/10 hover:bg-white/20 active:scale-95 transition-all duration-200 p-2.5 rounded-full border border-white/10 shadow-sm text-slate-200 hover:text-white"
-          >
-            <Mic className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
-            <span className="sr-only">Thu âm</span>
-          </button>
-        </div>
-
-        {/* Top Selectors Row: Language & Voice Type Dropdown */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-          {/* Language Box (Mặc định Tiếng Việt) */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-200 mb-1.5 ml-1">
-              Language
-            </label>
-            <div className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm font-medium text-white backdrop-blur-md">
-              <span className="truncate flex items-center gap-2">
-                <span>🇻🇳</span>
-                <span>Tiếng Việt</span>
-              </span>
-              <span className="text-[10px] font-mono text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded-full border border-cyan-500/20">
-                Mặc định
-              </span>
-            </div>
-          </div>
-
-          {/* Voice Type Dropdown */}
-          <div className="relative">
-            <label className="block text-xs font-semibold text-slate-200 mb-1.5 ml-1">
-              Voice Type
-            </label>
-            <button
-              type="button"
-              onClick={() => setIsVoiceDropdownOpen(!isVoiceDropdownOpen)}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-medium text-white transition-all backdrop-blur-md"
-            >
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: selectedVoice.accentColor }} />
-                <span className="font-semibold">{selectedVoice.name}</span>
-                <span className="text-xs text-slate-300 font-medium">({selectedVoice.tone.split('&')[0]})</span>
-              </div>
-              <ChevronDown className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${isVoiceDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {/* Voice Dropdown Options */}
-            {isVoiceDropdownOpen && (
-              <div className="absolute z-30 mt-1.5 w-full rounded-xl bg-[#1e2238]/95 backdrop-blur-xl border border-white/15 shadow-2xl py-1.5 animate-in fade-in zoom-in-95 duration-150">
-                {voices.map((v) => (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedVoiceId(v.id);
-                      setIsVoiceDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-3.5 py-2 text-xs sm:text-sm text-slate-200 hover:text-white hover:bg-white/10 flex items-center justify-between transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-6 h-6 rounded-full bg-gradient-to-tr ${v.avatarBg} flex items-center justify-center text-[10px] font-bold text-white`}>
-                        {v.name[0]}
-                      </div>
-                      <div>
-                        <div className="font-medium">{v.name}</div>
-                        <div className="text-[10px] text-slate-400">{v.tone}</div>
-                      </div>
-                    </div>
-                    {selectedVoiceId === v.id && (
-                      <Check className="w-4 h-4 text-blue-400" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Text Input Section (Full Width) */}
-        <div className="mt-4 flex flex-col gap-2">
-          <label className="block text-xs font-semibold text-slate-200 ml-1 flex items-center justify-between">
-            <span>Từ cần phát âm (Text Input)</span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsSettingsOpen(true)}
-                className="text-[11px] text-cyan-300 hover:text-cyan-200 underline font-medium transition"
-              >
-                + Thu âm ({entries.length})
-              </button>
-              {selectedVoice.sampleText && (
-                <button
-                  onClick={() => setText(selectedVoice.sampleText)}
-                  className="text-[11px] text-cyan-400 hover:text-cyan-300 underline font-medium transition"
-                >
-                  Load Sample
-                </button>
-              )}
-            </div>
-          </label>
-          <div className="relative">
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value.slice(0, 500))}
-              placeholder="Nhập từ cần phát âm thuộc danh sách (vd: ba, bác, cảng, đêm...)"
-              rows={3}
-              className="w-full min-h-[90px] resize-none rounded-2xl bg-black/25 border border-white/10 p-3.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-transparent transition-all backdrop-blur-md"
-            />
-            {/* Character Counter */}
-            <div className="absolute bottom-2.5 right-3 text-[11px] font-mono text-slate-300 pointer-events-none bg-black/40 px-2 py-0.5 rounded-full border border-white/10">
-              <span className={text.length >= 480 ? 'text-amber-400 font-bold' : 'text-slate-300 font-semibold'}>
-                {text.length}
-              </span>
-              <span>/500</span>
-            </div>
-          </div>
-          {availableWords.length > 0 && (
-            <div className="flex flex-wrap gap-1 max-h-14 overflow-y-auto">
-              {availableWords.slice(0, 24).map((w) => (
-                <button
-                  key={w}
-                  type="button"
-                  onClick={() => setText(w)}
-                  className="px-2 py-0.5 rounded-full text-[10px] bg-white/10 hover:bg-white/20 border border-white/10 text-slate-200 font-medium transition"
-                >
-                  {w}
-                </button>
-              ))}
-            </div>
-          )}
-          {(datasetWarning || statusMsg) && (
-            <p className="text-[11px] text-amber-300 font-medium ml-1">
-              ⚠️ {datasetWarning || statusMsg}
-            </p>
-          )}
-        </div>
-
-        {/* Audio Waveform Card */}
-        <div className="mt-5 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md relative overflow-hidden group">
-          <div className="flex items-center justify-between text-xs text-slate-200 mb-2.5">
-            <span className="flex items-center gap-1.5 font-semibold text-slate-200">
-              <Headphones className="w-3.5 h-3.5 text-cyan-400" />
-              Waveform Visualizer
-            </span>
-            <span className="text-[11px] font-mono text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded-full border border-cyan-500/20">
-              {isPlaying ? 'ACTIVE WAVE' : 'READY'}
-            </span>
-          </div>
-
-          {/* Interactive Waveform Bar Container */}
-          <div
-            className="relative h-20 w-full flex items-center justify-between gap-[3px] sm:gap-1.5 cursor-pointer px-1 py-2 select-none"
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const clickX = e.clientX - rect.left;
-              const fraction = clickX / rect.width;
-              handleSeek(fraction);
-            }}
-          >
-            {waveformBars.map((height, idx) => {
-              const barFraction = idx / waveformBars.length;
-              const isPast = barFraction <= progressFraction;
-
-              // Dynamic scaling if playing
-              const dynamicHeight = isPlaying
-                ? Math.min(100, Math.max(15, height + (Math.sin(idx * 0.8 + currentTime * 8) * 25)))
-                : height;
-
-              return (
-                <div
-                  key={idx}
-                  className="flex-1 flex flex-col items-center justify-center h-full transition-all duration-100"
-                >
-                  <div
-                    style={{
-                      height: `${dynamicHeight}%`,
-                      background: isPast
-                        ? 'linear-gradient(to top, #06b6d4, #ec4899)'
-                        : 'rgba(255, 255, 255, 0.18)',
-                      boxShadow: isPast && isPlaying
-                        ? '0 0 12px rgba(6, 182, 212, 0.45)'
-                        : 'none'
-                    }}
-                    className={`w-full max-w-[6px] rounded-full transition-all duration-150 ${isPast ? 'opacity-100' : 'opacity-40 group-hover:opacity-60'
-                      }`}
-                  />
-                </div>
-              );
-            })}
-
-            {/* Neon Blue Dot Timeline Indicator */}
+        {/* Global Toast Notification */}
+        {notification && (
+          <div className="fixed top-20 right-8 z-50 animate-in fade-in slide-in-from-top-3 duration-200">
             <div
-              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-cyan-400 border-2 border-white shadow-[0_0_14px_#38bdf8] pointer-events-none transition-all duration-150 flex items-center justify-center"
-              style={{
-                left: `calc(${progressFraction * 100}% - 8px)`
-              }}
+              className={`p-4 rounded-xl shadow-lg border text-xs font-semibold flex items-center gap-2.5 max-w-md ${
+                notification.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : notification.type === 'warning'
+                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                  : 'bg-red-50 text-red-800 border-red-200'
+              }`}
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-            </div>
-          </div>
-        </div>
-
-        {/* Media Control Bar */}
-        <div className="mt-6 flex flex-col gap-4">
-
-          {/* Main Controls Row */}
-          <div className="relative flex items-center justify-between min-h-[56px]">
-
-            {/* Left: Volume Slider & Toggle */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 bg-white/15 border border-white/25 px-2.5 sm:px-3 py-1.5 rounded-full backdrop-blur-md shadow-sm">
-                <button
-                  onClick={() => setIsMuted(!isMuted)}
-                  title={isMuted ? 'Unmute' : 'Mute'}
-                  className="p-1 rounded-full bg-amber-400/20 hover:bg-amber-400/35 text-amber-300 hover:text-amber-200 transition"
-                >
-                  {isMuted || volume === 0 ? (
-                    <VolumeX className="w-4 h-4 text-rose-400" />
-                  ) : (
-                    <Volume2 className="w-4 h-4 text-amber-300" />
-                  )}
-                </button>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={isMuted ? 0 : volume}
-                  onChange={(e) => {
-                    setVolume(Number(e.target.value));
-                    if (isMuted) setIsMuted(false);
-                  }}
-                  className="w-14 sm:w-20 h-1.5 rounded-lg appearance-none cursor-pointer"
-                  style={{
-                    background: `linear-gradient(to right, #fbbf24 0%, #f472b6 ${isMuted ? 0 : volume}%, rgba(255, 255, 255, 0.28) ${isMuted ? 0 : volume}%, rgba(255, 255, 255, 0.28) 100%)`
-                  }}
-                  title={`Volume: ${isMuted ? 0 : volume}%`}
-                />
-              </div>
-
-              {isGenerating && (
-                <span className="hidden sm:flex items-center gap-1 text-xs text-cyan-300 font-medium animate-pulse">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Đang phát...
-                </span>
+              {notification.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
               )}
-            </div>
-
-            {/* Center: Pinned Dead-Center Player Controls (Prev, Big Play/Pause, Next) */}
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 sm:gap-3 pointer-events-auto">
-              {/* Skip Back */}
+              <span className="flex-1 leading-relaxed">{notification.message}</span>
               <button
-                onClick={handleSkipBack}
-                title="Tua lại 5 giây"
-                className="p-2.5 rounded-full text-slate-200 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
+                onClick={() => setNotification(null)}
+                className="text-[#85879A] hover:text-[#20213A] p-0.5 rounded"
               >
-                <SkipBack className="w-5 h-5" />
-              </button>
-
-              {/* Big White Circular Play/Pause */}
-              <button
-                onClick={handleTogglePlay}
-                disabled={isGenerating}
-                title={isPlaying ? 'Tạm dừng' : 'Phát âm thanh'}
-                className="w-14 h-14 p-4 rounded-full bg-white text-slate-900 shadow-xl shadow-white/20 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center hover:bg-slate-100 disabled:opacity-75"
-              >
-                {isGenerating ? (
-                  <Loader2 className="w-6 h-6 animate-spin text-slate-900" />
-                ) : isPlaying ? (
-                  <Pause className="w-6 h-6 fill-slate-900" />
-                ) : (
-                  <Play className="w-6 h-6 fill-slate-900 ml-0.5" />
-                )}
-              </button>
-
-              {/* Skip Forward */}
-              <button
-                onClick={handleSkipForward}
-                title="Tua đi 5 giây"
-                className="p-2.5 rounded-full text-slate-200 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
-              >
-                <SkipForward className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Right: Speed Badge with fixed dimensions */}
-            <div className="flex items-center justify-end">
-              <button
-                onClick={handleCycleSpeed}
-                title="Tốc độ phát"
-                className="w-14 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white tracking-wider tabular-nums active:scale-95 transition-all"
-              >
-                {SPEED_OPTIONS[speedIndex].toFixed(2).replace(/\.00$/, '.0')}x
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
+        )}
 
-          {/* Scrubber Progress Bar & Timestamps */}
-          <div className="flex items-center gap-3 pt-2">
-            <span className="text-xs font-mono text-slate-200 font-semibold select-none min-w-[36px]">
-              {formatTime(currentTime)}
-            </span>
+        {/* Workspace Body */}
+        <main className="p-8 max-w-6xl w-full mx-auto">
+          {currentTab === 'tts' && (
+            <div>
+              {/* Main Editor Card */}
+              <MainEditor
+                text={inputText}
+                onChangeText={setInputText}
+                selectedVoice={selectedVoice}
+                onSelectVoice={setSelectedVoice}
+                onConvert={handleConvert}
+                isConverting={isConverting}
+                entries={realEntries}
+                onPlayPreviewVoice={handlePlayPreviewVoice}
+                isPlayingPreview={isPlayingPreview}
+              />
 
-            <div className="relative flex-1 group">
-              <input
-                type="range"
-                min="0"
-                max={duration}
-                step="0.1"
-                value={currentTime}
-                onChange={(e) => setCurrentTime(Number(e.target.value))}
-                className="w-full h-1.5 bg-white/15 rounded-lg appearance-none cursor-pointer focus:outline-none"
-                style={{
-                  background: `linear-gradient(to right, #38bdf8 0%, #a855f7 ${progressFraction * 100}%, rgba(255, 255, 255, 0.15) ${progressFraction * 100}%, rgba(255, 255, 255, 0.15) 100%)`
+              {/* Audio Result Section */}
+              <AudioOutput
+                result={activeResult}
+                selectedVoice={selectedVoice}
+                onDownload={handleDownloadActiveResult}
+              />
+
+              {/* Conversion History Section */}
+              <ConversionHistory
+                items={historyItems}
+                onDelete={handleDeleteHistory}
+                onRefresh={loadHistory}
+                onSelectSampleText={(txt) => {
+                  setInputText(txt);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
               />
             </div>
+          )}
 
-            <span className="text-xs font-mono text-slate-200 font-semibold select-none min-w-[36px] text-right">
-              {formatTime(duration)}
-            </span>
-          </div>
-        </div>
+          {currentTab === 'corpus' && (
+            <CorpusView
+              realEntries={realEntries}
+              onOpenRecordModal={() => setIsRecordModalOpen(true)}
+              onRefresh={loadCorpus}
+            />
+          )}
 
-        {/* Footer info pill */}
-        <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-300 font-medium">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-slate-300">Concatenative Engine · {entries.length} mục ngữ liệu</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-slate-300">Voice: {selectedVoice.name} ({selectedVoice.tone})</span>
-            <button
-              onClick={handleExport}
-              className="text-cyan-300 hover:text-cyan-200 flex items-center gap-1 text-[11px] font-semibold transition"
-            >
-              <Download className="w-3.5 h-3.5 text-cyan-400" />
-              Export
-            </button>
-          </div>
-        </div>
+          {currentTab === 'about' && <AboutView />}
+        </main>
       </div>
 
-      {/* Advanced Settings & System Modal (Frosted Glass) */}
-      {isSettingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-3xl max-h-[88vh] flex flex-col backdrop-blur-2xl bg-[#161a33]/95 border border-white/20 rounded-3xl p-6 shadow-2xl relative text-white">
-
-            {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
-              <div className="flex items-center gap-2.5">
-                <img
-                  src={logo}
-                  alt="VietVoice Logo"
-                  className="w-6 h-6 rounded-lg object-cover shadow-sm"
-                />
-                <h3 className="text-lg font-bold">Thu âm</h3>
-              </div>
-              <button
-                onClick={() => setIsSettingsOpen(false)}
-                className="p-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body - Chỉ còn Thu âm */}
-            <div className="mt-4 flex-1 overflow-y-auto pr-1 text-sm">
-              <CorpusPanel entries={entries} refresh={refreshEntries} speaker={selectedVoice.name.replace('Giọng ', '')} />
-            </div>
-
-            {/* Modal Actions */}
-            <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-end">
-              <button
-                onClick={() => setIsSettingsOpen(false)}
-                className="px-5 py-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-xs font-semibold text-white hover:from-blue-500 hover:to-indigo-500 shadow-md shadow-indigo-500/30 transition"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 3. Studio Record Modal */}
+      <RecordModal
+        isOpen={isRecordModalOpen}
+        onClose={() => setIsRecordModalOpen(false)}
+        onSaved={() => {
+          loadCorpus();
+          setNotification({
+            type: 'success',
+            message: 'Đã lưu bản thu âm mới vào ngữ liệu thành công!',
+          });
+        }}
+        defaultSpeaker={selectedVoice}
+      />
     </div>
   );
-}
+};
+
+export default App;
