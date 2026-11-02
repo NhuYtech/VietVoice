@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Mic, Square, Play, Save, AlertCircle, CheckCircle2, Volume2, Sparkles } from 'lucide-react';
 import { encodeVnFilename, decodeVnWord } from '../lib/vniCodec';
 import { addToCorpus } from '../lib/tts';
@@ -33,6 +33,19 @@ export const RecordModal: React.FC<RecordModalProps> = ({
   const animFrameRef = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
+  const stopRecordingCleanup = useCallback(() => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setAudioLevel(0);
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       setWordInput('');
@@ -49,7 +62,7 @@ export const RecordModal: React.FC<RecordModalProps> = ({
       stopRecordingCleanup();
       if (audioUrl) URL.revokeObjectURL(audioUrl);
     };
-  }, [audioUrl]);
+  }, [audioUrl, stopRecordingCleanup]);
 
   if (!isOpen) return null;
 
@@ -112,19 +125,6 @@ export const RecordModal: React.FC<RecordModalProps> = ({
       console.error(err);
       setErrorMsg('Không thể truy cập Microphone. Vui lòng cấp quyền ghi âm cho trình duyệt.');
     }
-  };
-
-  const stopRecordingCleanup = () => {
-    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    if (audioContextRef.current) {
-      audioContextRef.current.close().catch(() => {});
-      audioContextRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setAudioLevel(0);
   };
 
   const stopRecording = () => {
