@@ -7,6 +7,7 @@ import {
   Trash2,
   Filter,
   Square,
+  Pause,
   ChevronDown,
   Calendar,
   MoreVertical,
@@ -21,6 +22,9 @@ interface ConversionHistoryProps {
   items: ConversionHistoryItem[];
   onDelete: (id: string) => void;
   onRefresh: () => void;
+  currentPlayingId?: string | null;
+  isPlayingAudio?: boolean;
+  onTogglePlay?: (item: ConversionHistoryItem) => void;
   onPlayTrack?: (track: PlayerTrack) => void;
   onSelectSampleText?: (text: string) => void;
   onShowNotification?: (data: NotificationModalData) => void;
@@ -59,6 +63,9 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
   items,
   onDelete,
   onRefresh,
+  currentPlayingId,
+  isPlayingAudio,
+  onTogglePlay,
   onPlayTrack,
   onSelectSampleText,
   onShowNotification,
@@ -388,7 +395,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
           ) : (
             filtered.map((item) => {
               const isFemale = item.speaker === 'Nữ';
-              const isPlaying = playingId === item.id;
+              const isPlaying = Boolean(isPlayingAudio && currentPlayingId === item.id);
               const isSelected = selectedIds.has(item.id);
               const isConvertingItem = item.status === 'converting';
 
@@ -467,19 +474,31 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
 
                     {/* Circular Play Button */}
                     <button
-                      onClick={() => handlePlayHistoryAudio(item)}
+                      onClick={() => {
+                        if (onTogglePlay) {
+                          onTogglePlay(item);
+                        } else {
+                          handlePlayHistoryAudio(item);
+                        }
+                      }}
                       disabled={isConvertingItem}
-                      className={`w-7 h-7 rounded-full flex items-center justify-center transition shadow-xs ${
+                      className={`w-7 h-7 rounded-full flex items-center justify-center transition shadow-xs cursor-pointer ${
                         isConvertingItem
                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                           : isPlaying
                           ? 'bg-[#6255CF] text-white ring-2 ring-[#6255CF]/30'
                           : 'bg-[#1E2040] hover:bg-[#6255CF] text-white'
                       }`}
-                      title={isConvertingItem ? 'Đang chuyển đổi...' : 'Phát trong trình phát âm thanh'}
+                      title={
+                        isConvertingItem
+                          ? 'Đang chuyển đổi...'
+                          : isPlaying
+                          ? 'Tạm dừng phát'
+                          : 'Phát âm thanh'
+                      }
                     >
                       {isPlaying ? (
-                        <Square className="w-2.5 h-2.5 fill-current" />
+                        <Pause className="w-3 h-3 fill-current" />
                       ) : (
                         <Play className="w-3 h-3 fill-current ml-0.5" />
                       )}

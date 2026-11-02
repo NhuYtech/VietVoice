@@ -5,6 +5,37 @@ import { getStoredPauseSettings } from '../components/PauseSettingsModal';
 
 const STORAGE_KEY = 'vietvoice_conversion_history';
 
+export const historyAudioCache = new Map<string, Blob>();
+
+/**
+ * Tự động tìm Blob âm thanh trong cache hoặc tổng hợp nhanh tức thì nếu thiếu
+ */
+export async function resolveTrackAudioBlob(
+  track: { id?: string; text: string; speaker: 'Nam' | 'Nữ'; audioBlob?: Blob },
+  entries: CorpusEntry[]
+): Promise<Blob | null> {
+  if (track.audioBlob) return track.audioBlob;
+  if (track.id && historyAudioCache.has(track.id)) {
+    return historyAudioCache.get(track.id)!;
+  }
+  const cleanKey = `${(track.text || '').trim().toLowerCase()}__${track.speaker}`;
+  if (historyAudioCache.has(cleanKey)) {
+    return historyAudioCache.get(cleanKey)!;
+  }
+  try {
+    const synthRes = await performSynthesis(track.text, track.speaker, entries);
+    if (synthRes.success && synthRes.result?.wav) {
+      if (track.id) historyAudioCache.set(track.id, synthRes.result.wav);
+      historyAudioCache.set(cleanKey, synthRes.result.wav);
+      return synthRes.result.wav;
+    }
+  } catch (err) {
+    console.error('Không thể tự động tổng hợp âm thanh:', err);
+  }
+  return null;
+}
+
+
 /**
  * Lấy lịch sử chuyển đổi từ LocalStorage (hoặc khởi tạo với dữ liệu mẫu)
  */
@@ -81,6 +112,10 @@ export function addHistoryEntry(
   const current = getStoredHistory();
   const updated = [newItem, ...current];
   saveHistory(updated);
+  if (audioBlob) {
+    historyAudioCache.set(newItem.id, audioBlob);
+    historyAudioCache.set(`${newItem.text.trim().toLowerCase()}__${newItem.speaker}`, audioBlob);
+  }
   return newItem;
 }
 

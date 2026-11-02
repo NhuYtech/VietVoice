@@ -17,6 +17,7 @@ import {
   removeHistoryEntry,
   performSynthesis,
   mapSpeakerToCore,
+  resolveTrackAudioBlob,
 } from './services/ttsService';
 import type { ConversionHistoryItem } from './data/mockCorpus';
 import { NotificationModal, type NotificationModalData } from './components/NotificationModal';
@@ -37,6 +38,9 @@ export const App: React.FC = () => {
   // Track âm thanh đang phát ở thanh player cố định cuối trang
   const [playerTrack, setPlayerTrack] = useState<PlayerTrack | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [currentPlayingId, setCurrentPlayingId] = useState<string | null>(null);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [playTrigger, setPlayTrigger] = useState(0);
 
   // Tải danh sách ngữ liệu từ IndexedDB và manifest ban đầu
   const loadCorpus = useCallback(async () => {
@@ -76,7 +80,45 @@ export const App: React.FC = () => {
     loadHistory();
   }, [loadCorpus, loadHistory]);
 
-  // Xử lý tạo âm thanh (Chuyển văn bản)
+  // Phát / Dừng hoặc tự động tổng hợp tức thì khi bấm nút Play
+  const handleTogglePlayTrack = async (item: ConversionHistoryItem | PlayerTrack) => {
+    // 1. Nếu đang phát chính track này -> tạm dừng
+    if (playerTrack?.id === item.id && isPlayingAudio) {
+      setIsPlayingAudio(false);
+      return;
+    }
+
+    // 2. Nếu là đúng track này và đã có audioBlob nhưng đang tạm dừng -> tiếp tục phát
+    if (playerTrack?.id === item.id && playerTrack?.audioBlob) {
+      setCurrentPlayingId(item.id || null);
+      setIsPlayingAudio(true);
+      setPlayTrigger((c) => c + 1);
+      return;
+    }
+
+    // 3. Nếu chuyển sang track khác hoặc track chưa có blob âm thanh:
+    let blob = item.audioBlob;
+    if (!blob) {
+      blob = (await resolveTrackAudioBlob(item, realEntries)) || undefined;
+    }
+
+    const updatedTrack: PlayerTrack = {
+      id: item.id,
+      text: item.text,
+      speaker: item.speaker,
+      durationSec: (item as any).durationSec || (item as any).duration || 0.72,
+      audioBlob: blob,
+      filename: item.filename,
+    };
+
+    setPlayerTrack(updatedTrack);
+    setIsPlayerOpen(true);
+    setCurrentPlayingId(item.id || null);
+    setIsPlayingAudio(true);
+    setPlayTrigger((c) => c + 1);
+  };
+
+    // Xử lý tạo âm thanh (Chuyển văn bản)
   const handleConvert = async () => {
     if (!inputText.trim()) {
       setNotificationModal({
@@ -158,15 +200,19 @@ export const App: React.FC = () => {
         setHistoryItems((prev) => [newHist, ...prev.filter((p) => p.id !== tempId)]);
 
         // Cập nhật và phát ngay ở thanh player cố định cuối trang
-        setPlayerTrack({
+        const newTrack: PlayerTrack = {
           id: newHist.id,
           text: inputText,
           speaker: selectedVoice,
           durationSec: res.result.durationSec,
           audioBlob: res.result.wav,
           filename: newHist.filename,
-        });
+        };
+        setPlayerTrack(newTrack);
         setIsPlayerOpen(true);
+        setCurrentPlayingId(newHist.id);
+        setIsPlayingAudio(true);
+        setPlayTrigger((c) => c + 1);
 
         setNotificationModal({
           type: 'success',
@@ -326,11 +372,11 @@ Bạn có thể nghe phát âm thanh tại thanh điều khiển cố định b�
                 items={historyItems}
                 onDelete={handleDeleteHistory}
                 onRefresh={loadHistory}
+                currentPlayingId={currentPlayingId}
+                isPlayingAudio={isPlayingAudio}
+                onTogglePlay={handleTogglePlayTrack}
                 onShowNotification={setNotificationModal}
-                onPlayTrack={(track) => {
-                  setPlayerTrack(track);
-                  setIsPlayerOpen(true);
-                }}
+                onPlayTrack={(track) => handleTogglePlayTrack(track)}
                 onSelectSampleText={(txt) => {
                   setInputText(txt);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -359,8 +405,20 @@ Bạn có thể nghe phát âm thanh tại thanh điều khiển cố định b�
       <BottomAudioPlayer
         track={playerTrack}
         isOpen={isPlayerOpen}
-        onClose={() => setIsPlayerOpen(false)}
+        isPlayingProp={isPlayingAudio}
+        playTrigger={playTrigger}
+        onClose={() => {
+          setIsPlayerOpen(false);
+          setIsPlayingAudio(false);
+        }}
         onDownload={handleDownloadPlayerTrack}
+        onPlaybackStateChange={(playing) => {
+          setIsPlayingAudio(playing);
+          if (!playing && !playerTrack) {
+            setCurrentPlayingId(null);
+          }
+        }}
+        onRequestAudio={handleTogglePlayTrack}
       />
 
       {/* 4. Studio Record Modal */}

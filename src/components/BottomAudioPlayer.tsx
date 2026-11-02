@@ -24,8 +24,12 @@ export interface PlayerTrack {
 interface BottomAudioPlayerProps {
   track: PlayerTrack | null;
   isOpen: boolean;
+  isPlayingProp?: boolean;
+  playTrigger?: number;
   onClose: () => void;
   onDownload?: (track: PlayerTrack) => void;
+  onPlaybackStateChange?: (isPlaying: boolean) => void;
+  onRequestAudio?: (track: PlayerTrack) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -38,8 +42,12 @@ function formatTime(seconds: number): string {
 export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
   track,
   isOpen,
+  isPlayingProp,
+  playTrigger = 0,
   onClose,
   onDownload,
+  onPlaybackStateChange,
+  onRequestAudio,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -49,7 +57,11 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
   const [isVolumeOpen, setIsVolumeOpen] = useState(false);
   const [isDraggingVolume, setIsDraggingVolume] = useState(false);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const activeBlobUrlRef = useRef<string | null>(null);
+  const currentTrackKeyRef = useRef<string | null>(null);
+  const lastPlayTriggerRef = useRef<number>(0);
+
   const progressBarRef = useRef<HTMLDivElement>(null);
   const volumeBarRef = useRef<HTMLDivElement>(null);
   const volumeContainerRef = useRef<HTMLDivElement>(null);
@@ -68,101 +80,170 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Khởi tạo audio element hoặc cập nhật URL khi track thay đổi
+  // Khởi tạo hoặc cập nhật audio khi track thay đổi
   useEffect(() => {
-    if (!track) return;
-
-    let objectUrl = '';
-    if (track.audioBlob) {
-      objectUrl = URL.createObjectURL(track.audioBlob);
-    } else if (track.audioUrl) {
-      objectUrl = track.audioUrl;
-    }
-
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-    }
-
-    const audio = audioRef.current;
-    if (objectUrl) {
-      audio.src = objectUrl;
-    } else {
-      audio.src = '';
-    }
-
-    audio.currentTime = 0;
-    audio.volume = isMuted ? 0 : volume / 100;
-    setCurrentTime(0);
-    setDuration(track.durationSec > 0 ? track.durationSec : 1);
-
-    const onLoadedMetadata = () => {
-      if (audio.duration && !isNaN(audio.duration) && audio.duration !== Infinity) {
-        setDuration(audio.duration);
-      } else {
-        setDuration(track.durationSec > 0 ? track.durationSec : 1);
+    if (!track) {
+      if (activeAudioRef.current) {
+        activeAudioRef.current.pause();
       }
-    };
-
-    const onTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-    };
-
-    const onEnded = () => {
       setIsPlaying(false);
-      setCurrentTime(0);
-    };
-
-    audio.addEventListener('loadedmetadata', onLoadedMetadata);
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('ended', onEnded);
-
-    if (objectUrl) {
-      audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      onPlaybackStateChange?.(false);
+      return;
     }
 
-    return () => {
-      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-      audio.removeEventListener('timeupdate', onTimeUpdate);
-      audio.removeEventListener('ended', onEnded);
-      audio.pause();
-      if (track.audioBlob && objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [track]);
+    const trackKey = `${track.id || ''}_${track.text}_${track.speaker}_${track.audioBlob ? 'blob' : 'noblob'}`;
+    const shouldRecreate = currentTrackKeyRef.current !== trackKey || !activeAudioRef.current;
 
-  // Điều khiển Play / Pause
+    if (shouldRecreate) {
+      currentTrackKeyRef.current = trackKey;
+
+      // Dừng audio cũ nếu đang phát
+      if (activeAudioRef.current) {
+        activeAudioRef.current.pause();
+        activeAudioRef.current.src = '';
+      }
+      if (activeBlobUrlRef.current) {
+        URL.revokeObjectURL(activeBlobUrlRef.current);
+        activeBlobUrlRef.current = null;
+      }
+
+      let url = '';
+      if (track.audioBlob) {
+        url = URL.createObjectURL(track.audioBlob);
+        activeBlobUrlRef.current = url;
+      } else if (track.audioUrl) {
+        url = track.audioUrl;
+      }
+
+      if (!url) {
+        setIsPlaying(false);
+        setCurrentTime(0);
+        setDuration(track.durationSec > 0 ? track.durationSec : 1);
+        onPlaybackStateChange?.(false);
+        return;
+      }
+
+      const audio = new Audio(url);
+      activeAudioRef.current = audio;
+      audio.volume = isMuted ? 0 : volume / 100;
+      setCurrentTime(0);
+      setDuration(track.durationSec > 0 ? track.durationSec : 1);
+
+      audio.onloadedmetadata = () => {
+        if (audio.duration && !isNaN(audio.duration) && audio.duration !== Infinity) {
+          setDuration(audio.duration);
+        }
+      };
+
+      audio.ontimeupdate = () => {
+        setCurrentTime(audio.currentTime);
+      };
+
+      audio.onended = () => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+        onPlaybackStateChange?.(false);
+      };
+
+      audio.onerror = (e) => {
+        console.error('Lỗi phát âm thanh:', e);
+        setIsPlaying(false);
+        onPlaybackStateChange?.(false);
+      };
+
+      // Nếu có yêu cầu play (playTrigger mới hơn) hoặc isPlayingProp = true
+      if (playTrigger > 0 && playTrigger !== lastPlayTriggerRef.current) {
+        lastPlayTriggerRef.current = playTrigger;
+        audio
+          .play()
+          .then(() => {
+            setIsPlaying(true);
+            onPlaybackStateChange?.(true);
+          })
+          .catch((err) => {
+            console.warn('Tự động phát bị chặn hoặc lỗi:', err);
+            setIsPlaying(false);
+            onPlaybackStateChange?.(false);
+          });
+      }
+    }
+  }, [track, playTrigger]);
+
+  // Phản hồi khi playTrigger thay đổi (người dùng bấm Play trên hàng hoặc nút Tạo audio)
+  useEffect(() => {
+    if (playTrigger <= 0 || playTrigger === lastPlayTriggerRef.current) return;
+    lastPlayTriggerRef.current = playTrigger;
+
+    const audio = activeAudioRef.current;
+    if (audio && audio.src) {
+      if (audio.ended || audio.currentTime >= audio.duration) {
+        audio.currentTime = 0;
+      }
+      audio.volume = isMuted ? 0 : volume / 100;
+      audio
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          onPlaybackStateChange?.(true);
+        })
+        .catch((err) => {
+          console.warn('Playback bị chặn:', err);
+          setIsPlaying(false);
+          onPlaybackStateChange?.(false);
+        });
+    } else if (track && onRequestAudio) {
+      onRequestAudio(track);
+    }
+  }, [playTrigger, track, isMuted, volume]);
+
+  // Đồng bộ dừng khi parent set isPlayingProp = false
+  useEffect(() => {
+    if (isPlayingProp === undefined) return;
+    if (!isPlayingProp && isPlaying && activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, [isPlayingProp]);
+
+  // Điều khiển Play / Pause trực tiếp từ nút tròn ở BottomPlayer
   const handleTogglePlay = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    const audio = activeAudioRef.current;
+    if (!audio || !audio.src) {
+      if (track && onRequestAudio) {
+        onRequestAudio(track);
+      }
+      return;
+    }
 
     if (isPlaying) {
       audio.pause();
       setIsPlaying(false);
+      onPlaybackStateChange?.(false);
     } else {
-      if (audio.src) {
-        audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-      } else {
-        setIsPlaying(true);
-        const interval = setInterval(() => {
-          setCurrentTime((prev) => {
-            if (prev >= duration) {
-              clearInterval(interval);
-              setIsPlaying(false);
-              return 0;
-            }
-            return prev + 0.1;
-          });
-        }, 100);
+      if (audio.ended || audio.currentTime >= audio.duration) {
+        audio.currentTime = 0;
       }
+      audio.volume = isMuted ? 0 : volume / 100;
+      audio
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          onPlaybackStateChange?.(true);
+        })
+        .catch((err) => {
+          console.error('Lỗi khi phát lại audio:', err);
+          setIsPlaying(false);
+          onPlaybackStateChange?.(false);
+        });
     }
   };
 
   // Skip back 5 giây
   const handleSkipBack = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 5);
-      setCurrentTime(audioRef.current.currentTime);
+    const audio = activeAudioRef.current;
+    if (audio) {
+      audio.currentTime = Math.max(0, audio.currentTime - 5);
+      setCurrentTime(audio.currentTime);
     } else {
       setCurrentTime((prev) => Math.max(0, prev - 5));
     }
@@ -170,9 +251,10 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
 
   // Skip forward 5 giây
   const handleSkipForward = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 5);
-      setCurrentTime(audioRef.current.currentTime);
+    const audio = activeAudioRef.current;
+    if (audio) {
+      audio.currentTime = Math.min(duration, audio.currentTime + 5);
+      setCurrentTime(audio.currentTime);
     } else {
       setCurrentTime((prev) => Math.min(duration, prev + 5));
     }
@@ -186,19 +268,17 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
     const ratio = Math.max(0, Math.min(1, clickX / rect.width));
     const newTime = ratio * duration;
     setCurrentTime(newTime);
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
+    if (activeAudioRef.current) {
+      activeAudioRef.current.currentTime = newTime;
     }
   };
 
   // Bật / tắt tiếng (Mute)
   const handleToggleMute = () => {
-    if (audioRef.current) {
-      const nextMuted = !isMuted;
-      audioRef.current.muted = nextMuted;
-      setIsMuted(nextMuted);
-    } else {
-      setIsMuted(!isMuted);
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    if (activeAudioRef.current) {
+      activeAudioRef.current.muted = nextMuted;
     }
   };
 
@@ -206,10 +286,10 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
   const handleVolumeChange = (newVal: number) => {
     const clamped = Math.max(0, Math.min(100, newVal));
     setVolume(clamped);
-    if (audioRef.current) {
-      audioRef.current.volume = clamped / 100;
+    if (activeAudioRef.current) {
+      activeAudioRef.current.volume = clamped / 100;
       if (clamped > 0 && isMuted) {
-        audioRef.current.muted = false;
+        activeAudioRef.current.muted = false;
         setIsMuted(false);
       }
     }
@@ -314,7 +394,7 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
           {/* Nút Play / Pause tròn màu tím/xanh than */}
           <button
             onClick={handleTogglePlay}
-            className="w-9 h-9 rounded-full bg-[#1E2040] hover:bg-[#6255CF] text-white flex items-center justify-center shadow-sm transition active:scale-95"
+            className="w-9 h-9 rounded-full bg-[#1E2040] hover:bg-[#6255CF] text-white flex items-center justify-center shadow-sm transition active:scale-95 cursor-pointer"
             title={isPlaying ? 'Tạm dừng' : 'Phát'}
           >
             {isPlaying ? (
