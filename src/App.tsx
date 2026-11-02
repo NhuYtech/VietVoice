@@ -365,14 +365,14 @@ export default function App() {
   const progressFraction = duration > 0 ? currentTime / duration : 0;
 
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-x-hidden bg-gradient-to-br from-[#5372ec] via-[#3a89e6] to-[#17a8db]">
-      {/* Dynamic Background Ambient Blobs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#60a5fa]/30 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2 animate-float-slow" />
-      <div className="absolute bottom-1/4 right-1/4 w-[420px] h-[420px] bg-[#06b6d4]/25 rounded-full blur-3xl pointer-events-none translate-x-1/3 translate-y-1/3 animate-pulse-subtle" />
-      <div className="absolute top-2/3 left-1/3 w-80 h-80 bg-[#38bdf8]/20 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
+    <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-x-hidden bg-gradient-to-br from-[#0a164a] via-[#081a66] to-[#050b2f]">
+      {/* Dynamic Background Ambient Blobs matching brand image */}
+      <div className="absolute top-1/4 right-1/4 w-[450px] h-[450px] bg-[#0c2581]/50 rounded-full blur-3xl pointer-events-none animate-pulse-subtle" />
+      <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-[#0284c7]/20 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2 animate-float-slow" />
+      <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-[#9333ea]/15 rounded-full blur-3xl pointer-events-none translate-x-1/3 translate-y-1/3" />
 
       {/* Main Glassmorphic Dashboard Card (UI duy nhất) */}
-      <div className="relative z-10 w-full max-w-2xl backdrop-blur-xl bg-white/[0.14] border border-white/25 rounded-3xl shadow-2xl p-6 sm:p-8 transition-all duration-300">
+      <div className="relative z-10 w-full max-w-2xl backdrop-blur-xl bg-white/[0.12] border border-white/20 rounded-3xl shadow-2xl p-6 sm:p-8 transition-all duration-300">
 
         {/* Header Card */}
         <div className="flex items-center justify-between pb-6 border-b border-white/10">
@@ -392,7 +392,7 @@ export default function App() {
             onClick={() => setIsSettingsOpen(true)}
             aria-label="Thu âm ngữ liệu"
             title="Thu âm ngữ liệu"
-            className="group relative bg-white/10 hover:bg-white/20 active:scale-95 transition-all duration-200 p-2.5 rounded-full border border-white/10 shadow-sm text-slate-900 hover:text-black"
+            className="group relative bg-white/10 hover:bg-white/20 active:scale-95 transition-all duration-200 p-2.5 rounded-full border border-white/10 shadow-sm text-slate-200 hover:text-white"
           >
             <Mic className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
             <span className="sr-only">Thu âm</span>
@@ -403,7 +403,7 @@ export default function App() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
           {/* Language Box (Mặc định Tiếng Việt) */}
           <div>
-            <label className="block text-xs font-semibold text-slate-900 mb-1.5 ml-1">
+            <label className="block text-xs font-semibold text-slate-200 mb-1.5 ml-1">
               Language
             </label>
             <div className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm font-medium text-white backdrop-blur-md">
@@ -419,7 +419,7 @@ export default function App() {
 
           {/* Voice Type Dropdown */}
           <div className="relative">
-            <label className="block text-xs font-semibold text-slate-900 mb-1.5 ml-1">
+            <label className="block text-xs font-semibold text-slate-200 mb-1.5 ml-1">
               Voice Type
             </label>
             <button
@@ -430,9 +430,9 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: selectedVoice.accentColor }} />
                 <span className="font-semibold">{selectedVoice.name}</span>
-                <span className="text-xs text-slate-900 font-medium">({selectedVoice.tone.split('&')[0]})</span>
+                <span className="text-xs text-slate-300 font-medium">({selectedVoice.tone.split('&')[0]})</span>
               </div>
-              <ChevronDown className={`w-4 h-4 text-slate-900 transition-transform duration-200 ${isVoiceDropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${isVoiceDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Voice Dropdown Options */}
@@ -469,19 +469,19 @@ export default function App() {
 
         {/* Text Input Section (Full Width) */}
         <div className="mt-4 flex flex-col gap-2">
-          <label className="block text-xs font-semibold text-slate-900 ml-1 flex items-center justify-between">
+          <label className="block text-xs font-semibold text-slate-200 ml-1 flex items-center justify-between">
             <span>Từ cần phát âm (Text Input)</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="text-[11px] text-slate-900 hover:text-black underline font-medium transition"
+                className="text-[11px] text-cyan-300 hover:text-cyan-200 underline font-medium transition"
               >
                 + Thu âm ({entries.length})
               </button>
               {selectedVoice.sampleText && (
                 <button
                   onClick={() => setText(selectedVoice.sampleText)}
-                  className="text-[11px] text-slate-900 hover:text-black underline font-medium transition"
+                  className="text-[11px] text-cyan-400 hover:text-cyan-300 underline font-medium transition"
                 >
                   Load Sample
                 </button>
@@ -494,14 +494,14 @@ export default function App() {
               onChange={(e) => setText(e.target.value.slice(0, 500))}
               placeholder="Nhập từ cần phát âm thuộc danh sách (vd: ba, bác, cảng, đêm...)"
               rows={3}
-              className="w-full min-h-[90px] resize-none rounded-2xl bg-black/20 border border-white/10 p-3.5 text-sm text-white placeholder-slate-700/80 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-transparent transition-all backdrop-blur-md"
+              className="w-full min-h-[90px] resize-none rounded-2xl bg-black/25 border border-white/10 p-3.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-transparent transition-all backdrop-blur-md"
             />
             {/* Character Counter */}
-            <div className="absolute bottom-2.5 right-3 text-[11px] font-mono text-slate-900 pointer-events-none bg-white/40 px-2 py-0.5 rounded-full border border-white/20">
-              <span className={text.length >= 480 ? 'text-amber-700 font-bold' : 'text-slate-900 font-semibold'}>
+            <div className="absolute bottom-2.5 right-3 text-[11px] font-mono text-slate-300 pointer-events-none bg-black/40 px-2 py-0.5 rounded-full border border-white/10">
+              <span className={text.length >= 480 ? 'text-amber-400 font-bold' : 'text-slate-300 font-semibold'}>
                 {text.length}
               </span>
-              <span className="text-slate-900">/500</span>
+              <span>/500</span>
             </div>
           </div>
           {availableWords.length > 0 && (
@@ -511,7 +511,7 @@ export default function App() {
                   key={w}
                   type="button"
                   onClick={() => setText(w)}
-                  className="px-2 py-0.5 rounded-full text-[10px] bg-white/10 hover:bg-white/20 border border-white/10 text-slate-900 font-medium transition"
+                  className="px-2 py-0.5 rounded-full text-[10px] bg-white/10 hover:bg-white/20 border border-white/10 text-slate-200 font-medium transition"
                 >
                   {w}
                 </button>
@@ -527,9 +527,9 @@ export default function App() {
 
         {/* Audio Waveform Card */}
         <div className="mt-5 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md relative overflow-hidden group">
-          <div className="flex items-center justify-between text-xs text-slate-900 mb-2.5">
-            <span className="flex items-center gap-1.5 font-semibold text-slate-900">
-              <Headphones className="w-3.5 h-3.5 text-slate-900" />
+          <div className="flex items-center justify-between text-xs text-slate-200 mb-2.5">
+            <span className="flex items-center gap-1.5 font-semibold text-slate-200">
+              <Headphones className="w-3.5 h-3.5 text-cyan-400" />
               Waveform Visualizer
             </span>
             <span className="text-[11px] font-mono text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded-full border border-cyan-500/20">
@@ -641,7 +641,7 @@ export default function App() {
               <button
                 onClick={handleSkipBack}
                 title="Tua lại 5 giây"
-                className="p-2.5 rounded-full text-slate-900 hover:text-black hover:bg-white/10 active:scale-90 transition-all"
+                className="p-2.5 rounded-full text-slate-200 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
               >
                 <SkipBack className="w-5 h-5" />
               </button>
@@ -666,7 +666,7 @@ export default function App() {
               <button
                 onClick={handleSkipForward}
                 title="Tua đi 5 giây"
-                className="p-2.5 rounded-full text-slate-900 hover:text-black hover:bg-white/10 active:scale-90 transition-all"
+                className="p-2.5 rounded-full text-slate-200 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
               >
                 <SkipForward className="w-5 h-5" />
               </button>
@@ -686,7 +686,7 @@ export default function App() {
 
           {/* Scrubber Progress Bar & Timestamps */}
           <div className="flex items-center gap-3 pt-2">
-            <span className="text-xs font-mono text-slate-900 font-bold select-none min-w-[36px]">
+            <span className="text-xs font-mono text-slate-200 font-semibold select-none min-w-[36px]">
               {formatTime(currentTime)}
             </span>
 
@@ -705,25 +705,25 @@ export default function App() {
               />
             </div>
 
-            <span className="text-xs font-mono text-slate-900 font-bold select-none min-w-[36px] text-right">
+            <span className="text-xs font-mono text-slate-200 font-semibold select-none min-w-[36px] text-right">
               {formatTime(duration)}
             </span>
           </div>
         </div>
 
         {/* Footer info pill */}
-        <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-900 font-medium">
+        <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-300 font-medium">
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-slate-900">Concatenative Engine · {entries.length} mục ngữ liệu</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-slate-300">Concatenative Engine · {entries.length} mục ngữ liệu</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-slate-900 font-medium">Voice: {selectedVoice.name} ({selectedVoice.tone})</span>
+            <span className="hidden sm:inline text-slate-300">Voice: {selectedVoice.name} ({selectedVoice.tone})</span>
             <button
               onClick={handleExport}
-              className="text-slate-900 hover:text-black flex items-center gap-1 text-[11px] font-semibold transition"
+              className="text-cyan-300 hover:text-cyan-200 flex items-center gap-1 text-[11px] font-semibold transition"
             >
-              <Download className="w-3.5 h-3.5 text-slate-900" />
+              <Download className="w-3.5 h-3.5 text-cyan-400" />
               Export
             </button>
           </div>
