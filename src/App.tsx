@@ -19,7 +19,7 @@ import {
   mapSpeakerToCore,
 } from './services/ttsService';
 import type { ConversionHistoryItem } from './data/mockCorpus';
-import { AlertCircle, CheckCircle2, X } from 'lucide-react';
+import { NotificationModal, type NotificationModalData } from './components/NotificationModal';
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavTab>('tts');
@@ -31,14 +31,7 @@ export const App: React.FC = () => {
   const [realEntries, setRealEntries] = useState<CorpusEntry[]>([]);
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [isPlayingPreview, setIsPlayingPreview] = useState<'Nam' | 'Nữ' | null>(null);
-  const [notification, setNotification] = useState<{
-    type: 'success' | 'warning' | 'error';
-    message: string;
-    action?: {
-      label: string;
-      onClick: () => void;
-    };
-  } | null>(null);
+  const [notificationModal, setNotificationModal] = useState<NotificationModalData | null>(null);
 
   // Tải danh sách ngữ liệu từ IndexedDB và manifest ban đầu
   const loadCorpus = useCallback(async () => {
@@ -64,44 +57,39 @@ export const App: React.FC = () => {
     loadHistory();
   }, [loadCorpus, loadHistory]);
 
-  // Xóa thông báo sau 6 giây
-  useEffect(() => {
-    if (!notification) return;
-    const timer = setTimeout(() => setNotification(null), 6000);
-    return () => clearTimeout(timer);
-  }, [notification]);
-
   // Xử lý tạo âm thanh (Chuyển văn bản)
   const handleConvert = async () => {
     if (!inputText.trim()) {
-      setNotification({
+      setNotificationModal({
         type: 'warning',
-        message: 'Vui lòng nhập văn bản tiếng Việt để chuyển đổi.',
+        title: 'Chưa nhập văn bản',
+        message: 'Vui lòng nhập văn bản tiếng Việt bạn muốn chuyển thành âm thanh.',
+        confirmText: 'Đã hiểu',
       });
       return;
     }
 
     setIsConverting(true);
-    setNotification(null);
 
     try {
       const res = await performSynthesis(inputText, selectedVoice, realEntries);
 
       if (!res.success || !res.result) {
-        setNotification({
+        setNotificationModal({
           type: 'warning',
+          title: res.suggestedVoice ? 'Ràng buộc giọng đọc' : 'Chưa thể chuyển đổi',
           message:
             res.error ||
             'Không thể tổng hợp từ văn bản này do chưa có file âm thanh trong ngữ liệu.',
           action: res.suggestedVoice
             ? {
-                label: `Chọn Giọng ${res.suggestedVoice}`,
+                label: `Chọn Giọng ${res.suggestedVoice} ngay`,
                 onClick: () => {
                   setSelectedVoice(res.suggestedVoice!);
-                  setNotification(null);
                 },
               }
             : undefined,
+          confirmText: 'Đóng',
         });
         setActiveResult(null);
       } else {
@@ -115,15 +103,19 @@ export const App: React.FC = () => {
         );
         setHistoryItems((prev) => [newHist, ...prev]);
 
-        setNotification({
+        setNotificationModal({
           type: 'success',
-          message: `Đã tạo âm thanh thành công (${res.result.durationSec.toFixed(2)}s)!`,
+          title: 'Chuyển đổi thành công!',
+          message: `Đã tạo âm thanh thành công (${res.result.durationSec.toFixed(2)} giây) bằng Giọng ${selectedVoice}!\nBạn có thể nghe thử bằng trình phát âm thanh hoặc tải file WAV về máy bên dưới.`,
+          confirmText: 'Tuyệt vời',
         });
       }
     } catch (err: any) {
-      setNotification({
+      setNotificationModal({
         type: 'error',
+        title: 'Lỗi tổng hợp âm thanh',
         message: err?.message || 'Có lỗi xảy ra trong quá trình tổng hợp.',
+        confirmText: 'Đóng',
       });
     } finally {
       setIsConverting(false);
@@ -142,10 +134,19 @@ export const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Xóa mục lịch sử
+  // Xóa mục lịch sử với popup xác nhận
   const handleDeleteHistory = (id: string) => {
-    const updated = removeHistoryEntry(id);
-    setHistoryItems(updated);
+    setNotificationModal({
+      type: 'confirm',
+      title: 'Xóa lịch sử chuyển đổi',
+      message: 'Bạn có chắc chắn muốn xóa mục này khỏi danh sách lịch sử chuyển đổi không?',
+      confirmText: 'Xóa ngay',
+      cancelText: 'Hủy bỏ',
+      onConfirm: () => {
+        const updated = removeHistoryEntry(id);
+        setHistoryItems(updated);
+      },
+    });
   };
 
   // Nghe thử giọng đọc
@@ -171,9 +172,11 @@ export const App: React.FC = () => {
     } else {
       setIsPlayingPreview(voice);
       setTimeout(() => setIsPlayingPreview(null), 1000);
-      setNotification({
+      setNotificationModal({
         type: 'warning',
-        message: `Chưa có bản thu âm cho ${voice}. Bạn có thể vào mục "Ngữ liệu" để thu âm thêm.`,
+        title: 'Chưa có bản thu âm',
+        message: `Chưa có bản thu âm cho Giọng ${voice}. Bạn có thể vào mục "Ngữ liệu" để thu âm thêm.`,
+        confirmText: 'Đã hiểu',
       });
     }
   };
@@ -195,42 +198,11 @@ export const App: React.FC = () => {
         {/* Top Header */}
         <Header currentTab={currentTab} />
 
-        {/* Global Toast Notification */}
-        {notification && (
-          <div className="fixed top-20 right-8 z-50 animate-in fade-in slide-in-from-top-3 duration-200">
-            <div
-              className={`p-4 rounded-xl shadow-lg border text-xs font-semibold flex items-center gap-2.5 max-w-md ${
-                notification.type === 'success'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                  : notification.type === 'warning'
-                  ? 'bg-amber-50 text-amber-800 border-amber-200'
-                  : 'bg-red-50 text-red-800 border-red-200'
-              }`}
-            >
-              {notification.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-              ) : (
-                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-              )}
-              <span className="flex-1 leading-relaxed">{notification.message}</span>
-              {notification.action && (
-                <button
-                  type="button"
-                  onClick={notification.action.onClick}
-                  className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-semibold text-xs whitespace-nowrap transition shadow-xs"
-                >
-                  {notification.action.label}
-                </button>
-              )}
-              <button
-                onClick={() => setNotification(null)}
-                className="text-[#85879A] hover:text-[#20213A] p-0.5 rounded"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Global Notification Modal Popup */}
+        <NotificationModal
+          data={notificationModal}
+          onClose={() => setNotificationModal(null)}
+        />
 
         {/* Workspace Body */}
         <main className="p-8 max-w-6xl w-full mx-auto">
@@ -261,6 +233,7 @@ export const App: React.FC = () => {
                 items={historyItems}
                 onDelete={handleDeleteHistory}
                 onRefresh={loadHistory}
+                onShowNotification={setNotificationModal}
                 onSelectSampleText={(txt) => {
                   setInputText(txt);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -274,6 +247,7 @@ export const App: React.FC = () => {
               realEntries={realEntries}
               onOpenRecordModal={() => setIsRecordModalOpen(true)}
               onRefresh={loadCorpus}
+              onShowNotification={setNotificationModal}
             />
           )}
 
@@ -287,9 +261,11 @@ export const App: React.FC = () => {
         onClose={() => setIsRecordModalOpen(false)}
         onSaved={() => {
           loadCorpus();
-          setNotification({
+          setNotificationModal({
             type: 'success',
-            message: 'Đã lưu bản thu âm mới vào ngữ liệu thành công!',
+            title: 'Lưu ngữ liệu thành công!',
+            message: 'Đã lưu bản thu âm mới vào ngữ liệu thành công. Giờ đây bạn có thể sử dụng từ này trong chuyển văn bản thành âm thanh.',
+            confirmText: 'Đã hiểu',
           });
         }}
         defaultSpeaker={selectedVoice}

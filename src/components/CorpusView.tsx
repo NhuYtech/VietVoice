@@ -5,17 +5,20 @@ import { MOCK_CORPUS_ITEMS, type CorpusItem } from '../data/mockCorpus';
 import { encodeVnFilename } from '../lib/vniCodec';
 import { playSamples, decodeBlob } from '../lib/dsp';
 import { deleteEntry } from '../lib/store';
+import type { NotificationModalData } from './NotificationModal';
 
 interface CorpusViewProps {
   realEntries: CorpusEntry[];
   onOpenRecordModal: () => void;
   onRefresh: () => void;
+  onShowNotification?: (data: NotificationModalData) => void;
 }
 
 export const CorpusView: React.FC<CorpusViewProps> = ({
   realEntries,
   onOpenRecordModal,
   onRefresh,
+  onShowNotification,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpeaker, setSelectedSpeaker] = useState<'all' | 'Nam' | 'Nữ'>('all');
@@ -85,7 +88,12 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
       }
     } else {
       // Giả lập phát từ mẫu
-      alert(`Đang phát âm thanh mẫu từ: "${item.word}" (${item.speaker} - ${item.filename})`);
+      onShowNotification?.({
+        type: 'info',
+        title: 'Phát âm thanh mẫu',
+        message: `Đang phát âm thanh mẫu từ: "${item.word}" (Giọng ${item.speaker} - ${item.filename}).\nĐây là dữ liệu ngữ liệu mẫu minh họa của hệ thống.`,
+        confirmText: 'Đã hiểu',
+      });
     }
   };
 
@@ -113,10 +121,21 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const handleDeleteReal = async (id: string) => {
-    if (confirm('Bạn có chắc chắn muốn xóa từ này khỏi ngữ liệu đã thu?')) {
-      await deleteEntry(id);
-      onRefresh();
+  const handleDeleteReal = (item: CorpusItem) => {
+    if (onShowNotification) {
+      onShowNotification({
+        type: 'confirm',
+        title: 'Xác nhận xóa từ ngữ liệu',
+        message: `Bạn có chắc chắn muốn xóa từ "${item.word}" (${item.speaker}) khỏi ngữ liệu đã thu? Thao tác này sẽ xóa vĩnh viễn file âm thanh khỏi bộ nhớ.`,
+        confirmText: 'Xóa ngay',
+        cancelText: 'Hủy bỏ',
+        onConfirm: async () => {
+          await deleteEntry(item.id);
+          onRefresh();
+        },
+      });
+    } else {
+      deleteEntry(item.id).then(() => onRefresh());
     }
   };
 
@@ -292,7 +311,7 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
 
                       {!item.isMock && (
                         <button
-                          onClick={() => handleDeleteReal(item.id)}
+                          onClick={() => handleDeleteReal(item)}
                           className="p-1.5 rounded-lg text-[#85879A] hover:text-red-500 hover:bg-red-50 transition"
                           title="Xóa từ"
                         >

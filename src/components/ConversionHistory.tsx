@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Search, RotateCw, Play, Download, Trash2, Clock, Filter, Volume2, Square } from 'lucide-react';
 import type { ConversionHistoryItem } from '../data/mockCorpus';
 import { playSamples } from '../lib/dsp';
+import type { NotificationModalData } from './NotificationModal';
 
 interface ConversionHistoryProps {
   items: ConversionHistoryItem[];
   onDelete: (id: string) => void;
   onRefresh: () => void;
   onSelectSampleText?: (text: string) => void;
+  onShowNotification?: (data: NotificationModalData) => void;
 }
 
 export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
@@ -15,6 +17,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
   onDelete,
   onRefresh,
   onSelectSampleText,
+  onShowNotification,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [voiceFilter, setVoiceFilter] = useState<'all' | 'Nam' | 'Nữ'>('all');
@@ -42,7 +45,12 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
       audio.play().catch(() => setPlayingId(null));
     } else {
       // Dữ liệu mẫu minh họa lịch sử
-      alert(`Đang phát mẫu âm thanh: "${item.text}" (${item.speaker})`);
+      onShowNotification?.({
+        type: 'info',
+        title: 'Phát âm thanh mẫu',
+        message: `Đang phát mẫu âm thanh: "${item.text}" (Giọng ${item.speaker}).\nĐây là dữ liệu mẫu để minh họa giao diện lịch sử chuyển đổi.`,
+        confirmText: 'Đã hiểu',
+      });
     }
   };
 
