@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { Volume2, Play, Square, Trash2, Mic, AlertCircle, CheckCircle2, Music, Sparkles, Sliders, Clock } from 'lucide-react';
+import {
+  Volume2,
+  Play,
+  Square,
+  Trash2,
+  Mic,
+  AlertCircle,
+  Music,
+  Sparkles,
+  Sliders,
+  ChevronDown,
+} from 'lucide-react';
 import { PauseSettingsModal } from './PauseSettingsModal';
 import type { CorpusEntry } from '../lib/types';
 import { inspectVocabulary } from '../services/ttsService';
@@ -46,15 +57,25 @@ export const MainEditor: React.FC<MainEditorProps> = ({
   return (
     <div className="bg-white rounded-2xl border border-[#E8E8F0] shadow-sm overflow-hidden">
       {/* Top Toolbar */}
-      <div className="px-6 py-3.5 border-b border-[#E8E8F0] flex items-center justify-between bg-[#FAFAFD]">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-[#E2E4F0] text-xs font-semibold text-[#20213A] w-[170px] shrink-0 select-none">
+      <div className="px-6 py-3.5 border-b border-[#E8E8F0] flex flex-wrap items-center justify-between gap-3 bg-[#FAFAFD]">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Combobox chọn Giọng Nam / Nữ */}
+          <div className="relative inline-flex items-center">
             <span
-              className={`w-2 h-2 rounded-full shrink-0 ${
+              className={`absolute left-3 w-2 h-2 rounded-full pointer-events-none z-10 ${
                 selectedVoice === 'Nam' ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
               }`}
             />
-            <span className="whitespace-nowrap">Đang chọn: Giọng {selectedVoice}</span>
+            <select
+              value={selectedVoice}
+              onChange={(e) => onSelectVoice(e.target.value as 'Nam' | 'Nữ')}
+              className="pl-7 pr-8 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#E2E4F0] hover:border-[#6255CF]/60 text-[#20213A] focus:outline-none focus:border-[#6255CF] cursor-pointer appearance-none shadow-2xs transition"
+              title="Chọn giọng đọc"
+            >
+              <option value="Nam">Giọng Nam</option>
+              <option value="Nữ">Giọng Nữ</option>
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-[#85879A] absolute right-2.5 pointer-events-none" />
           </div>
 
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E2E4F0] text-xs font-medium text-[#555870]">
@@ -161,48 +182,31 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                         </button>
                       );
                     })
-                  ) : (
-                    vocabCheck.tokens.map((tok, idx) => {
-                      const isAvailable = vocabCheck.matchedWords.includes(tok);
-                      return (
-                        <span
-                          key={`${tok}-${idx}`}
-                          className={`px-2.5 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 ${
-                            isAvailable
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-rose-50 text-rose-800 border border-rose-200'
-                          }`}
-                        >
-                          {isAvailable ? '✓' : '✕'} {tok}
-                        </span>
-                      );
-                    })
-                  )}
+                  ) : null}
                 </>
               )}
             </div>
 
-            {/* Thông báo bắt buộc chọn đúng giọng đọc của file thu âm */}
-            {vocabCheck.hasWrongVoice && (
-              <div className="p-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300/80 text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
+            {/* Thông báo ràng buộc giọng đọc */}
+            {vocabCheck.hasWrongVoice && vocabCheck.suggestedVoice && (
+              <div className="p-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
                 <div className="flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5 sm:mt-0" />
                   <div className="text-xs leading-relaxed">
                     <span className="font-bold text-amber-900">Ràng buộc giọng đọc: </span>
-                    {vocabCheck.wrongVoiceMessage}
+                    {vocabCheck.wrongVoiceMessage ||
+                      `Các từ trong câu chỉ có sẵn ở bản thu Giọng ${vocabCheck.suggestedVoice}. Hãy chuyển sang Giọng ${vocabCheck.suggestedVoice} để tổng hợp.`}
                   </div>
                 </div>
 
-                {vocabCheck.suggestedVoice && (
-                  <button
-                    type="button"
-                    onClick={() => onSelectVoice(vocabCheck.suggestedVoice!)}
-                    className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-semibold text-xs transition shadow-sm flex items-center gap-1.5 flex-shrink-0"
-                  >
-                    <span>Chọn Giọng {vocabCheck.suggestedVoice} ngay</span>
-                    <span>→</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => onSelectVoice(vocabCheck.suggestedVoice!)}
+                  className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-semibold text-xs transition shadow-sm flex items-center gap-1.5 flex-shrink-0"
+                >
+                  <span>Chọn Giọng {vocabCheck.suggestedVoice} ngay</span>
+                  <span>→</span>
+                </button>
               </div>
             )}
 
@@ -251,138 +255,45 @@ export const MainEditor: React.FC<MainEditorProps> = ({
         </div>
       </div>
 
-      {/* Voice Selection & Main Action Bar */}
-      <div className="px-6 py-5 bg-[#F9FAFD] border-t border-[#E8E8F0]">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          {/* Voice Cards */}
-          <div className="flex-1">
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#63667E] mb-2.5">
-              Chọn giọng đọc
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* CARD 1 — MALE VOICE */}
-              <div
-                onClick={() => onSelectVoice('Nam')}
-                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-colors duration-150 flex items-center justify-between relative ${
-                  selectedVoice === 'Nam'
-                    ? 'border-[#6255CF] bg-[#6255CF]/[0.04] shadow-sm'
-                    : vocabCheck.hasWrongVoice && vocabCheck.suggestedVoice === 'Nam'
-                    ? 'border-amber-400 bg-amber-50/50 hover:border-amber-500'
-                    : 'border-[#E8E8F0] bg-white hover:border-[#D0D2E5]'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#3B65D6] to-[#5578D8] flex items-center justify-center text-white shadow-sm">
-                    <span className="text-sm font-bold">N</span>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-[#20213A]">Nam</span>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#5578D8]/10 text-[#3B65D6]">
-                        Giọng nam
-                      </span>
-                      {vocabCheck.hasWrongVoice && vocabCheck.suggestedVoice === 'Nam' && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white shadow-xs">
-                          Cần chọn giọng này
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-[#85879A] mt-0.5">Giọng đọc nam trầm ấm</p>
-                  </div>
-                </div>
+      {/* Main Action Bar */}
+      <div className="px-6 py-4 bg-[#F9FAFD] border-t border-[#E8E8F0] flex items-center justify-between">
+        {/* Nút nghe thử giọng đọc đã chọn */}
+        <button
+          type="button"
+          onClick={() => onPlayPreviewVoice(selectedVoice)}
+          className="flex items-center gap-2 text-xs font-medium text-[#555870] hover:text-[#6255CF] px-3.5 py-2 rounded-xl border border-[#E2E4F0] bg-white hover:bg-gray-50 transition shadow-2xs"
+          title={`Nghe thử giọng ${selectedVoice}`}
+        >
+          {isPlayingPreview === selectedVoice ? (
+            <Square className="w-3.5 h-3.5 fill-current text-[#6255CF]" />
+          ) : (
+            <Play className="w-3.5 h-3.5 fill-current" />
+          )}
+          <span>Nghe thử giọng {selectedVoice}</span>
+        </button>
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPlayPreviewVoice('Nam');
-                  }}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[#555870] hover:text-[#6255CF] hover:bg-[#F0F2F9] transition"
-                  title="Nghe thử giọng Nam"
-                >
-                  {isPlayingPreview === 'Nam' ? (
-                    <Square className="w-4 h-4 fill-current text-[#6255CF]" />
-                  ) : (
-                    <Play className="w-4 h-4 fill-current ml-0.5" />
-                  )}
-                </button>
-              </div>
-
-              {/* CARD 2 — FEMALE VOICE */}
-              <div
-                onClick={() => onSelectVoice('Nữ')}
-                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-colors duration-150 flex items-center justify-between relative ${
-                  selectedVoice === 'Nữ'
-                    ? 'border-[#6255CF] bg-[#6255CF]/[0.04] shadow-sm'
-                    : vocabCheck.hasWrongVoice && vocabCheck.suggestedVoice === 'Nữ'
-                    ? 'border-amber-400 bg-amber-50/50 hover:border-amber-500'
-                    : 'border-[#E8E8F0] bg-white hover:border-[#D0D2E5]'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#9B53AD] to-[#B16BC1] flex items-center justify-center text-white shadow-sm">
-                    <span className="text-sm font-bold">F</span>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-[#20213A]">Nữ</span>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#B16BC1]/10 text-[#9B53AD]">
-                        Giọng nữ
-                      </span>
-                      {vocabCheck.hasWrongVoice && vocabCheck.suggestedVoice === 'Nữ' && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white shadow-xs">
-                          Cần chọn giọng này
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-[#85879A] mt-0.5">Giọng đọc nữ tự nhiên</p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPlayPreviewVoice('Nữ');
-                  }}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[#555870] hover:text-[#6255CF] hover:bg-[#F0F2F9] transition"
-                  title="Nghe thử giọng Nữ"
-                >
-                  {isPlayingPreview === 'Nữ' ? (
-                    <Square className="w-4 h-4 fill-current text-[#6255CF]" />
-                  ) : (
-                    <Play className="w-4 h-4 fill-current ml-0.5" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Main Action Button */}
-          <div className="flex items-end justify-end pt-2 lg:pt-0">
-            <button
-              onClick={onConvert}
-              disabled={isConverting || !text.trim()}
-              className={`px-7 py-3.5 rounded-xl font-semibold text-sm flex items-center gap-2.5 text-white transition-all shadow-md ${
-                isConverting || !text.trim()
-                  ? 'bg-[#B0B2C5] cursor-not-allowed opacity-75'
-                  : 'bg-[#6255CF] hover:bg-[#5144BD] shadow-[#6255CF]/25 hover:shadow-lg hover:shadow-[#6255CF]/30 active:scale-[0.98]'
-              }`}
-            >
-              {isConverting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Đang chuyển đổi...</span>
-                </>
-              ) : (
-                <>
-                  <Volume2 className="w-4 h-4" />
-                  <span>Chuyển thành âm thanh</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
+        {/* Nút Chuyển thành âm thanh */}
+        <button
+          onClick={onConvert}
+          disabled={isConverting || !text.trim()}
+          className={`px-7 py-3 rounded-xl font-semibold text-sm flex items-center gap-2.5 text-white transition-all shadow-md ${
+            isConverting || !text.trim()
+              ? 'bg-[#B0B2C5] cursor-not-allowed opacity-75'
+              : 'bg-[#6255CF] hover:bg-[#5144BD] shadow-[#6255CF]/25 hover:shadow-lg hover:shadow-[#6255CF]/30 active:scale-[0.98]'
+          }`}
+        >
+          {isConverting ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Đang chuyển đổi...</span>
+            </>
+          ) : (
+            <>
+              <Volume2 className="w-4 h-4" />
+              <span>Chuyển thành âm thanh</span>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Modal thiết lập ngắt nghỉ */}

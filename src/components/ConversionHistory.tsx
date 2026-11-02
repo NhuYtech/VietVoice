@@ -12,15 +12,16 @@ import {
   MoreVertical,
   Check,
   Copy,
-  Volume2,
 } from 'lucide-react';
 import type { ConversionHistoryItem } from '../data/mockCorpus';
 import type { NotificationModalData } from './NotificationModal';
+import type { PlayerTrack } from './BottomAudioPlayer';
 
 interface ConversionHistoryProps {
   items: ConversionHistoryItem[];
   onDelete: (id: string) => void;
   onRefresh: () => void;
+  onPlayTrack?: (track: PlayerTrack) => void;
   onSelectSampleText?: (text: string) => void;
   onShowNotification?: (data: NotificationModalData) => void;
 }
@@ -58,6 +59,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
   items,
   onDelete,
   onRefresh,
+  onPlayTrack,
   onSelectSampleText,
   onShowNotification,
 }) => {
@@ -101,14 +103,6 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
     return matchText && matchVoice && matchDate;
   });
 
-  const handleToggleSelectAll = () => {
-    if (selectedIds.size === filtered.length && filtered.length > 0) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filtered.map((item) => item.id)));
-    }
-  };
-
   const handleToggleSelectOne = (id: string) => {
     const next = new Set(selectedIds);
     if (next.has(id)) {
@@ -138,15 +132,23 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
   };
 
   const handlePlayHistoryAudio = (item: ConversionHistoryItem) => {
-    if (playingId === item.id) {
-      setPlayingId(null);
+    setPlayingId(item.id);
+
+    if (onPlayTrack) {
+      onPlayTrack({
+        id: item.id,
+        text: item.text,
+        speaker: item.speaker,
+        durationSec: Number(item.duration) || 0.72,
+        audioBlob: item.audioBlob,
+        filename: item.filename,
+      });
       return;
     }
 
     if (item.audioBlob) {
       const url = URL.createObjectURL(item.audioBlob);
       const audio = new Audio(url);
-      setPlayingId(item.id);
       audio.onended = () => setPlayingId(null);
       audio.onerror = () => setPlayingId(null);
       audio.play().catch(() => setPlayingId(null));
@@ -154,9 +156,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
       onShowNotification?.({
         type: 'info',
         title: 'Phát âm thanh mẫu',
-        message: `Đang phát bản ghi âm mẫu: "${item.text}" (${
-          item.speaker === 'Nữ' ? 'HN - Ngọc Huyền' : 'HN - Nam Hà'
-        }).\nFile định dạng WAV lossless (22.05 kHz).`,
+        message: `Đang phát bản ghi: "${item.text}" (Giọng ${item.speaker}).\nFile định dạng WAV lossless (22.05 kHz).`,
         confirmText: 'Đã hiểu',
       });
     }
@@ -171,7 +171,6 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
       a.click();
       URL.revokeObjectURL(url);
     } else {
-      // Dummy WAV download fallback
       const dummy = new Blob(['RIFF....WAVEfmt '], { type: 'audio/wav' });
       const url = URL.createObjectURL(dummy);
       const a = document.createElement('a');
@@ -277,7 +276,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
             </button>
 
             {isFilterOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-44 bg-white rounded-xl border border-[#E2E4F0] shadow-lg p-1.5 z-30 animate-in fade-in zoom-in-95 text-xs">
+              <div className="absolute right-0 top-full mt-1.5 w-36 bg-white rounded-xl border border-[#E2E4F0] shadow-lg p-1.5 z-30 animate-in fade-in zoom-in-95 text-xs">
                 <div className="px-2 py-1 text-[11px] font-bold text-[#85879A] uppercase tracking-wider">
                   Giọng đọc
                 </div>
@@ -306,7 +305,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                       : 'text-[#20213A] hover:bg-gray-50'
                   }`}
                 >
-                  <span>HN - Ngọc Huyền (Nữ)</span>
+                  <span>Nữ</span>
                   {voiceFilter === 'Nữ' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
                 </button>
                 <button
@@ -320,7 +319,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                       : 'text-[#20213A] hover:bg-gray-50'
                   }`}
                 >
-                  <span>HN - Nam Hà (Nam)</span>
+                  <span>Nam</span>
                   {voiceFilter === 'Nam' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
                 </button>
               </div>
@@ -338,7 +337,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
         </div>
       </div>
 
-      {/* Batch Selection Action Bar (nếu có mục được chọn) */}
+      {/* Batch Selection Action Bar */}
       {!isCollapsed && selectedIds.size > 0 && (
         <div className="bg-[#F7F6FD] border-t border-[#E8E8F0] px-5 py-2 flex items-center justify-between text-xs text-[#6255CF]">
           <div className="font-semibold flex items-center gap-2">
@@ -370,7 +369,6 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
           ) : (
             filtered.map((item) => {
               const isFemale = item.speaker === 'Nữ';
-              const speakerLabel = isFemale ? 'HN - Ngọc Huyền' : 'HN - Nam Hà';
               const isPlaying = playingId === item.id;
               const isSelected = selectedIds.has(item.id);
 
@@ -411,13 +409,13 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                     </div>
                   </div>
 
-                  {/* Middle Side: Speaker Avatar & Name */}
+                  {/* Middle Side: Speaker Avatar & Name (Chỉ hiển thị Nam hoặc Nữ) */}
                   <div className="hidden sm:flex items-center gap-2 shrink-0 px-4">
                     <div className="relative w-6 h-6 rounded-full overflow-hidden bg-[#F0F2F9] flex items-center justify-center border border-[#E2E4F0]">
                       {isFemale ? (
                         <img
                           src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80"
-                          alt="HN - Ngọc Huyền"
+                          alt="Nữ"
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             (e.currentTarget as HTMLElement).style.display = 'none';
@@ -426,7 +424,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                       ) : (
                         <img
                           src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80"
-                          alt="HN - Nam Hà"
+                          alt="Nam"
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             (e.currentTarget as HTMLElement).style.display = 'none';
@@ -440,7 +438,9 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                         }`}
                       />
                     </div>
-                    <span className="text-xs font-medium text-[#555870]">{speakerLabel}</span>
+                    <span className="text-xs font-semibold text-[#555870]">
+                      {isFemale ? 'Nữ' : 'Nam'}
+                    </span>
                   </div>
 
                   {/* Right Side: Play / Download / More Actions */}
@@ -453,7 +453,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                           ? 'bg-[#6255CF] text-white ring-2 ring-[#6255CF]/30'
                           : 'bg-[#1E2040] hover:bg-[#6255CF] text-white'
                       }`}
-                      title={isPlaying ? 'Dừng phát' : 'Phát âm thanh'}
+                      title="Phát trong trình phát âm thanh"
                     >
                       {isPlaying ? (
                         <Square className="w-2.5 h-2.5 fill-current" />

@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Sidebar, type NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MainEditor } from './components/MainEditor';
-import { AudioOutput } from './components/AudioOutput';
 import { ConversionHistory } from './components/ConversionHistory';
 import { CorpusView } from './components/CorpusView';
 import { AboutView } from './components/AboutView';
 import { RecordModal } from './components/RecordModal';
+import { BottomAudioPlayer, type PlayerTrack } from './components/BottomAudioPlayer';
 import { getAllEntries } from './lib/store';
 import { loadManifest } from './lib/tts';
 import { playSamples, decodeBlob } from './lib/dsp';
@@ -34,6 +34,10 @@ export const App: React.FC = () => {
   const [notificationModal, setNotificationModal] = useState<NotificationModalData | null>(null);
   const [recordInitialWord, setRecordInitialWord] = useState('');
 
+  // Track âm thanh đang phát ở thanh player cố định cuối trang
+  const [playerTrack, setPlayerTrack] = useState<PlayerTrack | null>(null);
+  const [isPlayerOpen, setIsPlayerOpen] = useState(true);
+
   // Tải danh sách ngữ liệu từ IndexedDB và manifest ban đầu
   const loadCorpus = useCallback(async () => {
     try {
@@ -51,6 +55,17 @@ export const App: React.FC = () => {
   const loadHistory = useCallback(() => {
     const list = getStoredHistory();
     setHistoryItems(list);
+    if (list && list.length > 0) {
+      setPlayerTrack({
+        id: list[0].id,
+        text: list[0].text,
+        speaker: list[0].speaker,
+        durationSec: list[0].duration || 1.85,
+        audioBlob: list[0].audioBlob,
+        filename: list[0].filename,
+      });
+      setIsPlayerOpen(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -117,10 +132,21 @@ export const App: React.FC = () => {
         );
         setHistoryItems((prev) => [newHist, ...prev]);
 
+        // Cập nhật và phát ngay ở thanh player cố định cuối trang
+        setPlayerTrack({
+          id: newHist.id,
+          text: inputText,
+          speaker: selectedVoice,
+          durationSec: res.result.durationSec,
+          audioBlob: res.result.wav,
+          filename: newHist.filename,
+        });
+        setIsPlayerOpen(true);
+
         setNotificationModal({
           type: 'success',
           title: 'Chuyển đổi thành công!',
-          message: `Đã tạo âm thanh thành công (${res.result.durationSec.toFixed(2)} giây) bằng Giọng ${selectedVoice}!\nBạn có thể nghe thử bằng trình phát âm thanh hoặc tải file WAV về máy bên dưới.`,
+          message: `Đã tạo âm thanh thành công (${res.result.durationSec.toFixed(2)} giây) bằng Giọng ${selectedVoice}!\nBạn có thể nghe phát âm thanh tại thanh điều khiển cố định bên dưới.`,
           confirmText: 'Tuyệt vời',
         });
       }
@@ -136,16 +162,24 @@ export const App: React.FC = () => {
     }
   };
 
-  // Tải file WAV của kết quả hiện tại
-  const handleDownloadActiveResult = () => {
-    if (!activeResult) return;
-    const url = URL.createObjectURL(activeResult.wav);
-    const a = document.createElement('a');
-    a.href = url;
-    const clean = activeResult.text.slice(0, 15).replace(/\s+/g, '_').toLowerCase();
-    a.download = `vietvoice_${selectedVoice === 'Nam' ? 'nam' : 'nu'}_${clean || 'audio'}.wav`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // Tải file WAV từ player track
+  const handleDownloadPlayerTrack = (trk: PlayerTrack) => {
+    if (trk.audioBlob) {
+      const url = URL.createObjectURL(trk.audioBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = trk.filename || `vietvoice_${trk.speaker === 'Nam' ? 'nam' : 'nu'}_audio.wav`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const dummy = new Blob(['RIFF....WAVEfmt '], { type: 'audio/wav' });
+      const url = URL.createObjectURL(dummy);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = trk.filename || `vietvoice_${trk.speaker === 'Nam' ? 'nam' : 'nu'}_audio.wav`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
   };
 
   // Xóa mục lịch sử với popup xác nhận
@@ -159,33 +193,45 @@ export const App: React.FC = () => {
       onConfirm: () => {
         const updated = removeHistoryEntry(id);
         setHistoryItems(updated);
+        if (playerTrack?.id === id) {
+          if (updated.length > 0) {
+            setPlayerTrack({
+              id: updated[0].id,
+              text: updated[0].text,
+              speaker: updated[0].speaker,
+              durationSec: updated[0].duration,
+              audioBlob: updated[0].audioBlob,
+              filename: updated[0].filename,
+            });
+          } else {
+            setPlayerTrack(null);
+          }
+        }
       },
     });
   };
 
-  // Nghe thử giọng đọc
+  // Nghe thử giọng mẫu của Nam hoặc Nữ
   const handlePlayPreviewVoice = async (voice: 'Nam' | 'Nữ') => {
-    if (isPlayingPreview === voice) {
-      setIsPlayingPreview(null);
-      return;
-    }
+    if (isPlayingPreview) return;
+    setIsPlayingPreview(voice);
 
-    const speakerCore = mapSpeakerToCore(voice);
-    const sample = realEntries.find(
-      (e) => e.speaker.toLowerCase() === speakerCore.toLowerCase()
+    const targetCore = mapSpeakerToCore(voice);
+    const sampleEntry = realEntries.find(
+      (e) => e.speaker === targetCore && e.blob
     );
 
-    if (sample) {
+    if (sampleEntry && sampleEntry.blob) {
       try {
-        const samples = await decodeBlob(sample.blob);
-        setIsPlayingPreview(voice);
-        playSamples(samples, 22050, () => setIsPlayingPreview(null));
+        const samples = await decodeBlob(sampleEntry.blob);
+        playSamples(samples, 22050, () => {
+          setIsPlayingPreview(null);
+        });
       } catch {
         setIsPlayingPreview(null);
       }
     } else {
-      setIsPlayingPreview(voice);
-      setTimeout(() => setIsPlayingPreview(null), 1000);
+      setIsPlayingPreview(null);
       setNotificationModal({
         type: 'warning',
         title: 'Chưa có bản thu âm',
@@ -219,7 +265,7 @@ export const App: React.FC = () => {
         />
 
         {/* Workspace Body */}
-        <main className="p-6 md:p-8 max-w-[1400px] w-full mx-auto">
+        <main className="p-6 md:p-8 max-w-[1400px] w-full mx-auto pb-28">
           {currentTab === 'tts' && (
             <div>
               {/* Main Editor Card */}
@@ -239,19 +285,16 @@ export const App: React.FC = () => {
                 }}
               />
 
-              {/* Audio Result Section */}
-              <AudioOutput
-                result={activeResult}
-                selectedVoice={selectedVoice}
-                onDownload={handleDownloadActiveResult}
-              />
-
               {/* Conversion History Section */}
               <ConversionHistory
                 items={historyItems}
                 onDelete={handleDeleteHistory}
                 onRefresh={loadHistory}
                 onShowNotification={setNotificationModal}
+                onPlayTrack={(track) => {
+                  setPlayerTrack(track);
+                  setIsPlayerOpen(true);
+                }}
                 onSelectSampleText={(txt) => {
                   setInputText(txt);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -276,7 +319,15 @@ export const App: React.FC = () => {
         </main>
       </div>
 
-      {/* 3. Studio Record Modal */}
+      {/* 3. Sticky Bottom Audio Player (Cố định ở chân trang, ngang hàng với mục thông tin ở sidebar) */}
+      <BottomAudioPlayer
+        track={playerTrack}
+        isOpen={isPlayerOpen}
+        onClose={() => setIsPlayerOpen(false)}
+        onDownload={handleDownloadPlayerTrack}
+      />
+
+      {/* 4. Studio Record Modal */}
       <RecordModal
         isOpen={isRecordModalOpen}
         initialWord={recordInitialWord}
