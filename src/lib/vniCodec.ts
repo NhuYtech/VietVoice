@@ -1,12 +1,12 @@
 /**
- * Module mã hóa từ có dấu và đặt tên file .wav theo quy ước VNI:
+ * Module mã hóa từ có dấu và đặt tên file .wav theo đúng quy ước:
  * 
  * Quy ước:
  * - Dấu giống bộ gõ VNI (số là dấu: 0=ngang, 1=sắc, 2=huyền, 3=hỏi, 4=ngã, 5=nặng) và đặt phía sau mỗi từ.
- *   Từ không dấu đặt số 0 phía sau (VD: ba -> ba0, bác -> bac1, cảng -> cang3).
- * - Chữ â, ô, ê -> a+, o+, e+
- * - Chữ ă, ơ, ư -> aa, oo, uu
- * - Chữ đ -> d-
+ *   Với những từ không dấu thì đặt số 0 phía sau (VD: ba -> ba0, bác -> bac1, cảng -> cang3).
+ * - Chữ â, ô, ê -> quy định: â -> a+, ô -> o+, ê -> e+
+ * - Chữ ă, ơ, ư -> quy định: ă -> aa, ơ -> oo, ư -> uu
+ * - Chữ đ -> quy định: đ -> d-
  */
 
 const TONE_MARKS: Record<string, number> = {
@@ -33,24 +33,32 @@ const VOWEL_ACCENTS: Record<string, string[]> = {
 };
 
 /**
- * Kiểm tra chuỗi có phải là mã VNI đã mã hóa theo quy ước không (vd: ba0, bac1, cang3, d-e+m0).
+ * Kiểm tra chuỗi có phải là mã VNI đã mã hóa theo quy ước không (vd: ba0, bac1, cang3, muung2, d-e+m0, xin0_chao2).
  */
 export function isVniCode(text: string): boolean {
   if (!text || typeof text !== 'string') return false;
   const t = text.trim().toLowerCase();
-  return /^[a-z0-9\+\-]+[0-5]$/.test(t) || t.includes('d-') || t.includes('+') || /[0-5]$/.test(t);
+  const tokens = t.split(/[_\s]+/).filter(Boolean);
+  if (tokens.length === 0) return false;
+  return tokens.every(
+    (tok) =>
+      /^[a-z0-9\+\-]+[0-5]$/.test(tok) ||
+      tok.includes('d-') ||
+      tok.includes('+') ||
+      /[0-5]$/.test(tok)
+  );
 }
 
 /**
- * Mã hóa 1 từ tiếng Việt sang mã theo quy ước (vd: ba -> ba0, bác -> bac1, cảng -> cang3).
+ * Mã hóa 1 từ đơn tiếng Việt sang mã theo quy ước (vd: ba -> ba0, bác -> bac1, cảng -> cang3, mừng -> muung2, đêm -> d-e+m0).
  */
-export function encodeVnWord(rawWord: string): string {
+export function encodeSingleWord(rawWord: string): string {
   if (!rawWord || typeof rawWord !== 'string') return '';
   let word = rawWord.trim().toLowerCase();
   if (!word) return '';
 
-  // Nếu chuỗi đã là mã theo quy ước (kết thúc bằng 0-5 và có ký tự mã hóa), trả về luôn
-  if (/^[a-z\+\-]+[0-5]$/.test(word)) {
+  // Nếu chuỗi đã là mã theo quy ước (kết thúc bằng 0-5), trả về luôn
+  if (/^[a-z0-9\+\-]+[0-5]$/.test(word)) {
     return word;
   }
 
@@ -73,7 +81,7 @@ export function encodeVnWord(rawWord: string): string {
   // Ghép lại NFC để có các nguyên âm mũ/móc (â, ô, ê, ă, ơ, ư) không còn dấu thanh
   const baseNfc = chars.join('').normalize('NFC');
 
-  // Quy ước mũ / móc
+  // Quy ước mũ / móc: â -> a+, ô -> o+, ê -> e+, ă -> aa, ơ -> oo, ư -> uu
   let res = '';
   for (const ch of baseNfc) {
     if (ch === 'â') res += 'a+';
@@ -85,14 +93,27 @@ export function encodeVnWord(rawWord: string): string {
     else res += ch;
   }
 
-  // Luôn đặt số dấu VNI (0-5) ở phía sau mỗi từ
+  // Luôn đặt số dấu VNI (0-5) ở phía sau mỗi từ. Từ không dấu thì đặt số 0 phía sau
   return `${res}${tone}`;
 }
 
 /**
- * Giải mã từ mã quy ước về từ tiếng Việt có dấu chuẩn (vd: bac1 -> bác, cang3 -> cảng, d-e+m0 -> đêm).
+ * Mã hóa từ hoặc cụm từ tiếng Việt sang mã theo quy ước (vd: ba -> ba0, bác -> bac1, cảng -> cang3, xin chào -> xin0_chao2).
  */
-export function decodeVnWord(code: string): string {
+export function encodeVnWord(rawText: string): string {
+  if (!rawText || typeof rawText !== 'string') return '';
+  const trimmed = rawText.trim().toLowerCase();
+  if (!trimmed) return '';
+
+  const words = trimmed.split(/[\s_]+/).filter(Boolean);
+  if (words.length === 0) return '';
+  return words.map(encodeSingleWord).join('_');
+}
+
+/**
+ * Giải mã 1 từ đơn từ mã quy ước về từ tiếng Việt có dấu chuẩn (vd: bac1 -> bác, cang3 -> cảng, ba0 -> ba, muung2 -> mừng, d-e+m0 -> đêm).
+ */
+export function decodeSingleWord(code: string): string {
   if (!code || typeof code !== 'string') return '';
   const c = code.trim().toLowerCase();
   if (!c) return '';
@@ -159,7 +180,7 @@ export function decodeVnWord(code: string): string {
       if (['a', 'e'].includes(v2)) {
         targetVowelIdx = vowelIndices[0];
       } else {
-        targetVowelIdx = vowelIndices[0]; // ai, oi, ui, ay
+        targetVowelIdx = vowelIndices[0];
       }
     }
   } else if (vowelIndices.length >= 3) {
@@ -185,7 +206,25 @@ export function decodeVnWord(code: string): string {
 }
 
 /**
- * Trả về tên file .wav theo đúng quy ước (vd: "bác" -> "bac1.wav", "ba" -> "ba0.wav").
+ * Giải mã từ hoặc chuỗi mã quy ước về từ tiếng Việt có dấu chuẩn (vd: xin0_chao2 -> xin chào, bac1 -> bác, cang3 -> cảng).
+ */
+export function decodeVnWord(code: string): string {
+  if (!code || typeof code !== 'string') return '';
+  const c = code.trim().toLowerCase();
+  if (!c) return '';
+
+  const tokens = c.split(/[_\s]+/).filter(Boolean);
+  return tokens.map(decodeSingleWord).join(' ');
+}
+
+/**
+ * Trả về tên file .wav theo đúng quy ước:
+ * - ba -> ba0.wav
+ * - bác -> bac1.wav
+ * - cảng -> cang3.wav
+ * - mừng -> muung2.wav
+ * - đêm -> d-e+m0.wav
+ * - xin chào -> xin0_chao2.wav
  */
 export function encodeVnFilename(word: string): string {
   if (!word || typeof word !== 'string') return 'audio.wav';
@@ -204,7 +243,7 @@ export function wordAndCodeFromFilename(filename: string): { word: string; code:
     .trim()
     .toLowerCase();
 
-  // Kiểm tra nếu là dạng mã quy ước VNI (vd: bac1, ba0, cang3, d-e+m0)
+  // Kiểm tra nếu là dạng mã quy ước VNI (vd: bac1, ba0, cang3, d-e+m0, xin0_chao2)
   if (isVniCode(cleanName)) {
     const word = decodeVnWord(cleanName);
     const code = encodeVnWord(word);
@@ -213,7 +252,6 @@ export function wordAndCodeFromFilename(filename: string): { word: string; code:
 
   // Nếu là từ tiếng Việt thông thường (vd: "bác" hoặc "xin chào")
   const word = cleanName.replace(/[_\-.]+/g, ' ').trim();
-  const code = word.split(' ').map(encodeVnWord).join('_');
+  const code = encodeVnWord(word);
   return { word, code };
 }
-

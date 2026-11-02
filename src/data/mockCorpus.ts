@@ -33,7 +33,7 @@ export const MOCK_CORPUS_ITEMS: CorpusItem[] = [
     word: 'xin chào',
     code: 'xin0_chao2',
     speaker: 'Nam',
-    filename: 'xin_chao_nam.wav',
+    filename: 'xin0_chao2.wav',
     duration: 0.72,
     createdAt: '2026-11-01 09:30',
     isMock: true
@@ -43,7 +43,7 @@ export const MOCK_CORPUS_ITEMS: CorpusItem[] = [
     word: 'việt nam',
     code: 'vie+t5_nam0',
     speaker: 'Nữ',
-    filename: 'viet_nam_nu.wav',
+    filename: 'vie+t5_nam0.wav',
     duration: 0.85,
     createdAt: '2026-11-01 09:35',
     isMock: true
@@ -53,7 +53,7 @@ export const MOCK_CORPUS_ITEMS: CorpusItem[] = [
     word: 'công nghệ',
     code: 'co+ng0_nghe+5',
     speaker: 'Nam',
-    filename: 'cong_nghe_nam.wav',
+    filename: 'co+ng0_nghe+5.wav',
     duration: 0.78,
     createdAt: '2026-11-01 10:15',
     isMock: true
@@ -63,7 +63,7 @@ export const MOCK_CORPUS_ITEMS: CorpusItem[] = [
     word: 'thông tin',
     code: 'tho+ng0_tin0',
     speaker: 'Nữ',
-    filename: 'thong_tin_nu.wav',
+    filename: 'tho+ng0_tin0.wav',
     duration: 0.69,
     createdAt: '2026-11-01 10:20',
     isMock: true
@@ -73,7 +73,7 @@ export const MOCK_CORPUS_ITEMS: CorpusItem[] = [
     word: 'tiếng việt',
     code: 'tie+ng1_vie+t5',
     speaker: 'Nữ',
-    filename: 'tieng_viet_nu.wav',
+    filename: 'tie+ng1_vie+t5.wav',
     duration: 0.74,
     createdAt: '2026-11-01 10:45',
     isMock: true
@@ -83,7 +83,7 @@ export const MOCK_CORPUS_ITEMS: CorpusItem[] = [
     word: 'học tập',
     code: 'hoc5_ta+p5',
     speaker: 'Nam',
-    filename: 'hoc_tap_nam.wav',
+    filename: 'hoc5_ta+p5.wav',
     duration: 0.75,
     createdAt: '2026-11-01 11:00',
     isMock: true
@@ -93,7 +93,7 @@ export const MOCK_CORPUS_ITEMS: CorpusItem[] = [
     word: 'tiếng nói',
     code: 'tie+ng1_noi1',
     speaker: 'Nữ',
-    filename: 'tieng_noi_nu.wav',
+    filename: 'tie+ng1_noi1.wav',
     duration: 0.81,
     createdAt: '2026-11-01 11:20',
     isMock: true
@@ -160,7 +160,7 @@ export const INITIAL_CONVERSION_HISTORY: ConversionHistoryItem[] = [
     speaker: 'Nam',
     duration: 0.72,
     createdAt: '2026-11-02 14:20',
-    filename: 'xin0_chao2_nam.wav',
+    filename: 'xin0_chao2.wav',
     status: 'completed'
   },
   {
@@ -169,7 +169,7 @@ export const INITIAL_CONVERSION_HISTORY: ConversionHistoryItem[] = [
     speaker: 'Nữ',
     duration: 0.85,
     createdAt: '2026-11-02 15:05',
-    filename: 'vie+t5_nam0_nu.wav',
+    filename: 'vie+t5_nam0.wav',
     status: 'completed'
   },
   {
@@ -178,7 +178,7 @@ export const INITIAL_CONVERSION_HISTORY: ConversionHistoryItem[] = [
     speaker: 'Nam',
     duration: 1.47,
     createdAt: '2026-11-02 16:30',
-    filename: 'cong_nghe_thong_tin_nam.wav',
+    filename: 'co+ng0_nghe+5_tho+ng0_tin0.wav',
     status: 'completed'
   }
 ];
