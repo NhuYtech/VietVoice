@@ -42,17 +42,17 @@ export const MainEditor: React.FC<MainEditorProps> = ({
   const vocabCheck = inspectVocabulary(text, selectedVoice, entries);
 
   return (
-    <div className="bg-white rounded-2xl border border-[#E8E8F0] shadow-sm overflow-hidden transition-all">
+    <div className="bg-white rounded-2xl border border-[#E8E8F0] shadow-sm overflow-hidden">
       {/* Top Toolbar */}
       <div className="px-6 py-3.5 border-b border-[#E8E8F0] flex items-center justify-between bg-[#FAFAFD]">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-[#E2E4F0] text-xs font-semibold text-[#20213A]">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-[#E2E4F0] text-xs font-semibold text-[#20213A] w-[170px] shrink-0 select-none">
             <span
-              className={`w-2 h-2 rounded-full ${
+              className={`w-2 h-2 rounded-full shrink-0 ${
                 selectedVoice === 'Nam' ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
               }`}
             />
-            <span>Đang chọn: Giọng {selectedVoice}</span>
+            <span className="whitespace-nowrap">Đang chọn: Giọng {selectedVoice}</span>
           </div>
 
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E2E4F0] text-xs font-medium text-[#555870]">
@@ -251,11 +251,11 @@ export const MainEditor: React.FC<MainEditorProps> = ({
               {/* CARD 1 — MALE VOICE */}
               <div
                 onClick={() => onSelectVoice('Nam')}
-                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between relative ${
+                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-colors duration-150 flex items-center justify-between relative ${
                   selectedVoice === 'Nam'
                     ? 'border-[#6255CF] bg-[#6255CF]/[0.04] shadow-sm'
                     : vocabCheck.hasWrongVoice && vocabCheck.suggestedVoice === 'Nam'
-                    ? 'border-amber-400 bg-amber-50/50 hover:border-amber-500 ring-2 ring-amber-300/40 animate-pulse'
+                    ? 'border-amber-400 bg-amber-50/50 hover:border-amber-500'
                     : 'border-[#E8E8F0] bg-white hover:border-[#D0D2E5]'
                 }`}
               >
@@ -299,11 +299,11 @@ export const MainEditor: React.FC<MainEditorProps> = ({
               {/* CARD 2 — FEMALE VOICE */}
               <div
                 onClick={() => onSelectVoice('Nữ')}
-                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between relative ${
+                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-colors duration-150 flex items-center justify-between relative ${
                   selectedVoice === 'Nữ'
                     ? 'border-[#6255CF] bg-[#6255CF]/[0.04] shadow-sm'
                     : vocabCheck.hasWrongVoice && vocabCheck.suggestedVoice === 'Nữ'
-                    ? 'border-amber-400 bg-amber-50/50 hover:border-amber-500 ring-2 ring-amber-300/40 animate-pulse'
+                    ? 'border-amber-400 bg-amber-50/50 hover:border-amber-500'
                     : 'border-[#E8E8F0] bg-white hover:border-[#D0D2E5]'
                 }`}
               >
