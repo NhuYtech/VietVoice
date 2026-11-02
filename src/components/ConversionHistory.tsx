@@ -395,12 +395,12 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
               return (
                 <div
                   key={item.id}
-                  className={`flex items-center justify-between px-5 py-3 transition hover:bg-[#FAFAFD] ${
+                  className={`relative flex items-center justify-between px-5 py-3 transition hover:bg-[#FAFAFD] ${
                     isSelected ? 'bg-[#FAF8FE]' : ''
                   }`}
                 >
                   {/* Left Side: Checkbox & Main Info */}
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1 pr-4">
+                  <div className="flex items-center gap-3.5 min-w-0 max-w-[42%] pr-4">
                     {/* Checkbox */}
                     <input
                       type="checkbox"
@@ -422,46 +422,49 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                         <span>•</span>
                         <span>{item.text.length} ký tự</span>
                         <span>•</span>
-                        <span>{(Number(item.duration) || 0).toFixed(2)}s</span>
+                        <span>{(Number(item.duration) || 0.72).toFixed(2)}s</span>
                         <span>•</span>
                         <span className="font-medium text-[#555870]">WAV</span>
+                        <span className="sm:hidden font-semibold text-[#6255CF]">
+                          • {isFemale ? 'Nữ' : 'Nam'}
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Middle Side: Status badge & Speaker */}
-                  <div className="hidden sm:flex items-center gap-2.5 shrink-0 px-4">
-                    {/* Phân loại trạng thái */}
-                    {item.status === 'converting' ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                        <div className="w-2.5 h-2.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
-                        Đang chuyển đổi
-                      </span>
-                    ) : item.status === 'failed' ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                        Thất bại
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        Thành công
-                      </span>
-                    )}
-
+                  {/* Middle Side: Nữ / Nam ở CHÍNH GIỮA hàng */}
+                  <div className="hidden sm:flex absolute left-1/2 -translate-x-1/2 items-center justify-center">
                     <span
-                      className={`text-xs font-semibold px-2 py-0.5 rounded-md ${
+                      className={`text-xs font-semibold px-3 py-1 rounded-full ${
                         isFemale
-                          ? 'bg-[#B16BC1]/10 text-[#B16BC1]'
-                          : 'bg-[#5578D8]/10 text-[#5578D8]'
+                          ? 'bg-[#B16BC1]/10 text-[#B16BC1] border border-[#B16BC1]/20'
+                          : 'bg-[#5578D8]/10 text-[#5578D8] border border-[#5578D8]/20'
                       }`}
                     >
                       {isFemale ? 'Nữ' : 'Nam'}
                     </span>
                   </div>
 
-                  {/* Right Side: Play / Download / More Actions */}
+                  {/* Right Side: Status badge & Play / Download / More Actions */}
                   <div className="flex items-center gap-3 shrink-0 relative">
+                    {/* Phân loại trạng thái */}
+                    {item.status === 'converting' ? (
+                      <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                        <div className="w-2.5 h-2.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                        Đang chuyển đổi
+                      </span>
+                    ) : item.status === 'failed' ? (
+                      <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                        Thất bại
+                      </span>
+                    ) : (
+                      <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Thành công
+                      </span>
+                    )}
+
                     {/* Circular Play Button */}
                     <button
                       onClick={() => handlePlayHistoryAudio(item)}
