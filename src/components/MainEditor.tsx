@@ -208,15 +208,15 @@ export const MainEditor: React.FC<MainEditorProps> = ({
       </div>
 
       {/* Main Action Bar */}
-      <div className="px-6 py-4 bg-[#F9FAFD] border-t border-[#E8E8F0] flex items-center justify-end">
+      <div className="px-6 py-4 bg-[#F9FAFD] border-t border-[#E8E8F0] flex items-center justify-center">
         {/* Nút Tạo audio */}
         <button
           onClick={onConvert}
           disabled={isConverting || !text.trim()}
-          className={`px-7 py-3 rounded-xl font-semibold text-sm flex items-center gap-2.5 text-white transition-all shadow-md ${
+          className={`px-8 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2.5 text-white transition-all shadow-md ${
             isConverting || !text.trim()
               ? 'bg-[#B0B2C5] cursor-not-allowed opacity-75'
-              : 'bg-[#6255CF] hover:bg-[#5144BD] shadow-[#6255CF]/25 hover:shadow-lg hover:shadow-[#6255CF]/30 active:scale-[0.98]'
+              : 'bg-[#6255CF] hover:bg-[#5144BD] shadow-[#6255CF]/25 hover:shadow-lg hover:shadow-[#6255CF]/30 active:scale-[0.98] cursor-pointer'
           }`}
         >
           {isConverting ? (
