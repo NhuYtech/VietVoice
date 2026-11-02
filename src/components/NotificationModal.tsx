@@ -208,3 +208,4 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ data, onCl
     </div>
   );
 };
+
