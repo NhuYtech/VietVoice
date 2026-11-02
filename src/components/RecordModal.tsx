@@ -29,6 +29,7 @@ export const RecordModal: React.FC<RecordModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  const inputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -73,6 +74,13 @@ export const RecordModal: React.FC<RecordModalProps> = ({
   const encodedName = wordInput.trim() ? encodeVnFilename(wordInput.trim()) : '';
 
   const startRecording = async () => {
+    if (!wordInput.trim()) {
+      setErrorMsg('Bắt buộc phải nhập từ tiếng Việt cần thu âm trước khi bắt đầu ghi âm!');
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+      return;
+    }
     setErrorMsg('');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -235,15 +243,31 @@ export const RecordModal: React.FC<RecordModalProps> = ({
 
           {/* Word Input & VNI Code Preview */}
           <div>
-            <label className="block text-xs font-bold text-[#555870] mb-2 uppercase tracking-wider">
-              2. Từ tiếng Việt cần thu âm
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-[#555870] uppercase tracking-wider">
+                2. Từ tiếng Việt cần thu âm <span className="text-red-500">*</span>
+              </label>
+              {!wordInput.trim() && (
+                <span className="text-[11px] text-amber-600 font-semibold flex items-center gap-1">
+                  (Bắt buộc nhập trước khi thu âm)
+                </span>
+              )}
+            </div>
             <input
+              ref={inputRef}
               type="text"
               value={wordInput}
-              onChange={(e) => setWordInput(e.target.value)}
-              placeholder="Ví dụ: xin chào, bác, cảng, việt nam..."
-              className="w-full px-4 py-2.5 text-sm rounded-xl border border-[#E8E8F0] focus:outline-none focus:border-[#6255CF] text-[#20213A]"
+              disabled={isRecording}
+              onChange={(e) => {
+                setWordInput(e.target.value);
+                if (errorMsg) setErrorMsg('');
+              }}
+              placeholder="Ví dụ: mừng, xin chào, bác, cảng, việt nam..."
+              className={`w-full px-4 py-2.5 text-sm rounded-xl border focus:outline-none transition ${
+                !wordInput.trim() && errorMsg
+                  ? 'border-red-400 bg-red-50/20 focus:border-red-500'
+                  : 'border-[#E8E8F0] focus:border-[#6255CF] text-[#20213A]'
+              } ${isRecording ? 'bg-slate-100 cursor-not-allowed opacity-75' : ''}`}
             />
 
             {/* VNI Filename Preview */}
@@ -271,36 +295,51 @@ export const RecordModal: React.FC<RecordModalProps> = ({
               />
             </div>
 
-            <div className="flex items-center justify-center gap-4 py-2">
-              {!isRecording ? (
-                <button
-                  type="button"
-                  onClick={startRecording}
-                  className="px-5 py-3 rounded-xl bg-[#6255CF] hover:bg-[#5144BD] text-white text-xs font-semibold flex items-center gap-2 shadow-md shadow-[#6255CF]/20 transition active:scale-95"
-                >
-                  <Mic className="w-4 h-4" />
-                  <span>Bắt đầu thu âm</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={stopRecording}
-                  className="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold flex items-center gap-2 animate-pulse shadow-md transition active:scale-95"
-                >
-                  <Square className="w-4 h-4 fill-current" />
-                  <span>Dừng thu âm</span>
-                </button>
-              )}
+            <div className="flex flex-col items-center justify-center gap-2 py-2">
+              <div className="flex items-center gap-4">
+                {!isRecording ? (
+                  <button
+                    type="button"
+                    onClick={startRecording}
+                    disabled={!wordInput.trim()}
+                    className={`px-5 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 transition ${
+                      !wordInput.trim()
+                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 shadow-none'
+                        : 'bg-[#6255CF] hover:bg-[#5144BD] text-white shadow-md shadow-[#6255CF]/20 active:scale-95 cursor-pointer'
+                    }`}
+                    title={!wordInput.trim() ? 'Vui lòng nhập từ tiếng Việt cần thu âm ở mục 2 trước' : 'Bắt đầu thu âm'}
+                  >
+                    <Mic className="w-4 h-4" />
+                    <span>Bắt đầu thu âm</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={stopRecording}
+                    className="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold flex items-center gap-2 animate-pulse shadow-md transition active:scale-95 cursor-pointer"
+                  >
+                    <Square className="w-4 h-4 fill-current" />
+                    <span>Dừng thu âm</span>
+                  </button>
+                )}
 
-              {audioBlob && !isRecording && (
-                <button
-                  type="button"
-                  onClick={handlePlayPreview}
-                  className="px-4 py-3 rounded-xl border border-[#E8E8F0] hover:bg-[#F7F8FC] text-xs font-semibold text-[#20213A] flex items-center gap-2 transition"
-                >
-                  <Play className="w-4 h-4 fill-current ml-0.5" />
-                  <span>Nghe lại</span>
-                </button>
+                {audioBlob && !isRecording && (
+                  <button
+                    type="button"
+                    onClick={handlePlayPreview}
+                    className="px-4 py-3 rounded-xl border border-[#E8E8F0] hover:bg-[#F7F8FC] text-xs font-semibold text-[#20213A] flex items-center gap-2 transition cursor-pointer"
+                  >
+                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                    <span>Nghe lại ({audioBlob.size > 0 ? (audioBlob.size / 1024).toFixed(1) + ' KB' : ''})</span>
+                  </button>
+                )}
+              </div>
+
+              {!wordInput.trim() && !isRecording && (
+                <p className="text-[11px] text-amber-600 font-medium flex items-center gap-1 mt-1 text-center">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Vui lòng nhập từ tiếng Việt cần thu âm ở mục 2 trước để mở khóa micro.</span>
+                </p>
               )}
             </div>
 
