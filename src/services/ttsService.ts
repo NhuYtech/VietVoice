@@ -55,7 +55,8 @@ export function addHistoryEntry(
   speaker: 'Nam' | 'Nữ',
   duration: number,
   audioBlob?: Blob,
-  audioUrl?: string
+  audioUrl?: string,
+  status: 'converting' | 'completed' | 'failed' = 'completed'
 ): ConversionHistoryItem {
   const now = new Date();
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
@@ -74,7 +75,7 @@ export function addHistoryEntry(
     audioBlob,
     audioUrl,
     filename,
-    status: 'completed',
+    status,
   };
 
   const current = getStoredHistory();

@@ -89,11 +89,32 @@ export const App: React.FC = () => {
     }
 
     setIsConverting(true);
+    const tempId = `conv-${Date.now()}`;
+    const pendingItem: ConversionHistoryItem = {
+      id: tempId,
+      text: inputText.trim(),
+      speaker: selectedVoice,
+      duration: 0,
+      createdAt: 'Vừa xong',
+      filename: `vietvoice_${selectedVoice === 'Nam' ? 'nam' : 'nu'}.wav`,
+      status: 'converting',
+    };
+    setHistoryItems((prev) => [pendingItem, ...prev]);
 
     try {
       const res = await performSynthesis(inputText, selectedVoice, realEntries);
 
       if (!res.success || !res.result) {
+        const failedHist = addHistoryEntry(
+          inputText,
+          selectedVoice,
+          0,
+          undefined,
+          undefined,
+          'failed'
+        );
+        setHistoryItems((prev) => [failedHist, ...prev.filter((p) => p.id !== tempId)]);
+
         const isMissing = Boolean(res.missingTokens && res.missingTokens.length > 0 && !res.suggestedVoice);
         setNotificationModal({
           type: 'warning',
@@ -126,14 +147,15 @@ export const App: React.FC = () => {
         setActiveResult(null);
       } else {
         setActiveResult(res.result);
-        // Lưu vào lịch sử chuyển đổi
         const newHist = addHistoryEntry(
           inputText,
           selectedVoice,
           res.result.durationSec,
-          res.result.wav
+          res.result.wav,
+          undefined,
+          'completed'
         );
-        setHistoryItems((prev) => [newHist, ...prev]);
+        setHistoryItems((prev) => [newHist, ...prev.filter((p) => p.id !== tempId)]);
 
         // Cập nhật và phát ngay ở thanh player cố định cuối trang
         setPlayerTrack({
@@ -148,12 +170,23 @@ export const App: React.FC = () => {
 
         setNotificationModal({
           type: 'success',
-          title: 'Chuyển đổi thành công!',
-          message: `Đã tạo âm thanh thành công (${res.result.durationSec.toFixed(2)} giây) bằng Giọng ${selectedVoice}!\nBạn có thể nghe phát âm thanh tại thanh điều khiển cố định bên dưới.`,
+          title: 'Tạo audio thành công!',
+          message: `Đã tạo audio thành công (${res.result.durationSec.toFixed(2)} giây) bằng Giọng ${selectedVoice}!
+Bạn có thể nghe phát âm thanh tại thanh điều khiển cố định bên dưới.`,
           confirmText: 'Tuyệt vời',
         });
       }
     } catch (err: any) {
+      const failedHist = addHistoryEntry(
+        inputText,
+        selectedVoice,
+        0,
+        undefined,
+        undefined,
+        'failed'
+      );
+      setHistoryItems((prev) => [failedHist, ...prev.filter((p) => p.id !== tempId)]);
+
       setNotificationModal({
         type: 'error',
         title: 'Lỗi tổng hợp âm thanh',

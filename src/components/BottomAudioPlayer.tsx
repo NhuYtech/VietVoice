@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, RotateCw, Download, Volume2, VolumeX, X } from 'lucide-react';
+import { Play, Pause, RotateCcw, RotateCw, Download, Volume2, Volume1, VolumeX, X } from 'lucide-react';
 
 export interface PlayerTrack {
   id?: string;
@@ -35,6 +35,7 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(100); // 0 to 100
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +62,7 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
     }
 
     audio.currentTime = 0;
+    audio.volume = isMuted ? 0 : volume / 100;
     setCurrentTime(0);
     setDuration(track.durationSec > 0 ? track.durationSec : 1);
 
@@ -164,9 +166,28 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
   // Bật / tắt tiếng (Mute)
   const handleToggleMute = () => {
     if (audioRef.current) {
-      audioRef.current.muted = !isMuted;
+      const nextMuted = !isMuted;
+      audioRef.current.muted = nextMuted;
+      setIsMuted(nextMuted);
+    } else {
+      setIsMuted(!isMuted);
     }
-    setIsMuted(!isMuted);
+  };
+
+  // Điều chỉnh tăng / giảm âm lượng trực tiếp
+  const handleVolumeChange = (newVal: number) => {
+    const clamped = Math.max(0, Math.min(100, newVal));
+    setVolume(clamped);
+    if (audioRef.current) {
+      audioRef.current.volume = clamped / 100;
+      if (clamped > 0 && isMuted) {
+        audioRef.current.muted = false;
+        setIsMuted(false);
+      }
+    }
+    if (clamped > 0 && isMuted) {
+      setIsMuted(false);
+    }
   };
 
   // Tải file âm thanh
@@ -194,7 +215,7 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
   return (
     <div className="fixed bottom-0 left-0 md:left-[240px] right-0 z-40 bg-white border-t border-[#E8E8F0] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-4 sm:px-6 py-2.5 flex items-center justify-between min-h-[68px] select-none">
       {/* 1. Bên trái: Tên bản ghi + Giọng (Nam / Nữ) */}
-      <div className="flex items-center gap-3 min-w-0 max-w-[260px] sm:max-w-[320px] md:max-w-[360px] shrink-0">
+      <div className="flex items-center gap-3 min-w-0 max-w-[240px] sm:max-w-[300px] md:max-w-[340px] shrink-0">
         <div className="min-w-0 flex-1">
           <div
             className="font-bold text-xs md:text-sm text-[#20213A] truncate leading-tight"
@@ -214,7 +235,7 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
       </div>
 
       {/* 2. Ở giữa: Bộ điều khiển Play/Pause + Tua + Thanh tiến trình thời gian */}
-      <div className="flex-1 max-w-xl mx-4 sm:mx-8 flex flex-col items-center justify-center">
+      <div className="flex-1 max-w-xl mx-3 sm:mx-6 flex flex-col items-center justify-center">
         {/* Hàng nút điều khiển */}
         <div className="flex items-center gap-4 mb-1">
           {/* Nút lùi 5s */}
@@ -226,7 +247,7 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
 
-          {/* Nút Play / Pause tròn màu xanh than/tím đậm */}
+          {/* Nút Play / Pause tròn màu tím/xanh than */}
           <button
             onClick={handleTogglePlay}
             className="w-9 h-9 rounded-full bg-[#1E2040] hover:bg-[#6255CF] text-white flex items-center justify-center shadow-sm transition active:scale-95"
@@ -264,7 +285,7 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
               className="h-full bg-[#6255CF] rounded-full"
               style={{ width: `${progressPercent}%` }}
             />
-            {/* Vòng tròn slider thumb màu vàng viền trắng giống chuẩn hình */}
+            {/* Vòng tròn slider thumb màu vàng viền trắng */}
             <div
               className="absolute w-3 h-3 bg-white border-2 border-[#EAB308] rounded-full shadow-xs -ml-1.5 transition-transform group-hover:scale-125"
               style={{ left: `${progressPercent}%` }}
@@ -277,8 +298,8 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
         </div>
       </div>
 
-      {/* 3. Bên phải: Nút Tải về + Âm lượng + Đóng player */}
-      <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+      {/* 3. Bên phải: Nút Tải về + Nút tăng giảm âm lượng + Đóng player */}
+      <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
         {/* Nút tải về */}
         <button
           onClick={handleDownload}
@@ -288,23 +309,38 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
           <Download className="w-4 h-4" />
         </button>
 
-        {/* Nút âm lượng / Mute */}
-        <button
-          onClick={handleToggleMute}
-          className="p-1.5 text-[#555870] hover:text-[#6255CF] transition rounded-lg hover:bg-gray-50"
-          title={isMuted ? 'Bật tiếng' : 'Tắt tiếng'}
-        >
-          {isMuted ? (
-            <VolumeX className="w-4 h-4 text-red-500" />
-          ) : (
-            <Volume2 className="w-4 h-4" />
-          )}
-        </button>
+        {/* Cụm nút tăng giảm âm lượng */}
+        <div className="flex items-center gap-1.5 bg-[#FAFBFD] px-2 py-1 rounded-xl border border-[#E8E8F0]">
+          <button
+            type="button"
+            onClick={handleToggleMute}
+            className="p-1 text-[#555870] hover:text-[#6255CF] transition"
+            title={isMuted ? 'Bật âm thanh' : `Âm lượng: ${volume}% (Nhấp để tắt tiếng)`}
+          >
+            {isMuted || volume === 0 ? (
+              <VolumeX className="w-4 h-4 text-rose-500" />
+            ) : volume < 50 ? (
+              <Volume1 className="w-4 h-4" />
+            ) : (
+              <Volume2 className="w-4 h-4" />
+            )}
+          </button>
+
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={isMuted ? 0 : volume}
+            onChange={(e) => handleVolumeChange(Number(e.target.value))}
+            className="w-16 sm:w-20 h-1.5 bg-[#E2E4F0] rounded-lg appearance-none cursor-pointer accent-[#6255CF]"
+            title={`Điều chỉnh âm lượng: ${isMuted ? 0 : volume}%`}
+          />
+        </div>
 
         {/* Nút tắt player bar */}
         <button
           onClick={onClose}
-          className="p-1.5 text-[#85879A] hover:text-red-500 transition rounded-lg hover:bg-gray-50"
+          className="p-1.5 text-[#85879A] hover:text-red-500 transition rounded-lg hover:bg-gray-50 ml-1"
           title="Đóng thanh phát âm thanh"
         >
           <X className="w-4 h-4" />
@@ -313,4 +349,3 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
     </div>
   );
 };
-

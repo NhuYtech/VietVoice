@@ -208,23 +208,8 @@ export const MainEditor: React.FC<MainEditorProps> = ({
       </div>
 
       {/* Main Action Bar */}
-      <div className="px-6 py-4 bg-[#F9FAFD] border-t border-[#E8E8F0] flex items-center justify-between">
-        {/* Nút nghe thử giọng đọc đã chọn */}
-        <button
-          type="button"
-          onClick={() => onPlayPreviewVoice(selectedVoice)}
-          className="flex items-center gap-2 text-xs font-medium text-[#555870] hover:text-[#6255CF] px-3.5 py-2 rounded-xl border border-[#E2E4F0] bg-white hover:bg-gray-50 transition shadow-2xs"
-          title={`Nghe thử giọng ${selectedVoice}`}
-        >
-          {isPlayingPreview === selectedVoice ? (
-            <Square className="w-3.5 h-3.5 fill-current text-[#6255CF]" />
-          ) : (
-            <Play className="w-3.5 h-3.5 fill-current" />
-          )}
-          <span>Nghe thử giọng {selectedVoice}</span>
-        </button>
-
-        {/* Nút Chuyển thành âm thanh */}
+      <div className="px-6 py-4 bg-[#F9FAFD] border-t border-[#E8E8F0] flex items-center justify-end">
+        {/* Nút Tạo audio */}
         <button
           onClick={onConvert}
           disabled={isConverting || !text.trim()}
@@ -237,12 +222,12 @@ export const MainEditor: React.FC<MainEditorProps> = ({
           {isConverting ? (
             <>
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <span>Đang chuyển đổi...</span>
+              <span>Đang tạo audio...</span>
             </>
           ) : (
             <>
               <Volume2 className="w-4 h-4" />
-              <span>Chuyển thành âm thanh</span>
+              <span>Tạo audio</span>
             </>
           )}
         </button>

@@ -64,7 +64,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
   onShowNotification,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [voiceFilter, setVoiceFilter] = useState<'all' | 'Nam' | 'Nữ'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'converting' | 'completed' | 'failed'>('all');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -98,9 +98,12 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
 
   const filtered = safeItems.filter((item) => {
     const matchText = String(item?.text || '').toLowerCase().includes((searchTerm || '').toLowerCase());
-    const matchVoice = voiceFilter === 'all' || item?.speaker === voiceFilter;
+    const matchStatus =
+      statusFilter === 'all' ||
+      item?.status === statusFilter ||
+      (!item?.status && statusFilter === 'completed');
     const matchDate = !selectedDate || String(item?.createdAt || '').startsWith(selectedDate);
-    return matchText && matchVoice && matchDate;
+    return matchText && matchStatus && matchDate;
   });
 
   const handleToggleSelectOne = (id: string) => {
@@ -132,6 +135,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
   };
 
   const handlePlayHistoryAudio = (item: ConversionHistoryItem) => {
+    if (item.status === 'converting') return;
     setPlayingId(item.id);
 
     if (onPlayTrack) {
@@ -155,7 +159,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
     } else {
       onShowNotification?.({
         type: 'info',
-        title: 'Phát âm thanh mẫu',
+        title: 'Phát âm thanh',
         message: `Đang phát bản ghi: "${item.text}" (Giọng ${item.speaker}).\nFile định dạng WAV lossless (22.05 kHz).`,
         confirmText: 'Đã hiểu',
       });
@@ -163,6 +167,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
   };
 
   const handleDownloadItem = (item: ConversionHistoryItem) => {
+    if (item.status === 'converting') return;
     if (item.audioBlob) {
       const url = URL.createObjectURL(item.audioBlob);
       const a = document.createElement('a');
@@ -258,7 +263,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
             )}
           </div>
 
-          {/* Filter Button & Popover */}
+          {/* Filter Button & Popover - Phân loại theo Trạng thái */}
           <div className="relative" ref={filterRef}>
             <button
               onClick={() => {
@@ -266,61 +271,75 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                 setIsCalendarOpen(false);
               }}
               className={`p-2 rounded-lg border transition ${
-                voiceFilter !== 'all'
+                statusFilter !== 'all'
                   ? 'border-[#6255CF] bg-[#F7F6FD] text-[#6255CF]'
                   : 'border-[#E2E4F0] text-[#555870] hover:text-[#20213A] hover:bg-gray-50'
               }`}
-              title="Bộ lọc giọng đọc"
+              title="Phân loại trạng thái"
             >
               <Filter className="w-3.5 h-3.5" />
             </button>
 
             {isFilterOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-36 bg-white rounded-xl border border-[#E2E4F0] shadow-lg p-1.5 z-30 animate-in fade-in zoom-in-95 text-xs">
+              <div className="absolute right-0 top-full mt-1.5 w-44 bg-white rounded-xl border border-[#E2E4F0] shadow-lg p-1.5 z-30 animate-in fade-in zoom-in-95 text-xs">
                 <div className="px-2 py-1 text-[11px] font-bold text-[#85879A] uppercase tracking-wider">
-                  Giọng đọc
+                  Trạng thái
                 </div>
                 <button
                   onClick={() => {
-                    setVoiceFilter('all');
+                    setStatusFilter('all');
                     setIsFilterOpen(false);
                   }}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${
-                    voiceFilter === 'all'
+                    statusFilter === 'all'
                       ? 'bg-[#F7F6FD] text-[#6255CF] font-semibold'
                       : 'text-[#20213A] hover:bg-gray-50'
                   }`}
                 >
                   <span>Tất cả</span>
-                  {voiceFilter === 'all' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
+                  {statusFilter === 'all' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
                 </button>
                 <button
                   onClick={() => {
-                    setVoiceFilter('Nữ');
+                    setStatusFilter('converting');
                     setIsFilterOpen(false);
                   }}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${
-                    voiceFilter === 'Nữ'
+                    statusFilter === 'converting'
                       ? 'bg-[#F7F6FD] text-[#6255CF] font-semibold'
                       : 'text-[#20213A] hover:bg-gray-50'
                   }`}
                 >
-                  <span>Nữ</span>
-                  {voiceFilter === 'Nữ' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
+                  <span>Đang chuyển đổi</span>
+                  {statusFilter === 'converting' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
                 </button>
                 <button
                   onClick={() => {
-                    setVoiceFilter('Nam');
+                    setStatusFilter('completed');
                     setIsFilterOpen(false);
                   }}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${
-                    voiceFilter === 'Nam'
+                    statusFilter === 'completed'
                       ? 'bg-[#F7F6FD] text-[#6255CF] font-semibold'
                       : 'text-[#20213A] hover:bg-gray-50'
                   }`}
                 >
-                  <span>Nam</span>
-                  {voiceFilter === 'Nam' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
+                  <span>Thành công</span>
+                  {statusFilter === 'completed' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
+                </button>
+                <button
+                  onClick={() => {
+                    setStatusFilter('failed');
+                    setIsFilterOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${
+                    statusFilter === 'failed'
+                      ? 'bg-[#F7F6FD] text-[#6255CF] font-semibold'
+                      : 'text-[#20213A] hover:bg-gray-50'
+                  }`}
+                >
+                  <span>Thất bại</span>
+                  {statusFilter === 'failed' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
                 </button>
               </div>
             )}
@@ -371,6 +390,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
               const isFemale = item.speaker === 'Nữ';
               const isPlaying = playingId === item.id;
               const isSelected = selectedIds.has(item.id);
+              const isConvertingItem = item.status === 'converting';
 
               return (
                 <div
@@ -402,15 +422,33 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                         <span>•</span>
                         <span>{item.text.length} ký tự</span>
                         <span>•</span>
-                        <span>{(Number(item.duration) || 0.72).toFixed(2)}s</span>
+                        <span>{(Number(item.duration) || 0).toFixed(2)}s</span>
                         <span>•</span>
                         <span className="font-medium text-[#555870]">WAV</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Middle Side: Speaker Name (Chỉ hiển thị Nam hoặc Nữ) */}
-                  <div className="hidden sm:flex items-center shrink-0 px-4">
+                  {/* Middle Side: Status badge & Speaker */}
+                  <div className="hidden sm:flex items-center gap-2.5 shrink-0 px-4">
+                    {/* Phân loại trạng thái */}
+                    {item.status === 'converting' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                        <div className="w-2.5 h-2.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                        Đang chuyển đổi
+                      </span>
+                    ) : item.status === 'failed' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                        Thất bại
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Thành công
+                      </span>
+                    )}
+
                     <span
                       className={`text-xs font-semibold px-2 py-0.5 rounded-md ${
                         isFemale
@@ -427,12 +465,15 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                     {/* Circular Play Button */}
                     <button
                       onClick={() => handlePlayHistoryAudio(item)}
+                      disabled={isConvertingItem}
                       className={`w-7 h-7 rounded-full flex items-center justify-center transition shadow-xs ${
-                        isPlaying
+                        isConvertingItem
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : isPlaying
                           ? 'bg-[#6255CF] text-white ring-2 ring-[#6255CF]/30'
                           : 'bg-[#1E2040] hover:bg-[#6255CF] text-white'
                       }`}
-                      title="Phát trong trình phát âm thanh"
+                      title={isConvertingItem ? 'Đang chuyển đổi...' : 'Phát trong trình phát âm thanh'}
                     >
                       {isPlaying ? (
                         <Square className="w-2.5 h-2.5 fill-current" />
@@ -444,7 +485,10 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                     {/* Download Button */}
                     <button
                       onClick={() => handleDownloadItem(item)}
-                      className="p-1.5 text-[#555870] hover:text-[#6255CF] transition rounded-lg hover:bg-gray-50"
+                      disabled={isConvertingItem}
+                      className={`p-1.5 transition rounded-lg hover:bg-gray-50 ${
+                        isConvertingItem ? 'text-gray-300 cursor-not-allowed' : 'text-[#555870] hover:text-[#6255CF]'
+                      }`}
                       title="Tải về file WAV"
                     >
                       <Download className="w-4 h-4" />
@@ -483,7 +527,8 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                               handleDownloadItem(item);
                               setActiveMenuId(null);
                             }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-[#20213A] hover:bg-[#F7F6FD] hover:text-[#6255CF] text-left transition"
+                            disabled={isConvertingItem}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-[#20213A] hover:bg-[#F7F6FD] hover:text-[#6255CF] text-left transition disabled:opacity-50"
                           >
                             <Download className="w-3.5 h-3.5" />
                             <span>Tải xuống WAV</span>
