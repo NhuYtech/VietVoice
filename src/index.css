@@ -8,6 +8,43 @@
     color: #20213A;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+
+  /* Toàn bộ web mặc định là con trỏ mũi tên và không cho bôi đen text tùy tiện */
+  body, body * {
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+  }
+
+  /* Chỉ các ô nhập liệu mới hiện con trỏ I-beam và cho phép chọn text */
+  input[type="text"],
+  input[type="search"],
+  input:not([type]),
+  textarea {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+  }
+
+  /* Các phần tử bấm được (nút, link) luôn có con trỏ bàn tay (pointer) */
+  button,
+  button *,
+  a,
+  a *,
+  [role="button"],
+  [role="button"] *,
+  .cursor-pointer,
+  .cursor-pointer *,
+  input[type="button"],
+  input[type="submit"] {
+    cursor: pointer;
+  }
+
+  /* Nút bị disable */
+  button:disabled,
+  button:disabled * {
+    cursor: not-allowed;
+  }
 }
 
 /* Custom Scrollbar for modern SaaS look */

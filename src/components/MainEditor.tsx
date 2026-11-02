@@ -46,9 +46,8 @@ export const MainEditor: React.FC<MainEditorProps> = ({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-[#E2E4F0] text-xs font-semibold text-[#20213A]">
             <span
-              className={`w-2 h-2 rounded-full ${
-                selectedVoice === 'Nam 01' ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
-              }`}
+              className={`w-2 h-2 rounded-full ${selectedVoice === 'Nam 01' ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
+                }`}
             />
             <span>Đang chọn: {selectedVoice}</span>
           </div>
@@ -107,11 +106,10 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                   return (
                     <span
                       key={`${tok}-${idx}`}
-                      className={`px-2 py-0.5 rounded-md text-[11px] font-medium flex items-center gap-1 ${
-                        isAvailable
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-medium flex items-center gap-1 ${isAvailable
                           ? 'bg-emerald-100/80 text-emerald-800 border border-emerald-200'
                           : 'bg-amber-100/80 text-amber-800 border border-amber-200'
-                      }`}
+                        }`}
                       title={isAvailable ? 'Đã có trong ngữ liệu' : 'Chưa có trong ngữ liệu thu âm'}
                     >
                       {isAvailable ? '✓' : '!'} {tok}
@@ -159,11 +157,10 @@ export const MainEditor: React.FC<MainEditorProps> = ({
               {/* CARD 1 — MALE VOICE */}
               <div
                 onClick={() => onSelectVoice('Nam 01')}
-                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                  selectedVoice === 'Nam 01'
+                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${selectedVoice === 'Nam 01'
                     ? 'border-[#6255CF] bg-[#6255CF]/[0.04] shadow-sm'
                     : 'border-[#E8E8F0] bg-white hover:border-[#D0D2E5]'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#3B65D6] to-[#5578D8] flex items-center justify-center text-white shadow-sm">
@@ -200,11 +197,10 @@ export const MainEditor: React.FC<MainEditorProps> = ({
               {/* CARD 2 — FEMALE VOICE */}
               <div
                 onClick={() => onSelectVoice('Nữ 01')}
-                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                  selectedVoice === 'Nữ 01'
+                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${selectedVoice === 'Nữ 01'
                     ? 'border-[#6255CF] bg-[#6255CF]/[0.04] shadow-sm'
                     : 'border-[#E8E8F0] bg-white hover:border-[#D0D2E5]'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#9B53AD] to-[#B16BC1] flex items-center justify-center text-white shadow-sm">
@@ -245,11 +241,10 @@ export const MainEditor: React.FC<MainEditorProps> = ({
             <button
               onClick={onConvert}
               disabled={isConverting || !text.trim()}
-              className={`px-7 py-3.5 rounded-xl font-semibold text-sm flex items-center gap-2.5 text-white transition-all shadow-md ${
-                isConverting || !text.trim()
+              className={`px-7 py-3.5 rounded-xl font-semibold text-sm flex items-center gap-2.5 text-white transition-all shadow-md ${isConverting || !text.trim()
                   ? 'bg-[#B0B2C5] cursor-not-allowed opacity-75'
                   : 'bg-[#6255CF] hover:bg-[#5144BD] shadow-[#6255CF]/25 hover:shadow-lg hover:shadow-[#6255CF]/30 active:scale-[0.98]'
-              }`}
+                }`}
             >
               {isConverting ? (
                 <>
