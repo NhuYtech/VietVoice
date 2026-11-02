@@ -2,6 +2,8 @@ import { SR, decodeBlob, encodeWav, extractFeatures, estimateF0, fadeEdges, norm
 import { putEntry } from './store';
 import type { CorpusEntry, JoinInfo, SynthResult, TraceItem } from './types';
 import { encodeVnWord, isVniCode, decodeVnWord, wordAndCodeFromFilename } from './vniCodec';
+import type { PauseSettings } from '../components/PauseSettingsModal';
+import { DEFAULT_PAUSE_SETTINGS } from '../components/PauseSettingsModal';
 
 /* Bước 1: chuẩn hóa văn bản (hỗ trợ cả tiếng Việt có dấu và mã VNI quy ước a+, d-, o+...) */
 export function normalizeText(s: string): string {
@@ -40,6 +42,56 @@ export interface SynthOptions {
   trim: boolean;
   normalize: boolean;
   fallbackSpeaker: boolean;
+  pauseSettings?: PauseSettings;
+  rawText?: string;
+}
+
+/**
+ * Tính toán khoảng ngắt nghỉ giữa các từ dựa vào dấu câu (chấm, phẩy, chấm phẩy, xuống dòng)
+ */
+function computeSegmentGaps(
+  rawText: string,
+  picked: { item: TraceItem }[],
+  pauseSettings: PauseSettings,
+  defaultGapMs: number
+): number[] {
+  const gaps: number[] = new Array(picked.length).fill(defaultGapMs);
+  if (picked.length <= 1) return gaps;
+
+  let searchIdx = 0;
+  const positions: { start: number; end: number }[] = [];
+  const lowerText = rawText.toLowerCase();
+
+  for (const p of picked) {
+    const tok = p.item.token.toLowerCase();
+    const idx = lowerText.indexOf(tok, searchIdx);
+    if (idx !== -1) {
+      positions.push({ start: idx, end: idx + tok.length });
+      searchIdx = idx + tok.length;
+    } else {
+      positions.push({ start: searchIdx, end: searchIdx });
+    }
+  }
+
+  for (let k = 1; k < picked.length; k++) {
+    const prevEnd = positions[k - 1].end;
+    const currStart = positions[k].start;
+    const between = currStart >= prevEnd ? rawText.slice(prevEnd, currStart) : '';
+
+    if (between.includes('\n')) {
+      gaps[k] = Math.round((pauseSettings.newline ?? 0.6) * 1000);
+    } else if (/[.!?]/.test(between)) {
+      gaps[k] = Math.round((pauseSettings.period ?? 0.45) * 1000);
+    } else if (between.includes(';')) {
+      gaps[k] = Math.round((pauseSettings.semicolon ?? 0.3) * 1000);
+    } else if (between.includes(',')) {
+      gaps[k] = Math.round((pauseSettings.comma ?? 0.25) * 1000);
+    } else {
+      gaps[k] = defaultGapMs;
+    }
+  }
+
+  return gaps;
 }
 
 export async function getProcessed(e: CorpusEntry, trim: boolean, normalize: boolean): Promise<Float32Array> {
@@ -127,13 +179,20 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
     segs.push(x);
   }
 
-  const gap = Math.round((opts.gapMs / 1000) * SR);
+  const rawText = opts.rawText || text;
+  const pauseSettings = opts.pauseSettings || DEFAULT_PAUSE_SETTINGS;
+  const segmentGaps = computeSegmentGaps(rawText, picked, pauseSettings, opts.gapMs);
+
   const cf = Math.round((opts.crossfadeMs / 1000) * SR);
   const starts: number[] = [];
   let prevEnd = 0;
   segs.forEach((x, k) => {
     let s = 0;
-    if (k > 0) s = gap > 0 ? prevEnd + gap : Math.max(0, prevEnd - Math.min(cf, x.length, segs[k - 1].length));
+    if (k > 0) {
+      const curGapMs = segmentGaps[k] ?? opts.gapMs;
+      const gapSamples = Math.round((curGapMs / 1000) * SR);
+      s = curGapMs > 0 ? prevEnd + gapSamples : Math.max(0, prevEnd - Math.min(cf, x.length, segs[k - 1].length));
+    }
     starts.push(s);
     prevEnd = s + x.length;
   });

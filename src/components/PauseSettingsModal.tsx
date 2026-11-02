@@ -244,3 +244,4 @@ export const PauseSettingsModal: React.FC<PauseSettingsModalProps> = ({
     </div>
   );
 };
+

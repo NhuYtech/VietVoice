@@ -1,6 +1,7 @@
 import type { CorpusEntry, SynthResult } from '../lib/types';
 import { synthesize, normalizeText } from '../lib/tts';
 import { INITIAL_CONVERSION_HISTORY, MOCK_CORPUS_ITEMS, type ConversionHistoryItem } from '../data/mockCorpus';
+import { getStoredPauseSettings } from '../components/PauseSettingsModal';
 
 const STORAGE_KEY = 'vietvoice_conversion_history';
 
@@ -324,6 +325,7 @@ export async function performSynthesis(
     return spk === speakerKey || spk.includes(speakerKey);
   });
 
+  const pauseSettings = getStoredPauseSettings();
   try {
     const synthRes = await synthesize(norm, speakerEntries, {
       speaker: speakerKey,
@@ -332,6 +334,8 @@ export async function performSynthesis(
       trim: true,
       normalize: true,
       fallbackSpeaker: false, // RÀNG BUỘC: Không tự động lấy giọng khác, phải đúng giọng đã chọn
+      pauseSettings,
+      rawText: text,
     });
 
     const oovTokens = (synthRes.trace || []).filter((t) => t.status === 'oov').map((t) => t.token);
