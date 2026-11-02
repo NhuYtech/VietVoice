@@ -20,9 +20,10 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
   const [voiceFilter, setVoiceFilter] = useState<'all' | 'Nam 01' | 'Nữ 01'>('all');
   const [playingId, setPlayingId] = useState<string | null>(null);
 
-  const filtered = items.filter((item) => {
-    const matchText = item.text.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchVoice = voiceFilter === 'all' || item.speaker === voiceFilter;
+  const safeItems = Array.isArray(items) ? items : [];
+  const filtered = safeItems.filter((item) => {
+    const matchText = String(item?.text || '').toLowerCase().includes((searchTerm || '').toLowerCase());
+    const matchVoice = voiceFilter === 'all' || item?.speaker === voiceFilter;
     return matchText && matchVoice;
   });
 
@@ -192,7 +193,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                     </span>
                   </td>
                   <td className="py-3.5 px-4 font-mono text-[11px] text-[#20213A]">
-                    {item.duration.toFixed(2)}s
+                    {(Number(item?.duration) || 0).toFixed(2)}s
                   </td>
                   <td className="py-3.5 px-4 text-[#85879A] text-[11px]">
                     {item.createdAt}

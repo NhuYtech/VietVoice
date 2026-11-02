@@ -36,6 +36,7 @@ const VOWEL_ACCENTS: Record<string, string[]> = {
  * Kiểm tra chuỗi có phải là mã VNI đã mã hóa theo quy ước không (vd: ba0, bac1, cang3, d-e+m0).
  */
 export function isVniCode(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
   const t = text.trim().toLowerCase();
   return /^[a-z0-9\+\-]+[0-5]$/.test(t) || t.includes('d-') || t.includes('+') || /[0-5]$/.test(t);
 }
@@ -44,6 +45,7 @@ export function isVniCode(text: string): boolean {
  * Mã hóa 1 từ tiếng Việt sang mã theo quy ước (vd: ba -> ba0, bác -> bac1, cảng -> cang3).
  */
 export function encodeVnWord(rawWord: string): string {
+  if (!rawWord || typeof rawWord !== 'string') return '';
   let word = rawWord.trim().toLowerCase();
   if (!word) return '';
 
@@ -91,6 +93,7 @@ export function encodeVnWord(rawWord: string): string {
  * Giải mã từ mã quy ước về từ tiếng Việt có dấu chuẩn (vd: bac1 -> bác, cang3 -> cảng, d-e+m0 -> đêm).
  */
 export function decodeVnWord(code: string): string {
+  if (!code || typeof code !== 'string') return '';
   const c = code.trim().toLowerCase();
   if (!c) return '';
 
@@ -185,14 +188,16 @@ export function decodeVnWord(code: string): string {
  * Trả về tên file .wav theo đúng quy ước (vd: "bác" -> "bac1.wav", "ba" -> "ba0.wav").
  */
 export function encodeVnFilename(word: string): string {
+  if (!word || typeof word !== 'string') return 'audio.wav';
   const code = encodeVnWord(word);
-  return `${code}.wav`;
+  return `${code || 'audio'}.wav`;
 }
 
 /**
  * Nhận diện từ và mã quy ước từ tên file (vd: "bac1.wav" -> { word: "bác", code: "bac1" }).
  */
 export function wordAndCodeFromFilename(filename: string): { word: string; code: string } {
+  if (!filename || typeof filename !== 'string') return { word: '', code: '' };
   const cleanName = filename
     .replace(/\.[^.]+$/, '') // bỏ đuôi .wav
     .replace(/\s*\(\d+\)\s*$/, '') // bỏ (1), (2)...

@@ -14,7 +14,20 @@ export function getStoredHistory(): ConversionHistoryItem[] {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_CONVERSION_HISTORY));
       return INITIAL_CONVERSION_HISTORY;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return INITIAL_CONVERSION_HISTORY;
+    }
+    // Chuẩn hóa và làm sạch từng mục để không bao giờ bị undefined gây crash
+    return parsed.map((item, idx) => ({
+      id: item?.id || `hist-${idx}-${Date.now()}`,
+      text: String(item?.text || 'Mẫu âm thanh'),
+      speaker: (item?.speaker === 'Nữ 01' ? 'Nữ 01' : 'Nam 01') as 'Nam 01' | 'Nữ 01',
+      duration: typeof item?.duration === 'number' && !isNaN(item.duration) ? item.duration : 0.6,
+      createdAt: String(item?.createdAt || '2026-11-02 12:00'),
+      filename: String(item?.filename || 'amtu_audio.wav'),
+      status: item?.status === 'failed' ? 'failed' : 'completed',
+    }));
   } catch (err) {
     console.error('Không thể đọc lịch sử chuyển đổi:', err);
     return INITIAL_CONVERSION_HISTORY;
@@ -26,12 +39,12 @@ export function getStoredHistory(): ConversionHistoryItem[] {
  */
 export function saveHistory(items: ConversionHistoryItem[]): void {
   try {
-    // Chỉ lưu metadata, bỏ blob để tránh tràn dung lượng LocalStorage
-    const serializable = items.map((item) => ({
+    if (!Array.isArray(items)) return;
+    const serializable = items.slice(0, 50).map((item) => ({
       id: item.id,
       text: item.text,
       speaker: item.speaker,
-      duration: item.duration,
+      duration: typeof item.duration === 'number' ? item.duration : 0.6,
       createdAt: item.createdAt,
       filename: item.filename,
       status: item.status,
@@ -57,14 +70,14 @@ export function addHistoryEntry(
     now.getDate()
   ).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-  const cleanText = text.trim().slice(0, 15).replace(/\s+/g, '_').toLowerCase();
+  const cleanText = (text || '').trim().slice(0, 15).replace(/\s+/g, '_').toLowerCase();
   const filename = `amtu_${speaker === 'Nam 01' ? 'nam' : 'nu'}_${cleanText || 'audio'}.wav`;
 
   const newItem: ConversionHistoryItem = {
     id: `conv-${Date.now()}`,
-    text: text.trim(),
+    text: (text || '').trim(),
     speaker,
-    duration,
+    duration: typeof duration === 'number' && !isNaN(duration) ? duration : 0.6,
     createdAt: dateStr,
     audioBlob,
     audioUrl,
@@ -108,19 +121,24 @@ export function inspectVocabulary(
   missingWords: string[];
   isFullyAvailable: boolean;
 } {
-  const norm = normalizeText(text);
+  const norm = normalizeText(text || '');
   if (!norm) {
     return { tokens: [], matchedWords: [], missingWords: [], isFullyAvailable: false };
   }
 
   const tokens = norm.split(/\s+/).filter(Boolean);
   const speakerKey = mapSpeakerToCore(speaker);
+  const safeEntries = Array.isArray(entries) ? entries : [];
 
   // Tập từ có sẵn của người nói này (và cả các speaker khác nếu tìm)
   const availableSet = new Set(
-    entries
-      .filter((e) => e.speaker.toLowerCase() === speakerKey.toLowerCase() || e.speaker.toLowerCase().includes(speakerKey.toLowerCase()))
-      .map((e) => e.word.toLowerCase())
+    safeEntries
+      .filter((e) => {
+        const spk = (e?.speaker || '').toLowerCase();
+        return spk === speakerKey || spk.includes(speakerKey);
+      })
+      .map((e) => (e?.word || '').toLowerCase())
+      .filter(Boolean)
   );
 
   const matchedWords: string[] = [];
@@ -155,20 +173,22 @@ export async function performSynthesis(
   error?: string;
   missingTokens?: string[];
 }> {
-  const norm = normalizeText(text);
+  const norm = normalizeText(text || '');
   if (!norm) {
     return { success: false, error: 'Vui lòng nhập văn bản tiếng Việt hợp lệ.' };
   }
 
   const speakerKey = mapSpeakerToCore(speaker);
+  const safeEntries = Array.isArray(entries) ? entries : [];
 
   // Tìm các mục khớp
-  const speakerEntries = entries.filter(
-    (e) => e.speaker.toLowerCase() === speakerKey.toLowerCase() || e.speaker.toLowerCase().includes(speakerKey.toLowerCase())
-  );
+  const speakerEntries = safeEntries.filter((e) => {
+    const spk = (e?.speaker || '').toLowerCase();
+    return spk === speakerKey || spk.includes(speakerKey);
+  });
 
   try {
-    const synthRes = await synthesize(norm, speakerEntries.length > 0 ? speakerEntries : entries, {
+    const synthRes = await synthesize(norm, speakerEntries.length > 0 ? speakerEntries : safeEntries, {
       speaker: speakerKey,
       gapMs: 80,
       crossfadeMs: 25,
@@ -178,9 +198,9 @@ export async function performSynthesis(
     });
 
     // Kiểm tra xem có từ nào OOV (Out Of Vocabulary - không có trong ngữ liệu)
-    const oovTokens = synthRes.trace.filter((t) => t.status === 'oov').map((t) => t.token);
+    const oovTokens = (synthRes.trace || []).filter((t) => t.status === 'oov').map((t) => t.token);
 
-    if (oovTokens.length === synthRes.trace.length) {
+    if (synthRes.trace && oovTokens.length === synthRes.trace.length) {
       return {
         success: false,
         error: `Các từ trong câu chưa có bản thu âm trong ngữ liệu (${oovTokens.join(', ')}). Hãy vào mục "Ngữ liệu" để thu âm thêm.`,
@@ -200,4 +220,3 @@ export async function performSynthesis(
     };
   }
 }
-

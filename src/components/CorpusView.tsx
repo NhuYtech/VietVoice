@@ -24,26 +24,45 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
   // Gộp cả dữ liệu thật (từ IndexedDB) và dữ liệu mẫu UI để hiển thị
   const combinedList: CorpusItem[] = [
     // Real entries
-    ...realEntries.map((e) => ({
-      id: e.id,
-      word: e.word,
-      code: e.code || encodeVnFilename(e.word).replace('.wav', ''),
-      speaker: (e.speaker === 'nam' || e.speaker === 'Nam 01' ? 'Nam 01' : 'Nữ 01') as 'Nam 01' | 'Nữ 01',
-      filename: encodeVnFilename(e.word),
-      duration: e.duration || 0.6,
-      createdAt: new Date(e.addedAt).toISOString().slice(0, 16).replace('T', ' '),
-      isMock: false,
-    })),
+    ...(Array.isArray(realEntries) ? realEntries : []).map((e) => {
+      let createdAtStr = '2026-11-02 12:00';
+      try {
+        if (e && e.addedAt) {
+          const d = new Date(e.addedAt);
+          if (!isNaN(d.getTime())) {
+            createdAtStr = d.toISOString().slice(0, 16).replace('T', ' ');
+          }
+        }
+      } catch {
+        createdAtStr = '2026-11-02 12:00';
+      }
+
+      const cleanWord = String(e?.word || '');
+      const codeStr = e?.code || encodeVnFilename(cleanWord).replace('.wav', '') || 'code';
+      const spkStr = (e?.speaker === 'nam' || e?.speaker === 'Nam 01' ? 'Nam 01' : 'Nữ 01') as 'Nam 01' | 'Nữ 01';
+
+      return {
+        id: e?.id || `entry-${Math.random()}`,
+        word: cleanWord,
+        code: codeStr,
+        speaker: spkStr,
+        filename: encodeVnFilename(cleanWord),
+        duration: typeof e?.duration === 'number' && !isNaN(e.duration) ? e.duration : 0.6,
+        createdAt: createdAtStr,
+        isMock: false,
+      };
+    }),
     // Mock entries
     ...MOCK_CORPUS_ITEMS,
   ];
 
   const filtered = combinedList.filter((item) => {
-    const matchSearch =
-      item.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.filename.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchSpeaker = selectedSpeaker === 'all' || item.speaker === selectedSpeaker;
+    const w = (item?.word || '').toLowerCase();
+    const c = (item?.code || '').toLowerCase();
+    const f = (item?.filename || '').toLowerCase();
+    const s = (searchTerm || '').toLowerCase();
+    const matchSearch = w.includes(s) || c.includes(s) || f.includes(s);
+    const matchSpeaker = selectedSpeaker === 'all' || item?.speaker === selectedSpeaker;
     return matchSearch && matchSpeaker;
   });
 
@@ -236,7 +255,7 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
                     {item.filename}
                   </td>
                   <td className="py-3.5 px-4 font-mono text-[11px] text-[#20213A]">
-                    {item.duration.toFixed(2)}s
+                    {(Number(item.duration) || 0).toFixed(2)}s
                   </td>
                   <td className="py-3.5 px-4">
                     {item.isMock ? (
