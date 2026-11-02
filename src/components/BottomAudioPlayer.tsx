@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, RotateCw, Download, Volume2, Volume1, VolumeX, X } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  RotateCw,
+  Download,
+  Volume2,
+  Volume,
+  VolumeX,
+  X,
+} from 'lucide-react';
 
 export interface PlayerTrack {
   id?: string;
@@ -36,8 +46,27 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
   const [duration, setDuration] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(100); // 0 to 100
+  const [isVolumeOpen, setIsVolumeOpen] = useState(false);
+  const [isDraggingVolume, setIsDraggingVolume] = useState(false);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const volumeBarRef = useRef<HTMLDivElement>(null);
+  const volumeContainerRef = useRef<HTMLDivElement>(null);
+
+  // Đóng popover âm lượng khi click bên ngoài
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        volumeContainerRef.current &&
+        !volumeContainerRef.current.contains(e.target as Node)
+      ) {
+        setIsVolumeOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Khởi tạo audio element hoặc cập nhật URL khi track thay đổi
   useEffect(() => {
@@ -114,7 +143,6 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
       if (audio.src) {
         audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
       } else {
-        // Fallback simulation nếu không có file thật
         setIsPlaying(true);
         const interval = setInterval(() => {
           setCurrentTime((prev) => {
@@ -189,6 +217,42 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
       setIsMuted(false);
     }
   };
+
+  // Xử lý kéo trượt âm lượng theo trục dọc
+  const calculateVolumeFromEvent = (clientY: number) => {
+    if (!volumeBarRef.current) return;
+    const rect = volumeBarRef.current.getBoundingClientRect();
+    const offsetY = rect.bottom - clientY;
+    const ratio = Math.max(0, Math.min(1, offsetY / rect.height));
+    const newVol = Math.round(ratio * 100);
+    handleVolumeChange(newVol);
+  };
+
+  const handleVolumeMouseDown = (e: React.MouseEvent) => {
+    setIsDraggingVolume(true);
+    calculateVolumeFromEvent(e.clientY);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingVolume) {
+        calculateVolumeFromEvent(e.clientY);
+      }
+    };
+    const handleMouseUp = () => {
+      if (isDraggingVolume) {
+        setIsDraggingVolume(false);
+      }
+    };
+    if (isDraggingVolume) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingVolume]);
 
   // Tải file âm thanh
   const handleDownload = () => {
@@ -298,49 +362,85 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
         </div>
       </div>
 
-      {/* 3. Bên phải: Nút Tải về + Nút tăng giảm âm lượng + Đóng player */}
-      <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
+      {/* 3. Bên phải: Nút Tải về + Nút tăng giảm âm lượng kiểu popup capsule dọc + Đóng player */}
+      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
         {/* Nút tải về */}
         <button
           onClick={handleDownload}
-          className="p-1.5 text-[#555870] hover:text-[#6255CF] transition rounded-lg hover:bg-gray-50"
+          className="p-1.5 text-[#1E2040] hover:text-[#6255CF] transition rounded-lg hover:bg-gray-50"
           title="Tải về file WAV"
         >
           <Download className="w-4 h-4" />
         </button>
 
-        {/* Cụm nút tăng giảm âm lượng */}
-        <div className="flex items-center gap-1.5 bg-[#FAFBFD] px-2 py-1 rounded-xl border border-[#E8E8F0]">
+        {/* Cụm nút tăng giảm âm lượng dọc dạng capsule theo chuẩn hình ảnh */}
+        <div className="relative" ref={volumeContainerRef}>
           <button
             type="button"
-            onClick={handleToggleMute}
-            className="p-1 text-[#555870] hover:text-[#6255CF] transition"
-            title={isMuted ? 'Bật âm thanh' : `Âm lượng: ${volume}% (Nhấp để tắt tiếng)`}
+            onClick={() => setIsVolumeOpen(!isVolumeOpen)}
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition ${
+              isVolumeOpen
+                ? 'bg-[#ECEEF8] text-[#1E2040] ring-2 ring-[#ECEEF8]'
+                : 'text-[#1E2040] hover:bg-[#ECEEF8]'
+            }`}
+            title="Điều chỉnh âm lượng"
           >
             {isMuted || volume === 0 ? (
               <VolumeX className="w-4 h-4 text-rose-500" />
-            ) : volume < 50 ? (
-              <Volume1 className="w-4 h-4" />
             ) : (
               <Volume2 className="w-4 h-4" />
             )}
           </button>
 
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={isMuted ? 0 : volume}
-            onChange={(e) => handleVolumeChange(Number(e.target.value))}
-            className="w-16 sm:w-20 h-1.5 bg-[#E2E4F0] rounded-lg appearance-none cursor-pointer accent-[#6255CF]"
-            title={`Điều chỉnh âm lượng: ${isMuted ? 0 : volume}%`}
-          />
+          {/* Capsule dọc nổi lên trên theo mẫu hình ảnh */}
+          {isVolumeOpen && (
+            <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-10 h-44 bg-white rounded-full shadow-xl border border-[#E8E8F0] flex flex-col items-center justify-between py-3 px-1 z-50 select-none animate-in fade-in zoom-in-95 duration-150">
+              {/* Top: Icon loa to */}
+              <button
+                type="button"
+                onClick={() => handleVolumeChange(100)}
+                className="text-[#1E2040] hover:text-[#6255CF] transition p-1"
+                title="Âm lượng 100%"
+              >
+                <Volume2 className="w-4 h-4" />
+              </button>
+
+              {/* Middle: Thanh trượt dọc màu vàng */}
+              <div
+                ref={volumeBarRef}
+                onMouseDown={handleVolumeMouseDown}
+                className="relative w-1.5 flex-1 my-2 bg-[#F0F2F9] rounded-full cursor-pointer flex flex-col justify-end items-center"
+                title={`Âm lượng: ${isMuted ? 0 : volume}%`}
+              >
+                {/* Đường tiến trình màu vàng */}
+                <div
+                  className="w-full bg-[#EAB308] rounded-full"
+                  style={{ height: `${isMuted ? 0 : volume}%` }}
+                />
+                {/* Nút tròn viền vàng nền trắng */}
+                <div
+                  className="absolute w-3.5 h-3.5 bg-white border-2 border-[#EAB308] rounded-full shadow-xs -mb-1.5 cursor-grab active:cursor-grabbing hover:scale-110 transition-transform"
+                  style={{ bottom: `${isMuted ? 0 : volume}%` }}
+                />
+              </div>
+
+              {/* Bottom: Icon loa nhỏ */}
+              <button
+                type="button"
+                onClick={handleToggleMute}
+                className="text-[#1E2040] hover:text-[#6255CF] transition p-1"
+                title={isMuted ? 'Bật âm thanh' : 'Tắt tiếng'}
+              >
+                <Volume className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Nút tắt player bar */}
         <button
           onClick={onClose}
-          className="p-1.5 text-[#85879A] hover:text-red-500 transition rounded-lg hover:bg-gray-50 ml-1"
+          className="p-1.5 text-[#1E2040] hover:text-red-500 transition rounded-lg hover:bg-gray-50"
           title="Đóng thanh phát âm thanh"
         >
           <X className="w-4 h-4" />
