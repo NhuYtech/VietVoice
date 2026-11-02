@@ -17,7 +17,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
   onSelectSampleText,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [voiceFilter, setVoiceFilter] = useState<'all' | 'Nam 01' | 'Nữ 01'>('all');
+  const [voiceFilter, setVoiceFilter] = useState<'all' | 'Nam' | 'Nữ'>('all');
   const [playingId, setPlayingId] = useState<string | null>(null);
 
   const safeItems = Array.isArray(items) ? items : [];
@@ -96,33 +96,30 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
           <div className="flex items-center rounded-xl border border-[#E8E8F0] bg-[#FAFBFD] p-0.5 text-xs font-medium text-[#555870]">
             <button
               onClick={() => setVoiceFilter('all')}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                voiceFilter === 'all'
-                  ? 'bg-white shadow-xs text-[#6255CF] font-bold'
-                  : 'hover:text-[#20213A]'
-              }`}
+              className={`px-2.5 py-1 rounded-lg transition ${voiceFilter === 'all'
+                ? 'bg-white shadow-xs text-[#6255CF] font-bold'
+                : 'hover:text-[#20213A]'
+                }`}
             >
               Tất cả
             </button>
             <button
-              onClick={() => setVoiceFilter('Nam 01')}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                voiceFilter === 'Nam 01'
-                  ? 'bg-white shadow-xs text-[#5578D8] font-bold'
-                  : 'hover:text-[#20213A]'
-              }`}
+              onClick={() => setVoiceFilter('Nam')}
+              className={`px-2.5 py-1 rounded-lg transition ${voiceFilter === 'Nam'
+                ? 'bg-white shadow-xs text-[#5578D8] font-bold'
+                : 'hover:text-[#20213A]'
+                }`}
             >
-              Nam 01
+              Nam
             </button>
             <button
-              onClick={() => setVoiceFilter('Nữ 01')}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                voiceFilter === 'Nữ 01'
-                  ? 'bg-white shadow-xs text-[#B16BC1] font-bold'
-                  : 'hover:text-[#20213A]'
-              }`}
+              onClick={() => setVoiceFilter('Nữ')}
+              className={`px-2.5 py-1 rounded-lg transition ${voiceFilter === 'Nữ'
+                ? 'bg-white shadow-xs text-[#B16BC1] font-bold'
+                : 'hover:text-[#20213A]'
+                }`}
             >
-              Nữ 01
+              Nữ
             </button>
           </div>
 
@@ -179,17 +176,17 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                   <td className="py-3.5 px-4">
                     <span
                       className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-semibold text-[11px] ${
-                        item.speaker === 'Nam 01'
+                        String(item.speaker).includes('Nam')
                           ? 'bg-[#5578D8]/10 text-[#5578D8]'
                           : 'bg-[#B16BC1]/10 text-[#B16BC1]'
                       }`}
                     >
                       <span
                         className={`w-1.5 h-1.5 rounded-full ${
-                          item.speaker === 'Nam 01' ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
+                          String(item.speaker).includes('Nam') ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
                         }`}
                       />
-                      {item.speaker}
+                      {String(item.speaker).includes('Nam') ? 'Nam' : 'Nữ'}
                     </span>
                   </td>
                   <td className="py-3.5 px-4 font-mono text-[11px] text-[#20213A]">

@@ -6,13 +6,13 @@ import { inspectVocabulary } from '../services/ttsService';
 interface MainEditorProps {
   text: string;
   onChangeText: (val: string) => void;
-  selectedVoice: 'Nam 01' | 'Nữ 01';
-  onSelectVoice: (voice: 'Nam 01' | 'Nữ 01') => void;
+  selectedVoice: 'Nam' | 'Nữ';
+  onSelectVoice: (voice: 'Nam' | 'Nữ') => void;
   onConvert: () => void;
   isConverting: boolean;
   entries: CorpusEntry[];
-  onPlayPreviewVoice: (voice: 'Nam 01' | 'Nữ 01') => void;
-  isPlayingPreview: 'Nam 01' | 'Nữ 01' | null;
+  onPlayPreviewVoice: (voice: 'Nam' | 'Nữ') => void;
+  isPlayingPreview: 'Nam' | 'Nữ' | null;
 }
 
 const EXAMPLES = [
@@ -46,10 +46,11 @@ export const MainEditor: React.FC<MainEditorProps> = ({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-[#E2E4F0] text-xs font-semibold text-[#20213A]">
             <span
-              className={`w-2 h-2 rounded-full ${selectedVoice === 'Nam 01' ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
-                }`}
+              className={`w-2 h-2 rounded-full ${
+                selectedVoice === 'Nam' ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
+              }`}
             />
-            <span>Đang chọn: {selectedVoice}</span>
+            <span>Đang chọn: Giọng {selectedVoice}</span>
           </div>
 
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E2E4F0] text-xs font-medium text-[#555870]">
@@ -106,10 +107,11 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                   return (
                     <span
                       key={`${tok}-${idx}`}
-                      className={`px-2 py-0.5 rounded-md text-[11px] font-medium flex items-center gap-1 ${isAvailable
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-medium flex items-center gap-1 ${
+                        isAvailable
                           ? 'bg-emerald-100/80 text-emerald-800 border border-emerald-200'
                           : 'bg-amber-100/80 text-amber-800 border border-amber-200'
-                        }`}
+                      }`}
                       title={isAvailable ? 'Đã có trong ngữ liệu' : 'Chưa có trong ngữ liệu thu âm'}
                     >
                       {isAvailable ? '✓' : '!'} {tok}
@@ -156,11 +158,12 @@ export const MainEditor: React.FC<MainEditorProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* CARD 1 — MALE VOICE */}
               <div
-                onClick={() => onSelectVoice('Nam 01')}
-                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${selectedVoice === 'Nam 01'
+                onClick={() => onSelectVoice('Nam')}
+                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                  selectedVoice === 'Nam'
                     ? 'border-[#6255CF] bg-[#6255CF]/[0.04] shadow-sm'
                     : 'border-[#E8E8F0] bg-white hover:border-[#D0D2E5]'
-                  }`}
+                }`}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#3B65D6] to-[#5578D8] flex items-center justify-center text-white shadow-sm">
@@ -168,7 +171,7 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-[#20213A]">Nam 01</span>
+                      <span className="text-sm font-bold text-[#20213A]">Nam</span>
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#5578D8]/10 text-[#3B65D6]">
                         Giọng nam
                       </span>
@@ -181,12 +184,12 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onPlayPreviewVoice('Nam 01');
+                    onPlayPreviewVoice('Nam');
                   }}
                   className="w-8 h-8 rounded-lg flex items-center justify-center text-[#555870] hover:text-[#6255CF] hover:bg-[#F0F2F9] transition"
-                  title="Nghe thử giọng Nam 01"
+                  title="Nghe thử giọng Nam"
                 >
-                  {isPlayingPreview === 'Nam 01' ? (
+                  {isPlayingPreview === 'Nam' ? (
                     <Square className="w-4 h-4 fill-current text-[#6255CF]" />
                   ) : (
                     <Play className="w-4 h-4 fill-current ml-0.5" />
@@ -196,11 +199,12 @@ export const MainEditor: React.FC<MainEditorProps> = ({
 
               {/* CARD 2 — FEMALE VOICE */}
               <div
-                onClick={() => onSelectVoice('Nữ 01')}
-                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${selectedVoice === 'Nữ 01'
+                onClick={() => onSelectVoice('Nữ')}
+                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                  selectedVoice === 'Nữ'
                     ? 'border-[#6255CF] bg-[#6255CF]/[0.04] shadow-sm'
                     : 'border-[#E8E8F0] bg-white hover:border-[#D0D2E5]'
-                  }`}
+                }`}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#9B53AD] to-[#B16BC1] flex items-center justify-center text-white shadow-sm">
@@ -208,7 +212,7 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-[#20213A]">Nữ 01</span>
+                      <span className="text-sm font-bold text-[#20213A]">Nữ</span>
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#B16BC1]/10 text-[#9B53AD]">
                         Giọng nữ
                       </span>
@@ -221,12 +225,12 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onPlayPreviewVoice('Nữ 01');
+                    onPlayPreviewVoice('Nữ');
                   }}
                   className="w-8 h-8 rounded-lg flex items-center justify-center text-[#555870] hover:text-[#6255CF] hover:bg-[#F0F2F9] transition"
-                  title="Nghe thử giọng Nữ 01"
+                  title="Nghe thử giọng Nữ"
                 >
-                  {isPlayingPreview === 'Nữ 01' ? (
+                  {isPlayingPreview === 'Nữ' ? (
                     <Square className="w-4 h-4 fill-current text-[#6255CF]" />
                   ) : (
                     <Play className="w-4 h-4 fill-current ml-0.5" />
@@ -241,10 +245,11 @@ export const MainEditor: React.FC<MainEditorProps> = ({
             <button
               onClick={onConvert}
               disabled={isConverting || !text.trim()}
-              className={`px-7 py-3.5 rounded-xl font-semibold text-sm flex items-center gap-2.5 text-white transition-all shadow-md ${isConverting || !text.trim()
+              className={`px-7 py-3.5 rounded-xl font-semibold text-sm flex items-center gap-2.5 text-white transition-all shadow-md ${
+                isConverting || !text.trim()
                   ? 'bg-[#B0B2C5] cursor-not-allowed opacity-75'
                   : 'bg-[#6255CF] hover:bg-[#5144BD] shadow-[#6255CF]/25 hover:shadow-lg hover:shadow-[#6255CF]/30 active:scale-[0.98]'
-                }`}
+              }`}
             >
               {isConverting ? (
                 <>
@@ -264,4 +269,3 @@ export const MainEditor: React.FC<MainEditorProps> = ({
     </div>
   );
 };
-

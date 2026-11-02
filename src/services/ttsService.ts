@@ -22,7 +22,7 @@ export function getStoredHistory(): ConversionHistoryItem[] {
     return parsed.map((item, idx) => ({
       id: item?.id || `hist-${idx}-${Date.now()}`,
       text: String(item?.text || 'Mẫu âm thanh'),
-      speaker: (item?.speaker === 'Nữ 01' ? 'Nữ 01' : 'Nam 01') as 'Nam 01' | 'Nữ 01',
+      speaker: (item?.speaker === 'Nữ' || item?.speaker === 'Nữ 01' ? 'Nữ' : 'Nam') as 'Nam' | 'Nữ',
       duration: typeof item?.duration === 'number' && !isNaN(item.duration) ? item.duration : 0.6,
       createdAt: String(item?.createdAt || '2026-11-02 12:00'),
       filename: String(item?.filename || 'vietvoice_audio.wav'),
@@ -60,7 +60,7 @@ export function saveHistory(items: ConversionHistoryItem[]): void {
  */
 export function addHistoryEntry(
   text: string,
-  speaker: 'Nam 01' | 'Nữ 01',
+  speaker: 'Nam' | 'Nữ',
   duration: number,
   audioBlob?: Blob,
   audioUrl?: string
@@ -71,7 +71,7 @@ export function addHistoryEntry(
   ).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   const cleanText = (text || '').trim().slice(0, 15).replace(/\s+/g, '_').toLowerCase();
-  const filename = `vietvoice_${speaker === 'Nam 01' ? 'nam' : 'nu'}_${cleanText || 'audio'}.wav`;
+  const filename = `vietvoice_${speaker === 'Nam' ? 'nam' : 'nu'}_${cleanText || 'audio'}.wav`;
 
   const newItem: ConversionHistoryItem = {
     id: `conv-${Date.now()}`,
@@ -104,8 +104,8 @@ export function removeHistoryEntry(id: string): ConversionHistoryItem[] {
 /**
  * Chuẩn hóa tên speaker cho thư viện tts
  */
-export function mapSpeakerToCore(speaker: 'Nam 01' | 'Nữ 01'): string {
-  return speaker === 'Nam 01' ? 'nam' : 'nu';
+export function mapSpeakerToCore(speaker: 'Nam' | 'Nữ'): string {
+  return speaker === 'Nam' ? 'nam' : 'nu';
 }
 
 /**
@@ -113,7 +113,7 @@ export function mapSpeakerToCore(speaker: 'Nam 01' | 'Nữ 01'): string {
  */
 export function inspectVocabulary(
   text: string,
-  speaker: 'Nam 01' | 'Nữ 01',
+  speaker: 'Nam' | 'Nữ',
   entries: CorpusEntry[]
 ): {
   tokens: string[];
@@ -165,7 +165,7 @@ export function inspectVocabulary(
  */
 export async function performSynthesis(
   text: string,
-  speaker: 'Nam 01' | 'Nữ 01',
+  speaker: 'Nam' | 'Nữ',
   entries: CorpusEntry[]
 ): Promise<{
   success: boolean;

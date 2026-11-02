@@ -18,7 +18,7 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
   onRefresh,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSpeaker, setSelectedSpeaker] = useState<'all' | 'Nam 01' | 'Nữ 01'>('all');
+  const [selectedSpeaker, setSelectedSpeaker] = useState<'all' | 'Nam' | 'Nữ'>('all');
   const [playingId, setPlayingId] = useState<string | null>(null);
 
   // Gộp cả dữ liệu thật (từ IndexedDB) và dữ liệu mẫu UI để hiển thị
@@ -39,7 +39,7 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
 
       const cleanWord = String(e?.word || '');
       const codeStr = e?.code || encodeVnFilename(cleanWord).replace('.wav', '') || 'code';
-      const spkStr = (e?.speaker === 'nam' || e?.speaker === 'Nam 01' ? 'Nam 01' : 'Nữ 01') as 'Nam 01' | 'Nữ 01';
+      const spkStr = (String(e?.speaker).toLowerCase().includes('nam') ? 'Nam' : 'Nữ') as 'Nam' | 'Nữ';
 
       return {
         id: e?.id || `entry-${Math.random()}`,
@@ -130,7 +130,7 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
             <h2 className="text-lg font-bold text-[#20213A]">Ngữ liệu song song văn bản — âm thanh</h2>
           </div>
           <p className="text-xs text-[#85879A] max-w-2xl leading-relaxed">
-            Hệ thống quản lý các file âm thanh thu âm tương ứng với từng từ tiếng Việt theo hai giọng đọc (Nam 01 và Nữ 01).
+            Hệ thống quản lý các file âm thanh thu âm tương ứng với từng từ tiếng Việt theo hai giọng đọc (Nam và Nữ).
             Tên file được quy ước mã hóa theo bảng mã VNI để đảm bảo tính đồng bộ của đồ án.
           </p>
         </div>
@@ -179,20 +179,20 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
                 Tất cả
               </button>
               <button
-                onClick={() => setSelectedSpeaker('Nam 01')}
+                onClick={() => setSelectedSpeaker('Nam')}
                 className={`px-3 py-1 rounded-lg transition ${
-                  selectedSpeaker === 'Nam 01' ? 'bg-white shadow-xs text-[#5578D8] font-bold' : 'hover:text-[#20213A]'
+                  selectedSpeaker === 'Nam' ? 'bg-white shadow-xs text-[#5578D8] font-bold' : 'hover:text-[#20213A]'
                 }`}
               >
-                Nam 01
+                Nam
               </button>
               <button
-                onClick={() => setSelectedSpeaker('Nữ 01')}
+                onClick={() => setSelectedSpeaker('Nữ')}
                 className={`px-3 py-1 rounded-lg transition ${
-                  selectedSpeaker === 'Nữ 01' ? 'bg-white shadow-xs text-[#B16BC1] font-bold' : 'hover:text-[#20213A]'
+                  selectedSpeaker === 'Nữ' ? 'bg-white shadow-xs text-[#B16BC1] font-bold' : 'hover:text-[#20213A]'
                 }`}
               >
-                Nữ 01
+                Nữ
               </button>
             </div>
 
@@ -238,17 +238,17 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
                   <td className="py-3.5 px-4">
                     <span
                       className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-semibold text-[11px] ${
-                        item.speaker === 'Nam 01'
+                        String(item.speaker).includes('Nam')
                           ? 'bg-[#5578D8]/10 text-[#5578D8]'
                           : 'bg-[#B16BC1]/10 text-[#B16BC1]'
                       }`}
                     >
                       <span
                         className={`w-1.5 h-1.5 rounded-full ${
-                          item.speaker === 'Nam 01' ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
+                          String(item.speaker).includes('Nam') ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
                         }`}
                       />
-                      {item.speaker}
+                      {String(item.speaker).includes('Nam') ? 'Nam' : 'Nữ'}
                     </span>
                   </td>
                   <td className="py-3.5 px-4 font-mono text-[11px] text-[#63667E]">

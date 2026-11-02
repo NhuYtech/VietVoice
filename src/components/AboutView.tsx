@@ -45,7 +45,7 @@ export const AboutView: React.FC = () => {
     {
       name: 'Tần số cơ bản (Pitch / F₀)',
       unit: 'Hz',
-      desc: 'Đặc trưng cho độ cao trầm của giọng người thu (Nam 01 thường ~110-140 Hz, Nữ 01 thường ~200-240 Hz). Dùng thuật toán tự tương quan (Autocorrelation) để ước lượng.',
+      desc: 'Đặc trưng cho độ cao trầm của giọng người thu (Nam thường ~110-140 Hz, Nữ thường ~200-240 Hz). Dùng thuật toán tự tương quan (Autocorrelation) để ước lượng.',
     },
     {
       name: 'Năng lượng ngắn hạn & RMS',
@@ -88,7 +88,7 @@ export const AboutView: React.FC = () => {
           VietVoice — Hệ thống chuyển đổi văn bản thành âm thanh tiếng Việt mức từ
         </h2>
         <p className="text-sm text-[#555870] leading-relaxed">
-          <strong>VietVoice</strong> là hệ thống chuyển đổi văn bản thành âm thanh (Text-to-Speech) tiếng Việt sử dụng phương pháp <strong>ghép nối ngữ liệu (Concatenative Speech Synthesis)</strong> ở mức từ (word-level). Hệ thống sử dụng bộ dữ liệu âm thanh song song được thu âm trực tiếp bởi các thành viên, hỗ trợ hai phiên bản giọng đọc <strong>Nam 01</strong> (Male) và <strong>Nữ 01</strong> (Female).
+          <strong>VietVoice</strong> là hệ thống chuyển đổi văn bản thành âm thanh (Text-to-Speech) tiếng Việt sử dụng phương pháp <strong>ghép nối ngữ liệu (Concatenative Speech Synthesis)</strong> ở mức từ (word-level). Hệ thống sử dụng bộ dữ liệu âm thanh song song được thu âm trực tiếp bởi các thành viên, hỗ trợ hai phiên bản giọng đọc <strong>Nam</strong> (Male) và <strong>Nữ</strong> (Female).
         </p>
       </div>
 

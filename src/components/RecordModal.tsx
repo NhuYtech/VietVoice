@@ -9,17 +9,17 @@ interface RecordModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaved: () => void;
-  defaultSpeaker?: 'Nam 01' | 'Nữ 01';
+  defaultSpeaker?: 'Nam' | 'Nữ';
 }
 
 export const RecordModal: React.FC<RecordModalProps> = ({
   isOpen,
   onClose,
   onSaved,
-  defaultSpeaker = 'Nam 01',
+  defaultSpeaker = 'Nam',
 }) => {
   const [wordInput, setWordInput] = useState('');
-  const [speaker, setSpeaker] = useState<'Nam 01' | 'Nữ 01'>(defaultSpeaker);
+  const [speaker, setSpeaker] = useState<'Nam' | 'Nữ'>(defaultSpeaker);
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -154,7 +154,7 @@ export const RecordModal: React.FC<RecordModalProps> = ({
     setIsSaving(true);
     setErrorMsg('');
     try {
-      const coreSpeaker = speaker === 'Nam 01' ? 'nam' : 'nu';
+      const coreSpeaker = speaker === 'Nam' ? 'nam' : 'nu';
       await addToCorpus(audioBlob, wordInput.trim(), coreSpeaker, 'record');
       onSaved();
       onClose();
@@ -204,28 +204,28 @@ export const RecordModal: React.FC<RecordModalProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setSpeaker('Nam 01')}
+                onClick={() => setSpeaker('Nam')}
                 className={`p-3 rounded-xl border text-left transition flex items-center gap-2.5 ${
-                  speaker === 'Nam 01'
+                  speaker === 'Nam'
                     ? 'border-[#5578D8] bg-[#5578D8]/5 text-[#5578D8] font-bold shadow-xs'
                     : 'border-[#E8E8F0] text-[#555870] hover:bg-[#FAFBFD]'
                 }`}
               >
                 <span className="w-2.5 h-2.5 rounded-full bg-[#5578D8]" />
-                <span className="text-xs">Nam 01 (Giọng nam)</span>
+                <span className="text-xs">Nam (Giọng nam)</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setSpeaker('Nữ 01')}
+                onClick={() => setSpeaker('Nữ')}
                 className={`p-3 rounded-xl border text-left transition flex items-center gap-2.5 ${
-                  speaker === 'Nữ 01'
+                  speaker === 'Nữ'
                     ? 'border-[#B16BC1] bg-[#B16BC1]/5 text-[#B16BC1] font-bold shadow-xs'
                     : 'border-[#E8E8F0] text-[#555870] hover:bg-[#FAFBFD]'
                 }`}
               >
                 <span className="w-2.5 h-2.5 rounded-full bg-[#B16BC1]" />
-                <span className="text-xs">Nữ 01 (Giọng nữ)</span>
+                <span className="text-xs">Nữ (Giọng nữ)</span>
               </button>
             </div>
           </div>

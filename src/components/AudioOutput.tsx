@@ -5,7 +5,7 @@ import { playSamples, stopPlayback, SR } from '../lib/dsp';
 
 interface AudioOutputProps {
   result: SynthResult | null;
-  selectedVoice: 'Nam 01' | 'Nữ 01';
+  selectedVoice: 'Nam' | 'Nữ';
   onDownload: () => void;
   isLoading?: boolean;
 }
@@ -139,9 +139,8 @@ export const AudioOutput: React.FC<AudioOutputProps> = ({
                   <div
                     key={i}
                     style={{ height: `${heightPercent}%` }}
-                    className={`w-1.5 rounded-full transition-all duration-75 ${
-                      isPassed ? 'bg-[#6255CF]' : 'bg-[#D6D8E8]'
-                    }`}
+                    className={`w-1.5 rounded-full transition-all duration-75 ${isPassed ? 'bg-[#6255CF]' : 'bg-[#D6D8E8]'
+                      }`}
                   />
                 );
               })}
@@ -199,11 +198,10 @@ export const AudioOutput: React.FC<AudioOutputProps> = ({
               {result.trace.map((item, idx) => (
                 <div
                   key={idx}
-                  className={`px-2.5 py-1 rounded-lg border text-xs flex items-center gap-1.5 ${
-                    item.status === 'ok'
-                      ? 'bg-white border-[#E2E4F0] text-[#20213A]'
-                      : 'bg-amber-50 border-amber-200 text-amber-800'
-                  }`}
+                  className={`px-2.5 py-1 rounded-lg border text-xs flex items-center gap-1.5 ${item.status === 'ok'
+                    ? 'bg-white border-[#E2E4F0] text-[#20213A]'
+                    : 'bg-amber-50 border-amber-200 text-amber-800'
+                    }`}
                 >
                   <span className="font-semibold">{item.token}</span>
                   {item.duration && (

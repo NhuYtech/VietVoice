@@ -24,13 +24,13 @@ import { AlertCircle, CheckCircle2, X } from 'lucide-react';
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavTab>('tts');
   const [inputText, setInputText] = useState('Xin chào Việt Nam');
-  const [selectedVoice, setSelectedVoice] = useState<'Nam 01' | 'Nữ 01'>('Nam 01');
+  const [selectedVoice, setSelectedVoice] = useState<'Nam' | 'Nữ'>('Nam');
   const [isConverting, setIsConverting] = useState(false);
   const [activeResult, setActiveResult] = useState<SynthResult | null>(null);
   const [historyItems, setHistoryItems] = useState<ConversionHistoryItem[]>([]);
   const [realEntries, setRealEntries] = useState<CorpusEntry[]>([]);
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
-  const [isPlayingPreview, setIsPlayingPreview] = useState<'Nam 01' | 'Nữ 01' | null>(null);
+  const [isPlayingPreview, setIsPlayingPreview] = useState<'Nam' | 'Nữ' | null>(null);
   const [notification, setNotification] = useState<{
     type: 'success' | 'warning' | 'error';
     message: string;
@@ -124,7 +124,7 @@ export const App: React.FC = () => {
     const a = document.createElement('a');
     a.href = url;
     const clean = activeResult.text.slice(0, 15).replace(/\s+/g, '_').toLowerCase();
-    a.download = `vietvoice_${selectedVoice === 'Nam 01' ? 'nam' : 'nu'}_${clean || 'audio'}.wav`;
+    a.download = `vietvoice_${selectedVoice === 'Nam' ? 'nam' : 'nu'}_${clean || 'audio'}.wav`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -136,7 +136,7 @@ export const App: React.FC = () => {
   };
 
   // Nghe thử giọng đọc
-  const handlePlayPreviewVoice = async (voice: 'Nam 01' | 'Nữ 01') => {
+  const handlePlayPreviewVoice = async (voice: 'Nam' | 'Nữ') => {
     if (isPlayingPreview === voice) {
       setIsPlayingPreview(null);
       return;
