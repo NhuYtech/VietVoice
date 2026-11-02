@@ -1,6 +1,6 @@
 import type { CorpusEntry, SynthResult } from '../lib/types';
 import { synthesize, normalizeText } from '../lib/tts';
-import { INITIAL_CONVERSION_HISTORY, type ConversionHistoryItem } from '../data/mockCorpus';
+import { INITIAL_CONVERSION_HISTORY, MOCK_CORPUS_ITEMS, type ConversionHistoryItem } from '../data/mockCorpus';
 
 const STORAGE_KEY = 'vietvoice_conversion_history';
 
@@ -108,60 +108,168 @@ export function mapSpeakerToCore(speaker: 'Nam' | 'Nữ'): string {
   return speaker === 'Nam' ? 'nam' : 'nu';
 }
 
+export interface WordVoiceCheck {
+  token: string;
+  inCurrentVoice: boolean;
+  inOtherVoice: boolean;
+  isAvailableAnywhere: boolean;
+  correctVoice?: 'Nam' | 'Nữ';
+}
+
 /**
- * Kiểm tra xem các từ trong câu có sẵn trong ngữ liệu thu âm hay chưa
+ * Kiểm tra ràng buộc chọn giọng đọc cho từng từ:
+ * - Nếu từ có bản thu âm là giọng Nữ: Bắt buộc người dùng phải chọn giọng Nữ
+ * - Nếu từ có bản thu âm là giọng Nam: Bắt buộc người dùng phải chọn giọng Nam
+ * - Nếu không đúng giọng: Thông báo rõ ràng để người dùng chọn lại giọng đọc cho đúng
+ */
+export function inspectVocabularyWithVoice(
+  text: string,
+  selectedVoice: 'Nam' | 'Nữ',
+  entries: CorpusEntry[]
+): {
+  tokens: string[];
+  wordChecks: WordVoiceCheck[];
+  hasWrongVoice: boolean;
+  wrongVoiceWords: string[];
+  suggestedVoice?: 'Nam' | 'Nữ';
+  wrongVoiceMessage?: string;
+  hasMissing: boolean;
+  missingTokens: string[];
+  canConvert: boolean;
+} {
+  const norm = normalizeText(text || '');
+  if (!norm) {
+    return {
+      tokens: [],
+      wordChecks: [],
+      hasWrongVoice: false,
+      wrongVoiceWords: [],
+      hasMissing: false,
+      missingTokens: [],
+      canConvert: false,
+    };
+  }
+
+  const tokens = norm.split(/\s+/).filter(Boolean);
+  const safeEntries = Array.isArray(entries) ? entries : [];
+
+  // Tạo tập từ có sẵn của từng giọng (kết hợp cả dữ liệu thu âm thật và dữ liệu ngữ liệu)
+  const maleSet = new Set<string>();
+  const femaleSet = new Set<string>();
+
+  // Từ thật trong IndexedDB
+  for (const e of safeEntries) {
+    const spk = (e?.speaker || '').toLowerCase();
+    const w = (e?.word || '').toLowerCase();
+    if (!w) continue;
+    if (spk === 'nam' || spk.includes('nam')) {
+      maleSet.add(w);
+      w.split(/\s+/).forEach((part) => maleSet.add(part));
+    } else {
+      femaleSet.add(w);
+      w.split(/\s+/).forEach((part) => femaleSet.add(part));
+    }
+  }
+
+  // Từ mẫu trong Ngữ liệu
+  for (const m of MOCK_CORPUS_ITEMS) {
+    const w = (m.word || '').toLowerCase();
+    if (!w) continue;
+    if (m.speaker === 'Nam') {
+      maleSet.add(w);
+      w.split(/\s+/).forEach((part) => maleSet.add(part));
+    } else {
+      femaleSet.add(w);
+      w.split(/\s+/).forEach((part) => femaleSet.add(part));
+    }
+  }
+
+  const otherVoice: 'Nam' | 'Nữ' = selectedVoice === 'Nam' ? 'Nữ' : 'Nam';
+  const currentSet = selectedVoice === 'Nam' ? maleSet : femaleSet;
+  const otherSet = selectedVoice === 'Nam' ? femaleSet : maleSet;
+
+  const wordChecks: WordVoiceCheck[] = [];
+  const wrongVoiceWords: string[] = [];
+  const missingTokens: string[] = [];
+
+  for (const tok of tokens) {
+    const inCurrent = currentSet.has(tok);
+    const inOther = otherSet.has(tok);
+
+    if (inCurrent) {
+      wordChecks.push({
+        token: tok,
+        inCurrentVoice: true,
+        inOtherVoice: inOther,
+        isAvailableAnywhere: true,
+        correctVoice: selectedVoice,
+      });
+    } else if (inOther) {
+      // Từ này có file âm thanh nhưng là của giọng kia!
+      wordChecks.push({
+        token: tok,
+        inCurrentVoice: false,
+        inOtherVoice: true,
+        isAvailableAnywhere: true,
+        correctVoice: otherVoice,
+      });
+      wrongVoiceWords.push(tok);
+    } else {
+      // Hoàn toàn chưa có trong ngữ liệu cả 2 giọng
+      wordChecks.push({
+        token: tok,
+        inCurrentVoice: false,
+        inOtherVoice: false,
+        isAvailableAnywhere: false,
+      });
+      missingTokens.push(tok);
+    }
+  }
+
+  const hasWrongVoice = wrongVoiceWords.length > 0;
+  const hasMissing = missingTokens.length > 0;
+  const canConvert = tokens.length > 0 && !hasWrongVoice && !hasMissing;
+
+  let wrongVoiceMessage: string | undefined;
+  if (hasWrongVoice) {
+    wrongVoiceMessage = `Từ "${wrongVoiceWords.join(', ')}" có file thu âm là Giọng ${otherVoice}. Vui lòng chọn "Giọng ${otherVoice}" rồi mới nhấn Chuyển thành âm thanh!`;
+  }
+
+  return {
+    tokens,
+    wordChecks,
+    hasWrongVoice,
+    wrongVoiceWords,
+    suggestedVoice: hasWrongVoice ? otherVoice : undefined,
+    wrongVoiceMessage,
+    hasMissing,
+    missingTokens,
+    canConvert,
+  };
+}
+
+/**
+ * Phiên bản tương thích với MainEditor
  */
 export function inspectVocabulary(
   text: string,
   speaker: 'Nam' | 'Nữ',
   entries: CorpusEntry[]
-): {
-  tokens: string[];
-  matchedWords: string[];
-  missingWords: string[];
-  isFullyAvailable: boolean;
-} {
-  const norm = normalizeText(text || '');
-  if (!norm) {
-    return { tokens: [], matchedWords: [], missingWords: [], isFullyAvailable: false };
-  }
-
-  const tokens = norm.split(/\s+/).filter(Boolean);
-  const speakerKey = mapSpeakerToCore(speaker);
-  const safeEntries = Array.isArray(entries) ? entries : [];
-
-  // Tập từ có sẵn của người nói này (và cả các speaker khác nếu tìm)
-  const availableSet = new Set(
-    safeEntries
-      .filter((e) => {
-        const spk = (e?.speaker || '').toLowerCase();
-        return spk === speakerKey || spk.includes(speakerKey);
-      })
-      .map((e) => (e?.word || '').toLowerCase())
-      .filter(Boolean)
-  );
-
-  const matchedWords: string[] = [];
-  const missingWords: string[] = [];
-
-  for (const tok of tokens) {
-    if (availableSet.has(tok)) {
-      matchedWords.push(tok);
-    } else {
-      missingWords.push(tok);
-    }
-  }
+) {
+  const res = inspectVocabularyWithVoice(text, speaker, entries);
+  const matchedWords = res.wordChecks.filter((w) => w.inCurrentVoice).map((w) => w.token);
+  const missingWords = res.wordChecks.filter((w) => !w.inCurrentVoice).map((w) => w.token);
 
   return {
-    tokens,
+    ...res,
     matchedWords,
     missingWords,
-    isFullyAvailable: tokens.length > 0 && missingWords.length === 0,
+    isFullyAvailable: res.canConvert,
   };
 }
 
 /**
- * Thực hiện tổng hợp âm thanh từ ngữ liệu thu âm thật
+ * Thực hiện tổng hợp âm thanh từ ngữ liệu thu âm thật với ràng buộc giọng đọc nghiêm ngặt
  */
 export async function performSynthesis(
   text: string,
@@ -172,38 +280,57 @@ export async function performSynthesis(
   result?: SynthResult;
   error?: string;
   missingTokens?: string[];
+  suggestedVoice?: 'Nam' | 'Nữ';
 }> {
   const norm = normalizeText(text || '');
   if (!norm) {
     return { success: false, error: 'Vui lòng nhập văn bản tiếng Việt hợp lệ.' };
   }
 
+  // 1. Kiểm tra ràng buộc giọng đọc (nếu từ thu âm là Nữ thì bắt buộc chọn Nữ, nếu là Nam thì bắt buộc chọn Nam)
+  const voiceCheck = inspectVocabularyWithVoice(text, speaker, entries);
+  if (voiceCheck.hasWrongVoice) {
+    return {
+      success: false,
+      error: voiceCheck.wrongVoiceMessage,
+      suggestedVoice: voiceCheck.suggestedVoice,
+      missingTokens: voiceCheck.wrongVoiceWords,
+    };
+  }
+
+  if (voiceCheck.hasMissing) {
+    return {
+      success: false,
+      error: `Các từ (${voiceCheck.missingTokens.join(', ')}) chưa có trong ngữ liệu thu âm. Vui lòng vào mục "Ngữ liệu" để thu âm thêm.`,
+      missingTokens: voiceCheck.missingTokens,
+    };
+  }
+
   const speakerKey = mapSpeakerToCore(speaker);
   const safeEntries = Array.isArray(entries) ? entries : [];
 
-  // Tìm các mục khớp
+  // Chỉ lấy đúng các mục của người nói này (KHÔNG fallback sang giọng khác)
   const speakerEntries = safeEntries.filter((e) => {
     const spk = (e?.speaker || '').toLowerCase();
     return spk === speakerKey || spk.includes(speakerKey);
   });
 
   try {
-    const synthRes = await synthesize(norm, speakerEntries.length > 0 ? speakerEntries : safeEntries, {
+    const synthRes = await synthesize(norm, speakerEntries, {
       speaker: speakerKey,
       gapMs: 80,
       crossfadeMs: 25,
       trim: true,
       normalize: true,
-      fallbackSpeaker: true,
+      fallbackSpeaker: false, // RÀNG BUỘC: Không tự động lấy giọng khác, phải đúng giọng đã chọn
     });
 
-    // Kiểm tra xem có từ nào OOV (Out Of Vocabulary - không có trong ngữ liệu)
     const oovTokens = (synthRes.trace || []).filter((t) => t.status === 'oov').map((t) => t.token);
 
     if (synthRes.trace && oovTokens.length === synthRes.trace.length) {
       return {
         success: false,
-        error: `Các từ trong câu chưa có bản thu âm trong ngữ liệu (${oovTokens.join(', ')}). Hãy vào mục "Ngữ liệu" để thu âm thêm.`,
+        error: `Các từ trong câu chưa có file âm thanh cho Giọng ${speaker}. Hãy chuyển sang giọng khác hoặc vào mục "Ngữ liệu" để thu âm.`,
         missingTokens: oovTokens,
       };
     }

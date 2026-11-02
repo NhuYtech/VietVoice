@@ -34,6 +34,10 @@ export const App: React.FC = () => {
   const [notification, setNotification] = useState<{
     type: 'success' | 'warning' | 'error';
     message: string;
+    action?: {
+      label: string;
+      onClick: () => void;
+    };
   } | null>(null);
 
   // Tải danh sách ngữ liệu từ IndexedDB và manifest ban đầu
@@ -89,6 +93,15 @@ export const App: React.FC = () => {
           message:
             res.error ||
             'Không thể tổng hợp từ văn bản này do chưa có file âm thanh trong ngữ liệu.',
+          action: res.suggestedVoice
+            ? {
+                label: `Chọn Giọng ${res.suggestedVoice}`,
+                onClick: () => {
+                  setSelectedVoice(res.suggestedVoice!);
+                  setNotification(null);
+                },
+              }
+            : undefined,
         });
         setActiveResult(null);
       } else {
@@ -200,6 +213,15 @@ export const App: React.FC = () => {
                 <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
               )}
               <span className="flex-1 leading-relaxed">{notification.message}</span>
+              {notification.action && (
+                <button
+                  type="button"
+                  onClick={notification.action.onClick}
+                  className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-semibold text-xs whitespace-nowrap transition shadow-xs"
+                >
+                  {notification.action.label}
+                </button>
+              )}
               <button
                 onClick={() => setNotification(null)}
                 className="text-[#85879A] hover:text-[#20213A] p-0.5 rounded"

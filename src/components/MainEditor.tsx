@@ -96,35 +96,96 @@ export const MainEditor: React.FC<MainEditorProps> = ({
           </div>
         </div>
 
-        {/* Vocabulary availability helper tags */}
+        {/* Vocabulary availability helper tags & voice constraints */}
         {text.trim() && (
-          <div className="mt-3 p-3 rounded-xl bg-[#F8F9FD] border border-[#EAEBF5] text-xs flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-[#555870]">Kiểm tra ngữ liệu:</span>
-            {vocabCheck.tokens.length === 0 ? null : (
-              <>
-                {vocabCheck.tokens.map((tok, idx) => {
-                  const isAvailable = vocabCheck.matchedWords.includes(tok);
-                  return (
-                    <span
-                      key={`${tok}-${idx}`}
-                      className={`px-2 py-0.5 rounded-md text-[11px] font-medium flex items-center gap-1 ${
-                        isAvailable
-                          ? 'bg-emerald-100/80 text-emerald-800 border border-emerald-200'
-                          : 'bg-amber-100/80 text-amber-800 border border-amber-200'
-                      }`}
-                      title={isAvailable ? 'Đã có trong ngữ liệu' : 'Chưa có trong ngữ liệu thu âm'}
-                    >
-                      {isAvailable ? '✓' : '!'} {tok}
-                    </span>
-                  );
-                })}
+          <div className="mt-3.5 space-y-2.5">
+            <div className="p-3 rounded-xl bg-[#F8F9FD] border border-[#EAEBF5] text-xs flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-[#555870]">Kiểm tra ngữ liệu:</span>
+              {vocabCheck.tokens.length === 0 ? null : (
+                <>
+                  {vocabCheck.wordChecks && vocabCheck.wordChecks.length > 0 ? (
+                    vocabCheck.wordChecks.map((check, idx) => {
+                      if (check.inCurrentVoice) {
+                        return (
+                          <span
+                            key={`${check.token}-${idx}`}
+                            className="px-2.5 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            title={`Từ '${check.token}' có sẵn bản thu âm Giọng ${selectedVoice}`}
+                          >
+                            <span className="text-emerald-600 font-bold">✓</span> {check.token}
+                          </span>
+                        );
+                      }
+                      if (check.inOtherVoice) {
+                        return (
+                          <button
+                            key={`${check.token}-${idx}`}
+                            type="button"
+                            onClick={() => onSelectVoice(check.correctVoice!)}
+                            className="px-2.5 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 transition cursor-pointer shadow-xs"
+                            title={`Bản thu của từ '${check.token}' là Giọng ${check.correctVoice}. Nhấn để chọn Giọng ${check.correctVoice}!`}
+                          >
+                            <span className="text-amber-600 font-bold">⚠️</span> {check.token}
+                            <span className="text-[10px] text-amber-700 font-normal underline ml-0.5">
+                              (Cần giọng {check.correctVoice})
+                            </span>
+                          </button>
+                        );
+                      }
+                      return (
+                        <span
+                          key={`${check.token}-${idx}`}
+                          className="px-2.5 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200"
+                          title={`Từ '${check.token}' chưa có trong bộ dữ liệu thu âm`}
+                        >
+                          <span className="text-slate-400 font-bold">✕</span> {check.token}
+                          <span className="text-[10px] text-slate-500">(chưa có)</span>
+                        </span>
+                      );
+                    })
+                  ) : (
+                    vocabCheck.tokens.map((tok, idx) => {
+                      const isAvailable = vocabCheck.matchedWords.includes(tok);
+                      return (
+                        <span
+                          key={`${tok}-${idx}`}
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 ${
+                            isAvailable
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-amber-50 text-amber-800 border border-amber-200'
+                          }`}
+                        >
+                          {isAvailable ? '✓' : '!'} {tok}
+                        </span>
+                      );
+                    })
+                  )}
+                </>
+              )}
+            </div>
 
-                {vocabCheck.missingWords.length > 0 && (
-                  <span className="text-[11px] text-amber-700 ml-1">
-                    (Có {vocabCheck.missingWords.length} từ chưa có trong ngữ liệu)
-                  </span>
+            {/* Thông báo bắt buộc chọn đúng giọng đọc của file thu âm */}
+            {vocabCheck.hasWrongVoice && (
+              <div className="p-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300/80 text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5 sm:mt-0" />
+                  <div className="text-xs leading-relaxed">
+                    <span className="font-bold text-amber-900">Ràng buộc giọng đọc: </span>
+                    {vocabCheck.wrongVoiceMessage}
+                  </div>
+                </div>
+
+                {vocabCheck.suggestedVoice && (
+                  <button
+                    type="button"
+                    onClick={() => onSelectVoice(vocabCheck.suggestedVoice!)}
+                    className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-semibold text-xs transition shadow-sm flex items-center gap-1.5 flex-shrink-0"
+                  >
+                    <span>Chọn Giọng {vocabCheck.suggestedVoice} ngay</span>
+                    <span>→</span>
+                  </button>
                 )}
-              </>
+              </div>
             )}
           </div>
         )}
@@ -159,9 +220,11 @@ export const MainEditor: React.FC<MainEditorProps> = ({
               {/* CARD 1 — MALE VOICE */}
               <div
                 onClick={() => onSelectVoice('Nam')}
-                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between relative ${
                   selectedVoice === 'Nam'
                     ? 'border-[#6255CF] bg-[#6255CF]/[0.04] shadow-sm'
+                    : vocabCheck.hasWrongVoice && vocabCheck.suggestedVoice === 'Nam'
+                    ? 'border-amber-400 bg-amber-50/50 hover:border-amber-500 ring-2 ring-amber-300/40 animate-pulse'
                     : 'border-[#E8E8F0] bg-white hover:border-[#D0D2E5]'
                 }`}
               >
@@ -175,6 +238,11 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#5578D8]/10 text-[#3B65D6]">
                         Giọng nam
                       </span>
+                      {vocabCheck.hasWrongVoice && vocabCheck.suggestedVoice === 'Nam' && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white shadow-xs">
+                          Cần chọn giọng này
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-[#85879A] mt-0.5">Giọng đọc nam trầm ấm</p>
                   </div>
@@ -200,9 +268,11 @@ export const MainEditor: React.FC<MainEditorProps> = ({
               {/* CARD 2 — FEMALE VOICE */}
               <div
                 onClick={() => onSelectVoice('Nữ')}
-                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between relative ${
                   selectedVoice === 'Nữ'
                     ? 'border-[#6255CF] bg-[#6255CF]/[0.04] shadow-sm'
+                    : vocabCheck.hasWrongVoice && vocabCheck.suggestedVoice === 'Nữ'
+                    ? 'border-amber-400 bg-amber-50/50 hover:border-amber-500 ring-2 ring-amber-300/40 animate-pulse'
                     : 'border-[#E8E8F0] bg-white hover:border-[#D0D2E5]'
                 }`}
               >
@@ -216,6 +286,11 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#B16BC1]/10 text-[#9B53AD]">
                         Giọng nữ
                       </span>
+                      {vocabCheck.hasWrongVoice && vocabCheck.suggestedVoice === 'Nữ' && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white shadow-xs">
+                          Cần chọn giọng này
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-[#85879A] mt-0.5">Giọng đọc nữ tự nhiên</p>
                   </div>
