@@ -7,7 +7,6 @@ import {
   Mic,
   AlertCircle,
   Music,
-  Sparkles,
   Sliders,
   ChevronDown,
 } from 'lucide-react';
@@ -27,13 +26,6 @@ interface MainEditorProps {
   isPlayingPreview: 'Nam' | 'Nữ' | null;
   onOpenRecordModal?: (word?: string) => void;
 }
-
-const EXAMPLES = [
-  'Xin chào',
-  'Việt Nam',
-  'Công nghệ thông tin',
-  'Chào mừng bạn đến với VietVoice',
-];
 
 export const MainEditor: React.FC<MainEditorProps> = ({
   text,
@@ -131,7 +123,7 @@ export const MainEditor: React.FC<MainEditorProps> = ({
           </div>
         </div>
 
-        {/* Vocabulary availability helper tags & voice constraints */}
+        {/* Vocabulary availability helper tags */}
         {text.trim() && (
           <div className="mt-3.5 space-y-2.5">
             <div className="p-3 rounded-xl bg-[#F8F9FD] border border-[#EAEBF5] text-xs flex flex-wrap items-center gap-2">
@@ -187,29 +179,6 @@ export const MainEditor: React.FC<MainEditorProps> = ({
               )}
             </div>
 
-            {/* Thông báo ràng buộc giọng đọc */}
-            {vocabCheck.hasWrongVoice && vocabCheck.suggestedVoice && (
-              <div className="p-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
-                <div className="flex items-start gap-2.5">
-                  <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5 sm:mt-0" />
-                  <div className="text-xs leading-relaxed">
-                    <span className="font-bold text-amber-900">Ràng buộc giọng đọc: </span>
-                    {vocabCheck.wrongVoiceMessage ||
-                      `Các từ trong câu chỉ có sẵn ở bản thu Giọng ${vocabCheck.suggestedVoice}. Hãy chuyển sang Giọng ${vocabCheck.suggestedVoice} để tổng hợp.`}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => onSelectVoice(vocabCheck.suggestedVoice!)}
-                  className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-semibold text-xs transition shadow-sm flex items-center gap-1.5 flex-shrink-0"
-                >
-                  <span>Chọn Giọng {vocabCheck.suggestedVoice} ngay</span>
-                  <span>→</span>
-                </button>
-              </div>
-            )}
-
             {/* Thông báo từ chưa có bản ghi âm */}
             {vocabCheck.hasMissing && (
               <div className="p-3 rounded-xl bg-gradient-to-r from-rose-50 to-red-50 border border-rose-300 text-rose-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
@@ -236,23 +205,6 @@ export const MainEditor: React.FC<MainEditorProps> = ({
             )}
           </div>
         )}
-
-        {/* Example Suggestions */}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-[#85879A] mr-1 flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-[#6255CF]" />
-            Gợi ý mẫu:
-          </span>
-          {EXAMPLES.map((ex) => (
-            <button
-              key={ex}
-              onClick={() => onChangeText(ex)}
-              className="text-xs px-3 py-1.5 rounded-lg bg-[#F3F4FA] hover:bg-[#EAEBF5] text-[#484B63] transition font-medium border border-[#E5E6F2]"
-            >
-              {ex}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Main Action Bar */}

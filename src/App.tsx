@@ -23,7 +23,7 @@ import { NotificationModal, type NotificationModalData } from './components/Noti
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavTab>('tts');
-  const [inputText, setInputText] = useState('Xin chào Việt Nam');
+  const [inputText, setInputText] = useState('');
   const [selectedVoice, setSelectedVoice] = useState<'Nam' | 'Nữ'>('Nam');
   const [isConverting, setIsConverting] = useState(false);
   const [activeResult, setActiveResult] = useState<SynthResult | null>(null);
@@ -36,7 +36,7 @@ export const App: React.FC = () => {
 
   // Track âm thanh đang phát ở thanh player cố định cuối trang
   const [playerTrack, setPlayerTrack] = useState<PlayerTrack | null>(null);
-  const [isPlayerOpen, setIsPlayerOpen] = useState(true);
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
   // Tải danh sách ngữ liệu từ IndexedDB và manifest ban đầu
   const loadCorpus = useCallback(async () => {
@@ -65,6 +65,9 @@ export const App: React.FC = () => {
         filename: list[0].filename,
       });
       setIsPlayerOpen(true);
+    } else {
+      setPlayerTrack(null);
+      setIsPlayerOpen(false);
     }
   }, []);
 

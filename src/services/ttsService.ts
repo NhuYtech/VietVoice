@@ -11,33 +11,24 @@ const STORAGE_KEY = 'vietvoice_conversion_history';
 export function getStoredHistory(): ConversionHistoryItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_CONVERSION_HISTORY));
-      return INITIAL_CONVERSION_HISTORY;
-    }
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return INITIAL_CONVERSION_HISTORY;
-    }
-    // Chuẩn hóa và làm sạch từng mục để không bao giờ bị undefined gây crash
-    return parsed.map((item, idx) => ({
-      id: item?.id || `hist-${idx}-${Date.now()}`,
-      text: String(item?.text || 'Mẫu âm thanh'),
+    if (!Array.isArray(parsed)) return [];
+    const real = parsed.filter((it: any) => it && !String(it.id).startsWith('hist-'));
+    return real.map((item: any, idx: number) => ({
+      id: item?.id || `conv-${idx}-${Date.now()}`,
+      text: String(item?.text || ''),
       speaker: (item?.speaker === 'Nữ' || item?.speaker === 'Nữ 01' ? 'Nữ' : 'Nam') as 'Nam' | 'Nữ',
       duration: typeof item?.duration === 'number' && !isNaN(item.duration) ? item.duration : 0.6,
-      createdAt: String(item?.createdAt || '2026-11-02 12:00'),
+      createdAt: String(item?.createdAt || ''),
       filename: String(item?.filename || 'vietvoice_audio.wav'),
       status: item?.status === 'failed' ? 'failed' : 'completed',
     }));
   } catch (err) {
-    console.error('Không thể đọc lịch sử chuyển đổi:', err);
-    return INITIAL_CONVERSION_HISTORY;
+    return [];
   }
 }
 
-/**
- * Lưu lịch sử chuyển đổi vào LocalStorage
- */
 export function saveHistory(items: ConversionHistoryItem[]): void {
   try {
     if (!Array.isArray(items)) return;

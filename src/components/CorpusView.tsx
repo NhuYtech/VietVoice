@@ -55,8 +55,6 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
         isMock: false,
       };
     }),
-    // Mock entries
-    ...MOCK_CORPUS_ITEMS,
   ];
 
   const filtered = combinedList.filter((item) => {
@@ -277,15 +275,9 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
                     {(Number(item.duration) || 0).toFixed(2)}s
                   </td>
                   <td className="py-3.5 px-4">
-                    {item.isMock ? (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F3F4FA] text-[#85879A] border border-[#E5E6F2]">
-                        Mẫu minh họa
-                      </span>
-                    ) : (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
-                        Bản thu thật
-                      </span>
-                    )}
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
+                      Bản thu âm
+                    </span>
                   </td>
                   <td className="py-3.5 px-4 text-right">
                     <div className="flex items-center justify-end gap-1">

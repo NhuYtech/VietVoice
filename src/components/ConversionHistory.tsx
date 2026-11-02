@@ -409,36 +409,15 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                     </div>
                   </div>
 
-                  {/* Middle Side: Speaker Avatar & Name (Chỉ hiển thị Nam hoặc Nữ) */}
-                  <div className="hidden sm:flex items-center gap-2 shrink-0 px-4">
-                    <div className="relative w-6 h-6 rounded-full overflow-hidden bg-[#F0F2F9] flex items-center justify-center border border-[#E2E4F0]">
-                      {isFemale ? (
-                        <img
-                          src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80"
-                          alt="Nữ"
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <img
-                          src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80"
-                          alt="Nam"
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      )}
-                      {/* Mic Status Dot */}
-                      <span
-                        className={`absolute bottom-0 right-0 w-2 h-2 rounded-full border border-white ${
-                          isFemale ? 'bg-red-500' : 'bg-blue-500'
-                        }`}
-                      />
-                    </div>
-                    <span className="text-xs font-semibold text-[#555870]">
+                  {/* Middle Side: Speaker Name (Chỉ hiển thị Nam hoặc Nữ) */}
+                  <div className="hidden sm:flex items-center shrink-0 px-4">
+                    <span
+                      className={`text-xs font-semibold px-2 py-0.5 rounded-md ${
+                        isFemale
+                          ? 'bg-[#B16BC1]/10 text-[#B16BC1]'
+                          : 'bg-[#5578D8]/10 text-[#5578D8]'
+                      }`}
+                    >
                       {isFemale ? 'Nữ' : 'Nam'}
                     </span>
                   </div>

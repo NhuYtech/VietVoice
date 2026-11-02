@@ -193,35 +193,8 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
 
   return (
     <div className="fixed bottom-0 left-0 md:left-[240px] right-0 z-40 bg-white border-t border-[#E8E8F0] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-4 sm:px-6 py-2.5 flex items-center justify-between min-h-[68px] select-none">
-      {/* 1. Bên trái: Avatar + Tên bản ghi + Giọng (Nam / Nữ) */}
+      {/* 1. Bên trái: Tên bản ghi + Giọng (Nam / Nữ) */}
       <div className="flex items-center gap-3 min-w-0 max-w-[260px] sm:max-w-[320px] md:max-w-[360px] shrink-0">
-        <div className="relative w-9 h-9 rounded-full overflow-hidden bg-[#F0F2F9] shrink-0 border border-[#E2E4F0]">
-          {isFemale ? (
-            <img
-              src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80"
-              alt="Giọng Nữ"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.currentTarget as HTMLElement).style.display = 'none';
-              }}
-            />
-          ) : (
-            <img
-              src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80"
-              alt="Giọng Nam"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.currentTarget as HTMLElement).style.display = 'none';
-              }}
-            />
-          )}
-
-          {/* Badge cờ Việt Nam đỏ sao vàng ở góc avatar */}
-          <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-red-600 border border-white flex items-center justify-center text-[7px] text-yellow-300 font-bold leading-none">
-            ★
-          </span>
-        </div>
-
         <div className="min-w-0 flex-1">
           <div
             className="font-bold text-xs md:text-sm text-[#20213A] truncate leading-tight"
@@ -229,8 +202,13 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
           >
             {track.text}
           </div>
-          <div className="text-[11px] text-[#85879A] mt-0.5 font-medium">
-            {isFemale ? 'Nữ' : 'Nam'}
+          <div className="text-[11px] text-[#85879A] mt-0.5 font-medium flex items-center gap-1.5">
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                isFemale ? 'bg-[#B16BC1]' : 'bg-[#5578D8]'
+              }`}
+            />
+            <span>{isFemale ? 'Nữ' : 'Nam'}</span>
           </div>
         </div>
       </div>
@@ -335,3 +313,4 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
     </div>
   );
 };
+
