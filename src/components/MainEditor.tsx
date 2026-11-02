@@ -1,5 +1,6 @@
-import React from 'react';
-import { Volume2, Play, Square, Trash2, Mic, AlertCircle, CheckCircle2, Music, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { Volume2, Play, Square, Trash2, Mic, AlertCircle, CheckCircle2, Music, Sparkles, Sliders, Clock } from 'lucide-react';
+import { PauseSettingsModal } from './PauseSettingsModal';
 import type { CorpusEntry } from '../lib/types';
 import { inspectVocabulary } from '../services/ttsService';
 
@@ -35,6 +36,7 @@ export const MainEditor: React.FC<MainEditorProps> = ({
   isPlayingPreview,
   onOpenRecordModal,
 }) => {
+  const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
   const charCount = text.length;
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
 
@@ -59,6 +61,16 @@ export const MainEditor: React.FC<MainEditorProps> = ({
             <Music className="w-3.5 h-3.5 text-[#6255CF]" />
             <span>Định dạng: <strong>WAV (22.05 kHz Lossless)</strong></span>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsPauseModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-[#F3F4FB] border border-[#E2E4F0] hover:border-[#6255CF]/50 text-xs font-medium text-[#555870] hover:text-[#6255CF] transition shadow-2xs cursor-pointer select-none"
+            title="Thiết lập thời gian ngắt nghỉ giữa các câu, dấu chấm, dấu phẩy"
+          >
+            <Sliders className="w-3.5 h-3.5 text-[#6255CF]" />
+            <span>Thiết lập ngắt nghỉ</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -372,6 +384,12 @@ export const MainEditor: React.FC<MainEditorProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Modal thiết lập ngắt nghỉ */}
+      <PauseSettingsModal
+        isOpen={isPauseModalOpen}
+        onClose={() => setIsPauseModalOpen(false)}
+      />
     </div>
   );
 };
