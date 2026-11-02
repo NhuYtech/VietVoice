@@ -237,3 +237,4 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
     </div>
   );
 };
+

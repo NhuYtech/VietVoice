@@ -182,3 +182,4 @@ export const INITIAL_CONVERSION_HISTORY: ConversionHistoryItem[] = [
     status: 'completed'
   }
 ];
+
