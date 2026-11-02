@@ -1,13 +1,14 @@
 import { SR, decodeBlob, encodeWav, extractFeatures, estimateF0, fadeEdges, normalizeRms, trimSilence } from './dsp';
 import { putEntry } from './store';
 import type { CorpusEntry, JoinInfo, SynthResult, TraceItem } from './types';
+import { encodeVnWord, isVniCode, decodeVnWord, wordAndCodeFromFilename } from './vniCodec';
 
-/* Bước 1: chuẩn hóa văn bản */
+/* Bước 1: chuẩn hóa văn bản (hỗ trợ cả tiếng Việt có dấu và mã VNI quy ước a+, d-, o+...) */
 export function normalizeText(s: string): string {
   return s
     .normalize('NFC')
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/[^\p{L}\p{N}\s\+\-]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -80,7 +81,10 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
   const others = new Map<string, CorpusEntry>();
   let maxN = 1;
   for (const e of entries) {
-    (e.speaker === opts.speaker ? mine : others).set(e.word, e);
+    const target = e.speaker === opts.speaker ? mine : others;
+    target.set(e.word, e);
+    const c = e.code || encodeVnWord(e.word);
+    if (c) target.set(c, e);
     maxN = Math.max(maxN, e.word.split(' ').length);
   }
 
@@ -90,10 +94,16 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
     let done = false;
     for (let n = Math.min(maxN, tokens.length - i); n >= 1 && !done; n--) {
       const key = tokens.slice(i, i + n).join(' ');
-      let e = mine.get(key);
+      let e = mine.get(key) || mine.get(encodeVnWord(key));
+      if (!e && isVniCode(key)) {
+        e = mine.get(decodeVnWord(key));
+      }
       let status: TraceItem['status'] = 'ok';
       if (!e && opts.fallbackSpeaker) {
-        e = others.get(key);
+        e = others.get(key) || others.get(encodeVnWord(key));
+        if (!e && isVniCode(key)) {
+          e = others.get(decodeVnWord(key));
+        }
         status = 'fallback';
       }
       if (e) {
@@ -174,13 +184,22 @@ export async function addToCorpus(
   speaker: string,
   source: CorpusEntry['source']
 ): Promise<CorpusEntry> {
-  const w = normalizeText(word);
+  let w = normalizeText(word);
   if (!w) throw new Error('Từ không hợp lệ');
+
+  // Nếu người dùng nhập mã quy ước (vd: bac1, cang3, ba0), tự động giải mã thành từ có dấu
+  if (isVniCode(w)) {
+    const decoded = decodeVnWord(w);
+    if (decoded) w = normalizeText(decoded);
+  }
+
+  const code = encodeVnWord(w);
   const spk = speaker.trim() || 'default';
   const raw = await decodeBlob(blob);
   const entry: CorpusEntry = {
     id: entryId(spk, w),
     word: w,
+    code,
     speaker: spk,
     blob,
     source,
@@ -194,9 +213,11 @@ export async function addToCorpus(
   return entry;
 }
 
-/** "xin_chào.wav" → "xin chào" */
-export const wordFromFilename = (name: string) =>
-  normalizeText(name.replace(/\.[^.]+$/, '').replace(/[_\-.]+/g, ' ').replace(/\s*\(\d+\)\s*$/, ''));
+/** Đọc từ vựng từ tên file .wav (hỗ trợ cả quy ước VNI như bac1.wav, cang3.wav, ba0.wav hoặc tên thông thường) */
+export const wordFromFilename = (name: string): string => {
+  const { word } = wordAndCodeFromFilename(name);
+  return normalizeText(word);
+};
 
 /** Nạp bộ dữ liệu từ public/corpus/manifest.json (nếu có). */
 export async function loadManifest(existing: Set<string>): Promise<CorpusEntry[]> {

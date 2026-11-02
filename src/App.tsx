@@ -19,6 +19,7 @@ import {
 import type { CorpusEntry, SynthResult } from './lib/types';
 import { getAllEntries } from './lib/store';
 import { loadManifest, normalizeText, synthesize } from './lib/tts';
+import { encodeVnWord, isVniCode, decodeVnWord } from './lib/vniCodec';
 import logo from './assets/images/logo.png';
 import CorpusPanel from './components/CorpusPanel';
 
@@ -157,6 +158,9 @@ export default function App() {
     for (const e of entries) {
       if (fallbackSpeaker || e.speaker === selectedVoiceId) {
         validWords.add(e.word);
+        if (e.code) validWords.add(e.code);
+        const c = encodeVnWord(e.word);
+        if (c) validWords.add(c);
         maxN = Math.max(maxN, e.word.split(' ').length);
       }
     }
@@ -166,7 +170,13 @@ export default function App() {
       let matched = false;
       for (let n = Math.min(maxN, tokens.length - i); n >= 1; n--) {
         const candidate = tokens.slice(i, i + n).join(' ');
-        if (validWords.has(candidate)) {
+        const candidateCode = encodeVnWord(candidate);
+        const decodedCandidate = isVniCode(candidate) ? decodeVnWord(candidate) : '';
+        if (
+          validWords.has(candidate) ||
+          validWords.has(candidateCode) ||
+          (decodedCandidate && validWords.has(decodedCandidate))
+        ) {
           i += n;
           matched = true;
           break;
@@ -310,15 +320,24 @@ export default function App() {
     }
   };
 
-  // Export: tải file WAV đã tổng hợp
+  // Export: tải file WAV đã tổng hợp (theo quy ước mã hóa VNI nếu là từ đơn hoặc chuỗi từ)
   const handleExport = () => {
     if (!lastResult) {
       setStatusMsg('Chưa có âm thanh để xuất. Hãy bấm nút Play để phát trước.');
       return;
     }
+    const words = lastResult.text.trim().split(/\s+/).filter(Boolean);
+    let filename = '';
+    if (words.length === 1) {
+      filename = `${encodeVnWord(words[0])}.wav`;
+    } else {
+      const codeSlug = words.slice(0, 4).map(encodeVnWord).join('_');
+      filename = `${codeSlug}.wav`;
+    }
+
     const link = document.createElement('a');
     link.href = urlRef.current;
-    link.download = `vietvoice_${lastResult.speaker}_${lastResult.text.slice(0, 20).replace(/\s+/g, '_')}.wav`;
+    link.download = filename;
     link.click();
   };
 

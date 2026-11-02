@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import {
   Mic,
   Play,
@@ -6,11 +6,15 @@ import {
   Square,
   Sparkles,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Download,
+  Info,
+  FileAudio
 } from 'lucide-react';
 import type { CorpusEntry } from '../lib/types';
 import { addToCorpus } from '../lib/tts';
 import { decodeBlob, encodeWav, playSamples, processStudioWordAudio, SR } from '../lib/dsp';
+import { encodeVnWord, isVniCode, decodeVnWord } from '../lib/vniCodec';
 import { Sub } from './PipelinePanel';
 
 interface ProcessedClip {
@@ -43,6 +47,26 @@ export default function CorpusPanel({
   const timerRef = useRef<number | null>(null);
   const vuAudioCtx = useRef<AudioContext | null>(null);
   const vuTimer = useRef<number | null>(null);
+
+  // Xử lý mã quy ước VNI theo thời gian thực
+  const trimmedWord = word.trim();
+  const isInputCode = useMemo(() => isVniCode(trimmedWord), [trimmedWord]);
+  const resolvedWord = useMemo(() => (isInputCode ? decodeVnWord(trimmedWord) : trimmedWord), [isInputCode, trimmedWord]);
+  const vniCode = useMemo(() => (resolvedWord ? encodeVnWord(resolvedWord) : ''), [resolvedWord]);
+  const wavFilename = useMemo(() => (vniCode ? `${vniCode}.wav` : ''), [vniCode]);
+
+  // Tải file .wav theo đúng tên quy ước
+  const downloadWav = () => {
+    if (!clip || !wavFilename) return;
+    const url = URL.createObjectURL(clip.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = wavFilename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     return () => {
@@ -161,7 +185,9 @@ export default function CorpusPanel({
         peakDb: processed.peakDb,
         samples: processed.audio
       });
-      setMsg(`Đã thu xong âm "${word.trim()}": ${processed.duration}s. Bạn có thể nghe lại và bấm Lưu.`);
+      const displayWord = resolvedWord || trimmedWord;
+      const fileLabel = wavFilename ? ` [${wavFilename}]` : '';
+      setMsg(`Đã thu xong âm "${displayWord}"${fileLabel}: ${processed.duration}s. Bạn có thể nghe lại, tải file hoặc bấm Lưu.`);
     } catch (err: any) {
       setMsg(`Lỗi xử lý âm thanh: ${err?.message || err}`);
     } finally {
@@ -171,12 +197,13 @@ export default function CorpusPanel({
 
   // Lưu vào hệ thống
   const saveClip = async () => {
-    if (!clip || !word.trim()) return;
+    if (!clip || !trimmedWord) return;
     setBusy(true);
     try {
       const spk = speaker || 'Tôi';
-      const e = await addToCorpus(clip.blob, word, spk, 'record');
-      setMsg(`✓ Đã lưu thành công âm "${e.word}" vào hệ thống!`);
+      const targetWord = resolvedWord || trimmedWord;
+      const e = await addToCorpus(clip.blob, targetWord, spk, 'record');
+      setMsg(`✓ Đã lưu thành công âm "${e.word}" (file: ${e.code}.wav) vào hệ thống!`);
       setClip(null);
       setWord('');
       await refresh();
@@ -203,16 +230,43 @@ export default function CorpusPanel({
         <div className="space-y-4 pt-1">
           {/* Nhập âm cần thu */}
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Nhập âm cần thu
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-200">
+                Nhập âm hoặc từ cần thu
+              </label>
+              {wavFilename && (
+                <span className="text-[11px] font-mono text-cyan-300 bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-500/30 flex items-center gap-1">
+                  <FileAudio className="w-3 h-3 text-cyan-400" />
+                  {wavFilename}
+                </span>
+              )}
+            </div>
             <input
               value={word}
               onChange={(e) => setWord(e.target.value)}
               disabled={recording}
-              placeholder="Nhập âm hoặc từ cần thu (vd: a, b, xin, chào...)"
-              className="w-full rounded-xl border border-white/10 bg-black/25 p-3 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-400/50 transition"
+              placeholder="Nhập từ (vd: ba, bác, cảng, đêm...) hoặc mã (vd: bac1, cang3)"
+              className="w-full rounded-xl border border-white/10 bg-black/25 p-3 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-400/50 transition font-medium"
             />
+            {isInputCode && resolvedWord && resolvedWord !== trimmedWord && (
+              <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
+                ✓ Nhận diện từ tiếng Việt: <span className="font-bold underline">{resolvedWord}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Hộp quy ước mã hóa & đặt tên file */}
+          <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-[11px] text-slate-300 space-y-1.5">
+            <div className="flex items-center gap-1.5 font-semibold text-cyan-300">
+              <Info className="w-3.5 h-3.5 shrink-0" />
+              <span>Quy ước mã hóa từ có dấu & đặt tên file .wav:</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              • Dấu VNI ở cuối từ (0=ngang, 1=sắc, 2=huyền, 3=hỏi, 4=ngã, 5=nặng). VD: <span className="text-white font-mono font-semibold">ba0</span>, <span className="text-white font-mono font-semibold">bac1</span>, <span className="text-white font-mono font-semibold">cang3</span>
+            </p>
+            <p className="text-slate-300 leading-relaxed">
+              • Mũ: <span className="text-white font-mono">â→a+</span>, <span className="text-white font-mono">ô→o+</span>, <span className="text-white font-mono">ê→e+</span> | Móc: <span className="text-white font-mono">ă→aa</span>, <span className="text-white font-mono">ơ→oo</span>, <span className="text-white font-mono">ư→uu</span> | <span className="text-white font-mono">đ→d-</span>
+            </p>
           </div>
 
           {/* Thanh đo âm lượng Micro khi thu */}
@@ -235,7 +289,7 @@ export default function CorpusPanel({
           )}
 
           {/* Nút Bắt đầu thu / Dừng thu */}
-          <div className="flex items-center gap-3 pt-1">
+          <div className="flex items-center gap-2.5 pt-1">
             {!recording ? (
               <button
                 type="button"
@@ -266,9 +320,17 @@ export default function CorpusPanel({
                 </button>
                 <button
                   type="button"
+                  onClick={downloadWav}
+                  title={`Tải file ${wavFilename} về máy`}
+                  className="flex items-center gap-1.5 rounded-xl bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-400/40 px-3.5 py-3 text-xs font-semibold text-cyan-200 transition"
+                >
+                  <Download className="h-4 w-4" /> {wavFilename || 'Tải .wav'}
+                </button>
+                <button
+                  type="button"
                   onClick={saveClip}
                   disabled={busy}
-                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition disabled:opacity-50"
                 >
                   <Save className="h-4 w-4" /> Lưu
                 </button>

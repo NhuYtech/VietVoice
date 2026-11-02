@@ -17,7 +17,8 @@ export interface Features {
 
 export interface CorpusEntry {
   id: string; // `${speaker}::${word}`
-  word: string; // đã chuẩn hóa (NFC, chữ thường)
+  word: string; // đã chuẩn hóa (NFC, chữ thường, vd: "bác")
+  code: string; // mã theo quy ước VNI (vd: "bac1", "ba0", "cang3")
   speaker: string;
   blob: Blob; // âm thanh gốc đã thu
   source: 'manifest' | 'upload' | 'record';
