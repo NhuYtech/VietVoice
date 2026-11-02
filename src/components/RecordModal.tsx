@@ -39,7 +39,7 @@ export const RecordModal: React.FC<RecordModalProps> = ({
   const stopRecordingCleanup = useCallback(() => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     if (audioContextRef.current) {
-      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current.close().catch(() => { });
       audioContextRef.current = null;
     }
     if (streamRef.current) {
@@ -187,7 +187,7 @@ export const RecordModal: React.FC<RecordModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-[#20213A]">Phòng thu âm từ mới</h3>
-              <p className="text-[11px] text-[#85879A]">Ghi âm và đặt tên chuẩn mã hóa VNI theo đề bài</p>
+              <p className="text-[11px] text-[#85879A]">Ghi âm và đặt tên chuẩn mã hóa VNI</p>
             </div>
           </div>
           <button
@@ -216,11 +216,10 @@ export const RecordModal: React.FC<RecordModalProps> = ({
               <button
                 type="button"
                 onClick={() => setSpeaker('Nam')}
-                className={`p-3 rounded-xl border text-left transition flex items-center gap-2.5 ${
-                  speaker === 'Nam'
-                    ? 'border-[#5578D8] bg-[#5578D8]/5 text-[#5578D8] font-bold shadow-xs'
-                    : 'border-[#E8E8F0] text-[#555870] hover:bg-[#FAFBFD]'
-                }`}
+                className={`p-3 rounded-xl border text-left transition flex items-center gap-2.5 ${speaker === 'Nam'
+                  ? 'border-[#5578D8] bg-[#5578D8]/5 text-[#5578D8] font-bold shadow-xs'
+                  : 'border-[#E8E8F0] text-[#555870] hover:bg-[#FAFBFD]'
+                  }`}
               >
                 <span className="w-2.5 h-2.5 rounded-full bg-[#5578D8]" />
                 <span className="text-xs">Nam (Giọng nam)</span>
@@ -229,11 +228,10 @@ export const RecordModal: React.FC<RecordModalProps> = ({
               <button
                 type="button"
                 onClick={() => setSpeaker('Nữ')}
-                className={`p-3 rounded-xl border text-left transition flex items-center gap-2.5 ${
-                  speaker === 'Nữ'
-                    ? 'border-[#B16BC1] bg-[#B16BC1]/5 text-[#B16BC1] font-bold shadow-xs'
-                    : 'border-[#E8E8F0] text-[#555870] hover:bg-[#FAFBFD]'
-                }`}
+                className={`p-3 rounded-xl border text-left transition flex items-center gap-2.5 ${speaker === 'Nữ'
+                  ? 'border-[#B16BC1] bg-[#B16BC1]/5 text-[#B16BC1] font-bold shadow-xs'
+                  : 'border-[#E8E8F0] text-[#555870] hover:bg-[#FAFBFD]'
+                  }`}
               >
                 <span className="w-2.5 h-2.5 rounded-full bg-[#B16BC1]" />
                 <span className="text-xs">Nữ (Giọng nữ)</span>
@@ -263,11 +261,10 @@ export const RecordModal: React.FC<RecordModalProps> = ({
                 if (errorMsg) setErrorMsg('');
               }}
               placeholder="Ví dụ: mừng, xin chào, bác, cảng, việt nam..."
-              className={`w-full px-4 py-2.5 text-sm rounded-xl border focus:outline-none transition ${
-                !wordInput.trim() && errorMsg
-                  ? 'border-red-400 bg-red-50/20 focus:border-red-500'
-                  : 'border-[#E8E8F0] focus:border-[#6255CF] text-[#20213A]'
-              } ${isRecording ? 'bg-slate-100 cursor-not-allowed opacity-75' : ''}`}
+              className={`w-full px-4 py-2.5 text-sm rounded-xl border focus:outline-none transition ${!wordInput.trim() && errorMsg
+                ? 'border-red-400 bg-red-50/20 focus:border-red-500'
+                : 'border-[#E8E8F0] focus:border-[#6255CF] text-[#20213A]'
+                } ${isRecording ? 'bg-slate-100 cursor-not-allowed opacity-75' : ''}`}
             />
 
             {/* VNI Filename Preview */}
@@ -302,11 +299,10 @@ export const RecordModal: React.FC<RecordModalProps> = ({
                     type="button"
                     onClick={startRecording}
                     disabled={!wordInput.trim()}
-                    className={`px-5 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 transition ${
-                      !wordInput.trim()
-                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 shadow-none'
-                        : 'bg-[#6255CF] hover:bg-[#5144BD] text-white shadow-md shadow-[#6255CF]/20 active:scale-95 cursor-pointer'
-                    }`}
+                    className={`px-5 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 transition ${!wordInput.trim()
+                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 shadow-none'
+                      : 'bg-[#6255CF] hover:bg-[#5144BD] text-white shadow-md shadow-[#6255CF]/20 active:scale-95 cursor-pointer'
+                      }`}
                     title={!wordInput.trim() ? 'Vui lòng nhập từ tiếng Việt cần thu âm ở mục 2 trước' : 'Bắt đầu thu âm'}
                   >
                     <Mic className="w-4 h-4" />
@@ -363,11 +359,10 @@ export const RecordModal: React.FC<RecordModalProps> = ({
           <button
             onClick={handleSaveToCorpus}
             disabled={isSaving || !audioBlob || !wordInput.trim()}
-            className={`px-5 py-2.5 rounded-xl text-xs font-semibold text-white flex items-center gap-2 transition ${
-              isSaving || !audioBlob || !wordInput.trim()
-                ? 'bg-[#B0B2C5] cursor-not-allowed opacity-75'
-                : 'bg-[#6255CF] hover:bg-[#5144BD] shadow-sm'
-            }`}
+            className={`px-5 py-2.5 rounded-xl text-xs font-semibold text-white flex items-center gap-2 transition ${isSaving || !audioBlob || !wordInput.trim()
+              ? 'bg-[#B0B2C5] cursor-not-allowed opacity-75'
+              : 'bg-[#6255CF] hover:bg-[#5144BD] shadow-sm'
+              }`}
           >
             {isSaving ? (
               <span>Đang lưu...</span>
