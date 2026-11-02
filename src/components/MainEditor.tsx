@@ -249,12 +249,12 @@ export const MainEditor: React.FC<MainEditorProps> = ({
               {isConverting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Đang tổng hợp...</span>
+                  <span>Đang chuyển đổi...</span>
                 </>
               ) : (
                 <>
                   <Volume2 className="w-4 h-4" />
-                  <span>Tạo âm thanh</span>
+                  <span>Chuyển thành âm thanh</span>
                 </>
               )}
             </button>
