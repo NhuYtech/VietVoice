@@ -373,15 +373,18 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
         </div>
       )}
 
-      {/* 2. List Body */}
+      {/* 2. List Body: Cuộn riêng trong danh sách chuyển đổi, giữ nguyên phần MainEditor bên trên */}
       {!isCollapsed && (
-        <div className="border-t border-[#F0F2F9] divide-y divide-[#F0F2F9]" ref={menuRef}>
+        <div
+          className="border-t border-[#F0F2F9] divide-y divide-[#F0F2F9] overflow-y-auto max-h-[300px] sm:max-h-[340px] overscroll-contain"
+          ref={menuRef}
+        >
           {filtered.length === 0 ? (
             <div className="py-12 text-center text-xs text-[#85879A]">
               Không tìm thấy mục chuyển đổi nào phù hợp.
             </div>
           ) : (
-            filtered.map((item) => {
+            filtered.map((item, idx) => {
               const isFemale = item.speaker === 'Nữ';
               const isPlaying = Boolean(isPlayingAudio && currentPlayingId === item.id);
               const isSelected = selectedIds.has(item.id);
@@ -518,7 +521,13 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
 
                       {/* Dropdown Menu */}
                       {activeMenuId === item.id && (
-                        <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border border-[#E2E4F0] shadow-xl py-1.5 z-40 animate-in fade-in zoom-in-95 text-xs font-medium">
+                        <div
+                          className={`absolute right-0 ${
+                            idx >= filtered.length - 2 && filtered.length > 2
+                              ? 'bottom-full mb-1'
+                              : 'top-full mt-1'
+                          } w-44 bg-white rounded-xl border border-[#E2E4F0] shadow-xl py-1.5 z-40 animate-in fade-in zoom-in-95 text-xs font-medium`}
+                        >
                           {onSelectSampleText && (
                             <button
                               onClick={() => {
