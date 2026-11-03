@@ -365,6 +365,7 @@ Bạn có thể nghe phát âm thanh tại thanh điều khiển cố định b�
                   setRecordInitialWord(word || '');
                   setIsRecordModalOpen(true);
                 }}
+                onShowNotification={setNotificationModal}
               />
 
               {/* Conversion History Section */}

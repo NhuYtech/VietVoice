@@ -10,7 +10,8 @@ import {
   Sliders,
   ChevronDown,
 } from 'lucide-react';
-import { PauseSettingsModal } from './PauseSettingsModal';
+import { PauseSettingsModal, type PauseSettings } from './PauseSettingsModal';
+import type { NotificationModalData } from './NotificationModal';
 import type { CorpusEntry } from '../lib/types';
 import { inspectVocabulary } from '../services/ttsService';
 
@@ -25,6 +26,7 @@ interface MainEditorProps {
   onPlayPreviewVoice: (voice: 'Nam' | 'Nữ') => void;
   isPlayingPreview: 'Nam' | 'Nữ' | null;
   onOpenRecordModal?: (word?: string) => void;
+  onShowNotification?: (data: NotificationModalData) => void;
 }
 
 export const MainEditor: React.FC<MainEditorProps> = ({
@@ -38,6 +40,7 @@ export const MainEditor: React.FC<MainEditorProps> = ({
   onPlayPreviewVoice,
   isPlayingPreview,
   onOpenRecordModal,
+  onShowNotification,
 }) => {
   const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
   const charCount = text.length;
@@ -237,6 +240,14 @@ export const MainEditor: React.FC<MainEditorProps> = ({
       <PauseSettingsModal
         isOpen={isPauseModalOpen}
         onClose={() => setIsPauseModalOpen(false)}
+        onSave={(newSettings) => {
+          onShowNotification?.({
+            type: 'success',
+            title: 'Lưu thiết lập ngắt nghỉ thành công!',
+            message: `Đã cập nhật thời gian ngắt nghỉ: Dấu chấm (${newSettings.period}s), Dấu phẩy (${newSettings.comma}s), Dấu chấm phẩy (${newSettings.semicolon}s), Xuống dòng (${newSettings.newline}s). Các lần tạo audio tiếp theo sẽ áp dụng thiết lập này.`,
+            confirmText: 'Đã hiểu',
+          });
+        }}
       />
     </div>
   );

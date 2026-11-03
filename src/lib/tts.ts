@@ -82,9 +82,9 @@ function computeSegmentGaps(
       gaps[k] = Math.round((pauseSettings.newline ?? 0.6) * 1000);
     } else if (/[.!?]/.test(between)) {
       gaps[k] = Math.round((pauseSettings.period ?? 0.45) * 1000);
-    } else if (between.includes(';')) {
+    } else if (between.includes(';') || between.includes(':')) {
       gaps[k] = Math.round((pauseSettings.semicolon ?? 0.3) * 1000);
-    } else if (between.includes(',')) {
+    } else if (between.includes(',') || between.includes(' - ') || between.includes(' — ')) {
       gaps[k] = Math.round((pauseSettings.comma ?? 0.25) * 1000);
     } else {
       gaps[k] = defaultGapMs;
