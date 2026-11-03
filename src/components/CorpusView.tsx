@@ -119,12 +119,16 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
     }
 
     setPlayingId(item.id);
-    let real = realEntries.find((e) => e.word.toLowerCase() === item.word.toLowerCase());
+    const itemSpeakerCore = item.speaker === 'Nam' ? 'nam' : 'nu';
+    let real = realEntries.find((e) => {
+      const eSpk = (e.speaker || '').toLowerCase();
+      return e.word.toLowerCase() === item.word.toLowerCase() && (eSpk === itemSpeakerCore || eSpk.includes(itemSpeakerCore));
+    });
 
-    // Nếu chưa có trong IndexedDB nhưng có trong manifest: tải tức thì file WAV từ public/corpus/wavs
+    // Nếu chưa có trong IndexedDB nhưng có trong manifest: tải tức thì file WAV từ public/corpus/wavs theo đúng giọng
     if (!real || !real.blob) {
       const m = cachedManifestWords.find(
-        (w) => w.word.toLowerCase() === item.word.toLowerCase()
+        (w) => w.word.toLowerCase() === item.word.toLowerCase() && (w.speaker || 'nam').toLowerCase() === itemSpeakerCore
       );
       if (m) {
         real = (await fetchManifestWord(m)) || undefined;
@@ -152,7 +156,12 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
 
   // Tải file WAV
   const handleDownloadWord = (item: CorpusItem) => {
-    const real = realEntries.find((e) => e.word.toLowerCase() === item.word.toLowerCase());
+    const itemSpeakerCore = item.speaker === 'Nam' ? 'nam' : 'nu';
+    const real = realEntries.find((e) => {
+      const eSpk = (e.speaker || '').toLowerCase();
+      return e.word.toLowerCase() === item.word.toLowerCase() && (eSpk === itemSpeakerCore || eSpk.includes(itemSpeakerCore));
+    });
+
     if (real && real.blob) {
       const url = URL.createObjectURL(real.blob);
       const a = document.createElement('a');
@@ -163,7 +172,9 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
       return;
     }
 
-    const m = cachedManifestWords.find((w) => w.word.toLowerCase() === item.word.toLowerCase());
+    const m = cachedManifestWords.find(
+      (w) => w.word.toLowerCase() === item.word.toLowerCase() && (w.speaker || 'nam').toLowerCase() === itemSpeakerCore
+    );
     if (m) {
       const a = document.createElement('a');
       a.href = `/corpus/${m.file}`;
@@ -173,20 +184,27 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
   };
 
   const handleDeleteReal = (item: CorpusItem) => {
+    const itemSpeakerCore = item.speaker === 'Nam' ? 'nam' : 'nu';
+    const real = realEntries.find((e) => {
+      const eSpk = (e.speaker || '').toLowerCase();
+      return e.word.toLowerCase() === item.word.toLowerCase() && (eSpk === itemSpeakerCore || eSpk.includes(itemSpeakerCore));
+    });
+    const targetId = real?.id || item.id;
+
     if (onShowNotification) {
       onShowNotification({
         type: 'confirm',
         title: 'Xác nhận xóa từ ngữ liệu',
-        message: `Bạn có chắc chắn muốn xóa từ "${item.word}" (${item.speaker}) khỏi ngữ liệu?`,
+        message: `Bạn có chắc chắn muốn xóa từ "${item.word}" (Giọng ${item.speaker}) khỏi ngữ liệu?`,
         confirmText: 'Xóa ngay',
         cancelText: 'Hủy bỏ',
         onConfirm: async () => {
-          await deleteEntry(item.id);
+          await deleteEntry(targetId);
           onRefresh();
         },
       });
     } else {
-      deleteEntry(item.id).then(() => onRefresh());
+      deleteEntry(targetId).then(() => onRefresh());
     }
   };
 
