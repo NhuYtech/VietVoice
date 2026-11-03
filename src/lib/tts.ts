@@ -129,6 +129,11 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
   const t0 = performance.now();
   const tokens = normalizeText(text).split(' ').filter(Boolean);
 
+  // Tự động nạp manifest nếu chưa kịp nạp khi khởi động
+  if (manifestLookup.size === 0) {
+    await loadManifest(new Set()).catch(() => []);
+  }
+
   // Tải tức thì các từ trong câu nếu có trong manifest datasetTV mà chưa tải
   const targetSpeaker = opts.speaker.toLowerCase();
   const missingTokensToFetch: string[] = [];
@@ -136,7 +141,8 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
 
   for (const tok of tokens) {
     const mKey = `${targetSpeaker}::${tok}`;
-    if (!existingWordSet.has(tok) && manifestLookup.has(mKey)) {
+    const codeKey = `${targetSpeaker}::${encodeVnWord(tok)}`;
+    if (!existingWordSet.has(tok) && (manifestLookup.has(mKey) || manifestLookup.has(codeKey))) {
       missingTokensToFetch.push(tok);
     }
   }
@@ -144,13 +150,14 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
   // Tải tuần tự các từ còn thiếu để tránh nghẽn CPU và bảo đảm 100% âm thanh được giải mã chuẩn xác
   if (missingTokensToFetch.length > 0) {
     for (const tok of missingTokensToFetch) {
-      const m = manifestLookup.get(`${targetSpeaker}::${tok}`);
+      const m = manifestLookup.get(`${targetSpeaker}::${tok}`) || manifestLookup.get(`${targetSpeaker}::${encodeVnWord(tok)}`);
       if (m) {
         try {
           const entry = await fetchManifestWord(m);
           if (entry) {
             entries.push(entry);
             existingWordSet.add(tok);
+            existingWordSet.add(normalizeText(entry.word));
           }
         } catch (fetchErr) {
           console.warn(`Không thể nạp từ "${tok}" từ manifest:`, fetchErr);
@@ -350,10 +357,19 @@ export async function loadManifest(existing: Set<string>): Promise<CorpusEntry[]
 /** Tải và nạp âm thanh của một từ từ manifest vào IndexedDB theo nhu cầu */
 export async function fetchManifestWord(m: ManifestItem): Promise<CorpusEntry | null> {
   try {
-    const fileUrl = '/corpus/' + m.file.split('/').map(encodeURIComponent).join('/');
+    // Không dùng encodeURIComponent trên tên file vì dấu '+' trong tên file (như xa+y0.wav, d-o+i3.wav)
+    // sẽ bị biến thành '%2B' khiến web server trả về index.html thay vì file âm thanh thật
+    const cleanPath = m.file.replace(/^\/+/, '');
+    const fileUrl = `/corpus/${cleanPath}`;
     const res = await fetch(fileUrl);
     if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('text/html')) {
+      console.warn(`File âm thanh ${m.file} không tồn tại trên server:`, fileUrl);
+      return null;
+    }
     const blob = await res.blob();
+    if (blob.size < 100) return null;
     const entry = await addToCorpus(blob, m.word, m.speaker, 'manifest');
     return entry;
   } catch (err) {
