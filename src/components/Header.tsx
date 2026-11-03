@@ -29,7 +29,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab }) => {
   const { title, subtitle } = getMeta();
 
   return (
-    <header className="h-[72px] px-8 bg-white border-b border-[#E8E8F0] flex items-center justify-between sticky top-0 z-20">
+    <header className="fixed top-0 left-0 md:left-[240px] right-0 z-30 h-[72px] px-8 bg-white/95 backdrop-blur-xs border-b border-[#E8E8F0] flex items-center justify-between select-none shadow-2xs">
       <div>
         <h1 className="text-xl font-bold text-[#20213A] tracking-tight">{title}</h1>
         <p className="text-xs text-[#85879A] mt-0.5">{subtitle}</p>

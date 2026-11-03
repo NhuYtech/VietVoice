@@ -344,7 +344,7 @@ export const App: React.FC = () => {
       />
 
       {/* 2. Main Content Area */}
-      <div className="flex-1 ml-[240px] flex flex-col min-w-0">
+      <div className="flex-1 ml-[240px] flex flex-col min-w-0 pt-[72px]">
         {/* Top Header */}
         <Header currentTab={currentTab} />
 
