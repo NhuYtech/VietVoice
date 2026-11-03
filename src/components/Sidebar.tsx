@@ -93,10 +93,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, corpu
         <div className="rounded-xl bg-[#F7F8FC] border border-[#E8E8F0] p-3 text-left">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-[#6255CF] mb-1">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Give Vietnamese Text a Voice</span>
+            <span>Học phần — Hệ cơ sở dữ liệu đa phương tiện</span>
           </div>
-          <p className="text-xs font-medium text-[#20213A] leading-snug">Học phần — Hệ cơ sở dữ liệu đa phương tiện</p>
-          <p className="text-[11px] text-[#85879A] mt-1">Concatenative Word-Level TTS</p>
         </div>
       </div>
     </aside>
