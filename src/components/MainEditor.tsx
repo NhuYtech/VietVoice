@@ -104,13 +104,13 @@ export const MainEditor: React.FC<MainEditorProps> = ({
       </div>
 
       {/* Large Text Area */}
-      <div className="p-7">
+      <div className="px-6 py-3.5">
         <textarea
           value={text}
           onChange={(e) => onChangeText(e.target.value)}
           placeholder="Nhập văn bản tiếng Việt bạn muốn chuyển thành âm thanh..."
-          rows={6}
-          className="w-full resize-none text-[17px] text-[#20213A] placeholder-[#9AA0B4] focus:outline-none leading-relaxed bg-transparent min-h-[160px]"
+          rows={3}
+          className="w-full resize-none text-[16px] text-[#20213A] placeholder-[#9AA0B4] focus:outline-none leading-relaxed bg-transparent min-h-[76px]"
         />
 
         {/* Word / Char Counters & Status */}

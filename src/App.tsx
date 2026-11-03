@@ -354,29 +354,35 @@ export const App: React.FC = () => {
           onClose={() => setNotificationModal(null)}
         />
 
-        {/* Workspace Body: Đệm đáy pb-44 md:pb-52 giúp tất cả nội dung các page luôn cách xa thanh audio player, không bao giờ bị đè hay che khuất */}
-        <main className={`p-6 md:p-8 max-w-[1400px] w-full mx-auto transition-all ${isPlayerOpen ? 'pb-44 md:pb-52' : 'pb-24'}`}>
-          {currentTab === 'tts' && (
-            <div>
-              {/* Main Editor Card */}
-              <MainEditor
-                text={inputText}
-                onChangeText={setInputText}
-                selectedVoice={selectedVoice}
-                onSelectVoice={setSelectedVoice}
-                onConvert={handleConvert}
-                isConverting={isConverting}
-                entries={realEntries}
-                onPlayPreviewVoice={handlePlayPreviewVoice}
-                isPlayingPreview={isPlayingPreview}
-                onOpenRecordModal={(word) => {
-                  setRecordInitialWord(word || '');
-                  setIsRecordModalOpen(true);
-                }}
-                onShowNotification={setNotificationModal}
-              />
+        {/* Workspace Body: Tab Chuyển văn bản cố định 100% trong khung nhìn màn hình (không cuộn trang, chỉ cuộn list) */}
+        {currentTab === 'tts' ? (
+          <main
+            className={`px-4 sm:px-6 pt-4 pb-3 max-w-[1400px] w-full mx-auto h-[calc(100vh-72px)] flex flex-col overflow-hidden ${
+              isPlayerOpen ? 'pb-[76px]' : 'pb-3'
+            }`}
+          >
+            <div className="flex-1 min-h-0 flex flex-col">
+              {/* Main Editor Card: Cố định vị trí phía trên */}
+              <div className="shrink-0">
+                <MainEditor
+                  text={inputText}
+                  onChangeText={setInputText}
+                  selectedVoice={selectedVoice}
+                  onSelectVoice={setSelectedVoice}
+                  onConvert={handleConvert}
+                  isConverting={isConverting}
+                  entries={realEntries}
+                  onPlayPreviewVoice={handlePlayPreviewVoice}
+                  isPlayingPreview={isPlayingPreview}
+                  onOpenRecordModal={(word) => {
+                    setRecordInitialWord(word || '');
+                    setIsRecordModalOpen(true);
+                  }}
+                  onShowNotification={setNotificationModal}
+                />
+              </div>
 
-              {/* Conversion History Section */}
+              {/* Conversion History Section: Tự động co giãn theo chiều dọc và chỉ cuộn riêng phần danh sách */}
               <ConversionHistory
                 items={historyItems}
                 onDelete={handleDeleteHistory}
@@ -388,26 +394,31 @@ export const App: React.FC = () => {
                 onPlayTrack={(track) => handleTogglePlayTrack(track)}
                 onSelectSampleText={(txt) => {
                   setInputText(txt);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
               />
             </div>
-          )}
+          </main>
+        ) : (
+          <main
+            className={`p-6 md:p-8 max-w-[1400px] w-full mx-auto overflow-y-auto ${
+              isPlayerOpen ? 'pb-44 md:pb-52' : 'pb-24'
+            }`}
+          >
+            {currentTab === 'corpus' && (
+              <CorpusView
+                realEntries={realEntries}
+                onOpenRecordModal={() => {
+                  setRecordInitialWord('');
+                  setIsRecordModalOpen(true);
+                }}
+                onRefresh={loadCorpus}
+                onShowNotification={setNotificationModal}
+              />
+            )}
 
-          {currentTab === 'corpus' && (
-            <CorpusView
-              realEntries={realEntries}
-              onOpenRecordModal={() => {
-                setRecordInitialWord('');
-                setIsRecordModalOpen(true);
-              }}
-              onRefresh={loadCorpus}
-              onShowNotification={setNotificationModal}
-            />
-          )}
-
-          {currentTab === 'about' && <AboutView />}
-        </main>
+            {currentTab === 'about' && <AboutView />}
+          </main>
+        )}
       </div>
 
       {/* 3. Sticky Bottom Audio Player (Cố định ở chân trang, ngang hàng với mục thông tin ở sidebar) */}
