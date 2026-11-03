@@ -288,12 +288,12 @@ export function inspectVocabularyWithVoice(
 
   let wrongVoiceMessage: string | undefined;
   if (hasWrongVoice) {
-    wrongVoiceMessage = `Từ "${wrongVoiceWords.join(', ')}" có file thu âm là Giọng ${otherVoice}. Vui lòng chọn "Giọng ${otherVoice}" rồi mới nhấn Chuyển thành âm thanh!`;
+    wrongVoiceMessage = `Từ "${wrongVoiceWords.join(', ')}" yêu cầu Giọng ${otherVoice}.`;
   }
 
   let missingMessage: string | undefined;
   if (hasMissing) {
-    missingMessage = `Từ "${missingTokens.join(', ')}" chưa có bản thu âm trong hệ thống ngữ liệu. Vui lòng vào mục "Ngữ liệu" để thu âm từ này trước khi chuyển thành âm thanh!`;
+    missingMessage = `Từ "${missingTokens.join(', ')}" chưa có bản thu âm.`;
   }
 
   return {
@@ -365,7 +365,7 @@ export async function performSynthesis(
       success: false,
       error:
         voiceCheck.missingMessage ||
-        `Từ "${voiceCheck.missingTokens.join(', ')}" chưa có bản thu âm trong ngữ liệu. Vui lòng vào mục "Ngữ liệu" để thu âm thêm trước khi chuyển thành âm thanh!`,
+        `Từ "${voiceCheck.missingTokens.join(', ')}" chưa có bản thu âm.`,
       missingTokens: voiceCheck.missingTokens,
     };
   }
@@ -397,7 +397,7 @@ export async function performSynthesis(
     if (synthRes.trace && oovTokens.length === synthRes.trace.length) {
       return {
         success: false,
-        error: `Các từ trong câu chưa có file âm thanh cho Giọng ${speaker}. Hãy chuyển sang giọng khác hoặc vào mục "Ngữ liệu" để thu âm.`,
+        error: `Các từ này chưa có file âm thanh cho Giọng ${speaker}.`,
         missingTokens: oovTokens,
       };
     }

@@ -147,9 +147,9 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
       setPlayingId(null);
       onShowNotification?.({
         type: 'warning',
-        title: 'Chưa có file âm thanh',
-        message: `Chưa thể phát âm thanh của từ "${item.word}".`,
-        confirmText: 'Đã hiểu',
+        title: 'Chưa thể phát',
+        message: `Chưa có file âm thanh cho từ "${item.word}".`,
+        confirmText: 'Đóng',
       });
     }
   };
@@ -194,10 +194,10 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
     if (onShowNotification) {
       onShowNotification({
         type: 'confirm',
-        title: 'Xác nhận xóa từ ngữ liệu',
-        message: `Bạn có chắc chắn muốn xóa từ "${item.word}" (Giọng ${item.speaker}) khỏi ngữ liệu?`,
-        confirmText: 'Xóa ngay',
-        cancelText: 'Hủy bỏ',
+        title: 'Xóa từ ngữ liệu',
+        message: `Xóa từ "${item.word}" (${item.speaker})?`,
+        confirmText: 'Xóa',
+        cancelText: 'Hủy',
         onConfirm: async () => {
           await deleteEntry(targetId);
           onRefresh();

@@ -155,8 +155,8 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
       onShowNotification?.({
         type: 'info',
         title: 'Phát âm thanh',
-        message: `Đang phát bản ghi: "${item.text}" (Giọng ${item.speaker}).\nFile định dạng WAV lossless (22.05 kHz).`,
-        confirmText: 'Đã hiểu',
+        message: `Đang phát: "${item.text}" (${item.speaker})`,
+        confirmText: 'Đóng',
       });
     }
   };

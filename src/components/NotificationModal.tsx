@@ -86,11 +86,11 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ data, onCl
       case 'success':
         return 'Thành công';
       case 'warning':
-        return 'Thông báo nhắc nhở';
+        return 'Lưu ý';
       case 'error':
-        return 'Có lỗi xảy ra';
+        return 'Lỗi';
       case 'confirm':
-        return 'Xác nhận thao tác';
+        return 'Xác nhận';
       case 'info':
       default:
         return 'Thông báo';
@@ -114,7 +114,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ data, onCl
       <div
         role="dialog"
         aria-modal="true"
-        className="relative bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-6 z-10 transition-all transform animate-in zoom-in-95 fade-in duration-200 overflow-hidden"
+        className="relative bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-[390px] w-full p-5 z-10 transition-all transform animate-in zoom-in-95 fade-in duration-200 overflow-hidden"
       >
         {/* Top Close Button */}
         <button
@@ -157,7 +157,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ data, onCl
                 }}
                 className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs transition"
               >
-                {data.cancelText || 'Hủy bỏ'}
+                {data.cancelText || 'Hủy'}
               </button>
               <button
                 type="button"
@@ -198,7 +198,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ data, onCl
                   onClick={onClose}
                   className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#6255CF] hover:bg-[#5144BD] active:scale-95 text-white font-semibold text-xs transition shadow-md shadow-[#6255CF]/20"
                 >
-                  {data.confirmText || 'Đã hiểu'}
+                  {data.confirmText || 'Đóng'}
                 </button>
               )}
             </>

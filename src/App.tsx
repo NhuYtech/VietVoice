@@ -125,8 +125,8 @@ export const App: React.FC = () => {
       setNotificationModal({
         type: 'warning',
         title: 'Chưa nhập văn bản',
-        message: 'Vui lòng nhập văn bản tiếng Việt bạn muốn chuyển thành âm thanh.',
-        confirmText: 'Đã hiểu',
+        message: 'Vui lòng nhập văn bản cần chuyển đổi.',
+        confirmText: 'Đóng',
       });
       return;
     }
@@ -162,23 +162,23 @@ export const App: React.FC = () => {
         setNotificationModal({
           type: 'warning',
           title: res.suggestedVoice
-            ? 'Ràng buộc giọng đọc'
+            ? 'Đổi giọng đọc'
             : isMissing
-            ? 'Từ chưa có bản ghi âm'
-            : 'Chưa thể chuyển đổi',
+            ? 'Chưa có bản ghi'
+            : 'Chưa thể chuyển',
           message:
             res.error ||
-            'Không thể tổng hợp từ văn bản này do chưa có file âm thanh trong ngữ liệu.',
+            'Chưa có file âm thanh trong ngữ liệu.',
           action: res.suggestedVoice
             ? {
-                label: `Chọn Giọng ${res.suggestedVoice} ngay`,
+                label: `Chọn Giọng ${res.suggestedVoice}`,
                 onClick: () => {
                   setSelectedVoice(res.suggestedVoice!);
                 },
               }
             : isMissing && res.missingTokens && res.missingTokens.length > 0
             ? {
-                label: `Thu âm từ "${res.missingTokens[0]}" ngay`,
+                label: 'Thu âm ngay',
                 onClick: () => {
                   setRecordInitialWord(res.missingTokens![0]);
                   setIsRecordModalOpen(true);
@@ -217,10 +217,9 @@ export const App: React.FC = () => {
 
         setNotificationModal({
           type: 'success',
-          title: 'Tạo audio thành công!',
-          message: `Đã tạo audio thành công (${res.result.durationSec.toFixed(2)} giây) bằng Giọng ${selectedVoice}!
-Bạn có thể nghe phát âm thanh tại thanh điều khiển cố định bên dưới.`,
-          confirmText: 'Tuyệt vời',
+          title: 'Tạo audio thành công',
+          message: `Thời lượng: ${res.result.durationSec.toFixed(2)}s (${selectedVoice}).`,
+          confirmText: 'OK',
         });
       }
     } catch (err: any) {
@@ -236,8 +235,8 @@ Bạn có thể nghe phát âm thanh tại thanh điều khiển cố định b�
 
       setNotificationModal({
         type: 'error',
-        title: 'Lỗi tổng hợp âm thanh',
-        message: err?.message || 'Có lỗi xảy ra trong quá trình tổng hợp.',
+        title: 'Lỗi tổng hợp',
+        message: err?.message || 'Không thể tạo âm thanh.',
         confirmText: 'Đóng',
       });
     } finally {
@@ -273,12 +272,12 @@ Bạn có thể nghe phát âm thanh tại thanh điều khiển cố định b�
 
     setNotificationModal({
       type: 'confirm',
-      title: isMultiple ? 'Xóa các mục đã chọn' : 'Xóa lịch sử chuyển đổi',
+      title: isMultiple ? 'Xóa mục đã chọn' : 'Xóa lịch sử',
       message: isMultiple
-        ? `Bạn có chắc chắn muốn xóa ${ids.length} mục chuyển đổi đã chọn khỏi lịch sử?`
-        : 'Bạn có chắc chắn muốn xóa mục này khỏi danh sách lịch sử chuyển đổi không?',
-      confirmText: 'Xóa ngay',
-      cancelText: 'Hủy bỏ',
+        ? `Xóa ${ids.length} mục đã chọn khỏi lịch sử?`
+        : 'Xóa mục này khỏi lịch sử?',
+      confirmText: 'Xóa',
+      cancelText: 'Hủy',
       onConfirm: () => {
         const idSet = new Set(ids);
         const updated = removeHistoryEntries(ids);
@@ -325,9 +324,9 @@ Bạn có thể nghe phát âm thanh tại thanh điều khiển cố định b�
       setIsPlayingPreview(null);
       setNotificationModal({
         type: 'warning',
-        title: 'Chưa có bản thu âm',
-        message: `Chưa có bản thu âm cho Giọng ${voice}. Bạn có thể vào mục "Ngữ liệu" để thu âm thêm.`,
-        confirmText: 'Đã hiểu',
+        title: 'Chưa có bản thu',
+        message: `Giọng ${voice} chưa có bản thu mẫu.`,
+        confirmText: 'Đóng',
       });
     }
   };
@@ -440,9 +439,9 @@ Bạn có thể nghe phát âm thanh tại thanh điều khiển cố định b�
           loadCorpus();
           setNotificationModal({
             type: 'success',
-            title: 'Lưu ngữ liệu thành công!',
-            message: 'Đã lưu bản thu âm mới vào ngữ liệu thành công. Giờ đây bạn có thể sử dụng từ này trong chuyển văn bản thành âm thanh.',
-            confirmText: 'Đã hiểu',
+            title: 'Đã lưu bản thu',
+            message: 'Từ mới đã được thêm vào ngữ liệu.',
+            confirmText: 'OK',
           });
         }}
         defaultSpeaker={selectedVoice}

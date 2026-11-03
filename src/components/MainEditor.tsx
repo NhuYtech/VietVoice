@@ -240,12 +240,12 @@ export const MainEditor: React.FC<MainEditorProps> = ({
       <PauseSettingsModal
         isOpen={isPauseModalOpen}
         onClose={() => setIsPauseModalOpen(false)}
-        onSave={(newSettings) => {
+        onSave={() => {
           onShowNotification?.({
             type: 'success',
-            title: 'Lưu thiết lập ngắt nghỉ thành công!',
-            message: `Đã cập nhật thời gian ngắt nghỉ: Dấu chấm (${newSettings.period}s), Dấu phẩy (${newSettings.comma}s), Dấu chấm phẩy (${newSettings.semicolon}s), Xuống dòng (${newSettings.newline}s). Các lần tạo audio tiếp theo sẽ áp dụng thiết lập này.`,
-            confirmText: 'Đã hiểu',
+            title: 'Đã lưu ngắt nghỉ',
+            message: 'Thiết lập thời gian ngắt nghỉ đã được áp dụng.',
+            confirmText: 'OK',
           });
         }}
       />
