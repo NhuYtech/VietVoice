@@ -6,6 +6,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"SDK SC Web"', '"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+        sdk: ['"SDK SC Web"', '"SDK SC"', 'sans-serif'],
+      },
       colors: {
         vietvoice: {
           primary: '#6255CF',
