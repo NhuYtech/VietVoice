@@ -307,21 +307,21 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
         </div>
 
         {/* Corpus Table */}
-        <div className="overflow-x-auto mt-4">
-          <table className="w-full text-left text-xs text-[#555870]">
-            <thead className="bg-[#FAFBFD] text-[#85879A] uppercase text-[10px] tracking-wider border-y border-[#E8E8F0]">
+        <div className="overflow-x-auto mt-4 rounded-xl border border-[#E8E8F0] shadow-2xs">
+          <table className="w-full text-left text-xs text-[#555870] min-w-[850px] table-fixed">
+            <thead className="bg-[#FAFBFD] text-[#85879A] uppercase text-[10px] tracking-wider border-b border-[#E8E8F0]">
               <tr>
-                <th className="py-3 px-4 w-14 text-center">STT</th>
-                <th className="py-3 px-4 font-bold text-[#20213A]">Từ tiếng Việt</th>
-                <th className="py-3 px-4">Mã hóa VNI</th>
-                <th className="py-3 px-4 w-28">Giọng đọc</th>
-                <th className="py-3 px-4">Tên file (.wav)</th>
-                <th className="py-3 px-4 w-24">Thời lượng</th>
-                <th className="py-3 px-4 w-28">Nguồn</th>
-                <th className="py-3 px-4 w-24 text-right">Thao tác</th>
+                <th className="py-3.5 px-3.5 w-[64px] text-center whitespace-nowrap font-bold">STT</th>
+                <th className="py-3.5 px-3.5 w-[16%] font-bold text-[#20213A] whitespace-nowrap">Từ tiếng Việt</th>
+                <th className="py-3.5 px-3.5 w-[13%] whitespace-nowrap">Mã hóa VNI</th>
+                <th className="py-3.5 px-3.5 w-[12%] whitespace-nowrap">Giọng đọc</th>
+                <th className="py-3.5 px-3.5 w-[19%] whitespace-nowrap">Tên file (.wav)</th>
+                <th className="py-3.5 px-3.5 w-[13%] whitespace-nowrap">Thời lượng</th>
+                <th className="py-3.5 px-3.5 w-[14%] whitespace-nowrap">Nguồn</th>
+                <th className="py-3.5 px-3.5 w-[13%] text-right whitespace-nowrap">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#F0F2F9]">
+            <tbody className="divide-y divide-[#F0F2F9] bg-white">
               {currentPageItems.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-xs text-[#85879A]">
@@ -335,51 +335,51 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
 
                   return (
                     <tr key={item.id} className="hover:bg-[#FAFBFD] transition group">
-                      <td className="py-3.5 px-4 text-center font-mono text-[11px] text-[#85879A]">
+                      <td className="py-3.5 px-3.5 text-center font-mono text-[11px] text-[#85879A] whitespace-nowrap align-middle">
                         {globalIdx}
                       </td>
-                      <td className="py-3.5 px-4 font-bold text-[#20213A] text-sm">
+                      <td className="py-3.5 px-3.5 font-bold text-[#20213A] text-sm whitespace-nowrap align-middle truncate">
                         {item.word}
                       </td>
-                      <td className="py-3.5 px-4">
-                        <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-[#F0F2F9] text-[#6255CF] font-semibold border border-[#E2E4F0]">
+                      <td className="py-3.5 px-3.5 whitespace-nowrap align-middle">
+                        <span className="font-mono text-[11px] px-2.5 py-1 rounded bg-[#F0F2F9] text-[#6255CF] font-semibold border border-[#E2E4F0] inline-block">
                           {item.code}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-3.5 whitespace-nowrap align-middle">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-semibold text-[11px] ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold text-[11px] whitespace-nowrap ${
                             String(item.speaker).includes('Nam')
                               ? 'bg-[#5578D8]/10 text-[#5578D8]'
                               : 'bg-[#B16BC1]/10 text-[#B16BC1]'
                           }`}
                         >
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${
+                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                               String(item.speaker).includes('Nam') ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
                             }`}
                           />
                           {String(item.speaker).includes('Nam') ? 'Nam' : 'Nữ'}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-[11px] text-[#63667E]">
+                      <td className="py-3.5 px-3.5 font-mono text-[11px] text-[#63667E] whitespace-nowrap align-middle truncate">
                         {item.filename}
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-[11px] text-[#20213A]">
+                      <td className="py-3.5 px-3.5 font-mono text-[11px] text-[#20213A] whitespace-nowrap align-middle">
                         {(Number(item.duration) || 0.45).toFixed(2)}s
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-3.5 whitespace-nowrap align-middle">
                         {isManifest ? (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+                          <span className="text-[10px] px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200 inline-block whitespace-nowrap">
                             datasetTV
                           </span>
                         ) : (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
+                          <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200 inline-block whitespace-nowrap">
                             Ghi âm riêng
                           </span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3.5 px-3.5 text-right whitespace-nowrap align-middle">
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => handlePlayWord(item)}
