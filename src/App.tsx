@@ -354,8 +354,8 @@ export const App: React.FC = () => {
           onClose={() => setNotificationModal(null)}
         />
 
-        {/* Workspace Body */}
-        <main className="p-6 md:p-8 max-w-[1400px] w-full mx-auto pb-28">
+        {/* Workspace Body: Đệm đáy pb-44 md:pb-52 giúp tất cả nội dung các page luôn cách xa thanh audio player, không bao giờ bị đè hay che khuất */}
+        <main className={`p-6 md:p-8 max-w-[1400px] w-full mx-auto transition-all ${isPlayerOpen ? 'pb-44 md:pb-52' : 'pb-24'}`}>
           {currentTab === 'tts' && (
             <div>
               {/* Main Editor Card */}
