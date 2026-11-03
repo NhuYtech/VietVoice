@@ -77,7 +77,7 @@ export const AboutView: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-12">
+    <div className="space-y-6 w-full pb-8">
       {/* Intro Header */}
       <div className="bg-white rounded-2xl border border-[#E8E8F0] p-7 shadow-sm">
         <div className="flex items-center gap-2.5 text-[#6255CF] mb-2 font-semibold text-xs uppercase tracking-wider">

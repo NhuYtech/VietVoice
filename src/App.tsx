@@ -357,8 +357,8 @@ export const App: React.FC = () => {
         {/* Workspace Body: Cố định cả tab Chuyển văn bản và tab Dữ liệu trong màn hình (chỉ cuộn list/bảng) */}
         {currentTab === 'about' ? (
           <main
-            className={`p-6 md:p-8 max-w-[1400px] w-full mx-auto overflow-y-auto ${
-              isPlayerOpen ? 'pb-44 md:pb-52' : 'pb-24'
+            className={`px-4 sm:px-6 pt-4 max-w-[1400px] w-full mx-auto overflow-y-auto ${
+              isPlayerOpen ? 'pb-28' : 'pb-10'
             }`}
           >
             <AboutView />
