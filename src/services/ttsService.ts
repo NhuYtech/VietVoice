@@ -1,5 +1,5 @@
 import type { CorpusEntry, SynthResult } from '../lib/types';
-import { synthesize, normalizeText } from '../lib/tts';
+import { synthesize, normalizeText, cachedManifestWords } from '../lib/tts';
 import { INITIAL_CONVERSION_HISTORY, MOCK_CORPUS_ITEMS, type ConversionHistoryItem } from '../data/mockCorpus';
 import { getStoredPauseSettings } from '../components/PauseSettingsModal';
 
@@ -205,6 +205,20 @@ export function inspectVocabularyWithVoice(
     const w = (m.word || '').toLowerCase();
     if (!w) continue;
     if (m.speaker === 'Nam') {
+      maleSet.add(w);
+      w.split(/\s+/).forEach((part) => maleSet.add(part));
+    } else {
+      femaleSet.add(w);
+      w.split(/\s+/).forEach((part) => femaleSet.add(part));
+    }
+  }
+
+  // Từ trong bộ dữ liệu datasetTV (6.674 từ Giọng Nam)
+  for (const m of cachedManifestWords) {
+    const w = (m.word || '').toLowerCase();
+    if (!w) continue;
+    const spk = (m.speaker || 'nam').toLowerCase();
+    if (spk === 'nam' || spk.includes('nam')) {
       maleSet.add(w);
       w.split(/\s+/).forEach((part) => maleSet.add(part));
     } else {

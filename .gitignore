@@ -46,3 +46,6 @@ ENV/
 *.sw?
 .DS_Store
 Thumbs.db
+
+# Audio Corpus WAVs (hosted locally / on-demand)
+public/corpus/wavs/

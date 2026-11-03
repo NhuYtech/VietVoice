@@ -129,6 +129,33 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
   const t0 = performance.now();
   const tokens = normalizeText(text).split(' ').filter(Boolean);
 
+  // Tải tức thì các từ trong câu nếu có trong manifest datasetTV mà chưa tải
+  const targetSpeaker = opts.speaker.toLowerCase();
+  const missingTokensToFetch: string[] = [];
+  const existingWordSet = new Set(entries.map((e) => normalizeText(e.word)));
+
+  for (const tok of tokens) {
+    const mKey = `${targetSpeaker}::${tok}`;
+    if (!existingWordSet.has(tok) && manifestLookup.has(mKey)) {
+      missingTokensToFetch.push(tok);
+    }
+  }
+
+  if (missingTokensToFetch.length > 0) {
+    await Promise.all(
+      missingTokensToFetch.map(async (tok) => {
+        const m = manifestLookup.get(`${targetSpeaker}::${tok}`);
+        if (m) {
+          const entry = await fetchManifestWord(m);
+          if (entry) {
+            entries.push(entry);
+            existingWordSet.add(tok);
+          }
+        }
+      })
+    );
+  }
+
   const mine = new Map<string, CorpusEntry>();
   const others = new Map<string, CorpusEntry>();
   let maxN = 1;
@@ -278,26 +305,51 @@ export const wordFromFilename = (name: string): string => {
   return normalizeText(word);
 };
 
-/** Nạp bộ dữ liệu từ public/corpus/manifest.json (nếu có). */
+export interface ManifestItem {
+  word: string;
+  speaker: string;
+  file: string;
+  duration?: number;
+}
+
+export let cachedManifestWords: ManifestItem[] = [];
+export const manifestLookup = new Map<string, ManifestItem>();
+
+/** Nạp danh mục bộ dữ liệu từ public/corpus/manifest.json siêu nhanh (không tải trước hàng nghìn file). */
 export async function loadManifest(existing: Set<string>): Promise<CorpusEntry[]> {
-  let manifest: { words: { word: string; speaker: string; file: string }[] };
   try {
     const res = await fetch('/corpus/manifest.json', { cache: 'no-store' });
     if (!res.ok) return [];
-    manifest = await res.json();
-  } catch {
-    return [];
-  }
-  const added: CorpusEntry[] = [];
-  for (const m of manifest.words ?? []) {
-    if (existing.has(entryId(m.speaker, normalizeText(m.word)))) continue;
-    try {
-      const res = await fetch('/corpus/' + m.file.split('/').map(encodeURIComponent).join('/'));
-      if (res.ok) added.push(await addToCorpus(await res.blob(), m.word, m.speaker, 'manifest'));
-    } catch {
-      /* bỏ qua file lỗi */
+    const data = await res.json();
+    cachedManifestWords = data.words || [];
+    manifestLookup.clear();
+    for (const m of cachedManifestWords) {
+      const spk = (m.speaker || 'nam').toLowerCase();
+      const normW = normalizeText(m.word);
+      manifestLookup.set(`${spk}::${normW}`, m);
+      const code = encodeVnWord(normW);
+      if (code && code !== normW) {
+        manifestLookup.set(`${spk}::${code}`, m);
+      }
     }
+  } catch (err) {
+    console.warn('Không thể nạp manifest:', err);
   }
-  return added;
+  return [];
+}
+
+/** Tải và nạp âm thanh của một từ từ manifest vào IndexedDB theo nhu cầu */
+export async function fetchManifestWord(m: ManifestItem): Promise<CorpusEntry | null> {
+  try {
+    const fileUrl = '/corpus/' + m.file.split('/').map(encodeURIComponent).join('/');
+    const res = await fetch(fileUrl);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const entry = await addToCorpus(blob, m.word, m.speaker, 'manifest');
+    return entry;
+  } catch (err) {
+    console.error('Lỗi khi tải file từ ngữ liệu manifest:', m.word, err);
+    return null;
+  }
 }
 

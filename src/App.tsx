@@ -8,7 +8,7 @@ import { AboutView } from './components/AboutView';
 import { RecordModal } from './components/RecordModal';
 import { BottomAudioPlayer, type PlayerTrack } from './components/BottomAudioPlayer';
 import { getAllEntries } from './lib/store';
-import { loadManifest } from './lib/tts';
+import { loadManifest, cachedManifestWords } from './lib/tts';
 import { playSamples, decodeBlob } from './lib/dsp';
 import type { CorpusEntry, SynthResult } from './lib/types';
 import {
@@ -332,7 +332,7 @@ Bạn có thể nghe phát âm thanh tại thanh điều khiển cố định b�
           setCurrentTab(tab);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
-        corpusCount={realEntries.length}
+        corpusCount={realEntries.length + (cachedManifestWords.length || 6674)}
       />
 
       {/* 2. Main Content Area */}
