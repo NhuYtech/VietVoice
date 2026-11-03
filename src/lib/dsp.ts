@@ -9,22 +9,49 @@ const NMFCC = 13;
 
 /* ---------------- Giải mã / phát / mã hóa WAV ---------------- */
 
+let sharedDecodeCtx: AudioContext | null = null;
+
+function getDecodeContext(): AudioContext {
+  if (!sharedDecodeCtx || sharedDecodeCtx.state === 'closed') {
+    const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+    sharedDecodeCtx = new Ctx();
+  }
+  return sharedDecodeCtx;
+}
+
 export async function decodeBlob(blob: Blob): Promise<Float32Array> {
   const ab = await blob.arrayBuffer();
-  const Ctx = window.AudioContext || (window as any).webkitAudioContext;
-  const ctx: AudioContext = new Ctx();
-  try {
-    const buf = await ctx.decodeAudioData(ab.slice(0));
-    const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(buf.duration * SR)), SR);
-    const src = off.createBufferSource();
-    src.buffer = buf;
-    src.connect(off.destination);
-    src.start();
-    const rendered = await off.startRendering();
-    return rendered.getChannelData(0).slice();
-  } finally {
-    ctx.close();
+  let ctx = getDecodeContext();
+  if (ctx.state === 'suspended') {
+    try {
+      await ctx.resume();
+    } catch {}
   }
+
+  let buf: AudioBuffer;
+  try {
+    buf = await ctx.decodeAudioData(ab.slice(0));
+  } catch (err) {
+    // Nếu context bị lỗi do trình duyệt, khởi tạo lại context mới và thử giải mã lại
+    try {
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+      sharedDecodeCtx = new Ctx();
+      ctx = sharedDecodeCtx;
+      buf = await ctx.decodeAudioData(ab.slice(0));
+    } catch (retryErr) {
+      console.error('Không thể giải mã dữ liệu âm thanh blob:', retryErr);
+      throw retryErr;
+    }
+  }
+
+  // Chuyển đổi định dạng / lấy mẫu lại về chuẩn SR (22050 Hz, mono) bằng OfflineAudioContext (không tốn hardware context)
+  const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(buf.duration * SR)), SR);
+  const src = off.createBufferSource();
+  src.buffer = buf;
+  src.connect(off.destination);
+  src.start();
+  const rendered = await off.startRendering();
+  return rendered.getChannelData(0).slice();
 }
 
 let playCtx: AudioContext | null = null;

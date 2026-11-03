@@ -141,29 +141,38 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
     }
   }
 
+  // Tải tuần tự các từ còn thiếu để tránh nghẽn CPU và bảo đảm 100% âm thanh được giải mã chuẩn xác
   if (missingTokensToFetch.length > 0) {
-    await Promise.all(
-      missingTokensToFetch.map(async (tok) => {
-        const m = manifestLookup.get(`${targetSpeaker}::${tok}`);
-        if (m) {
+    for (const tok of missingTokensToFetch) {
+      const m = manifestLookup.get(`${targetSpeaker}::${tok}`);
+      if (m) {
+        try {
           const entry = await fetchManifestWord(m);
           if (entry) {
             entries.push(entry);
             existingWordSet.add(tok);
           }
+        } catch (fetchErr) {
+          console.warn(`Không thể nạp từ "${tok}" từ manifest:`, fetchErr);
         }
-      })
-    );
+      }
+    }
   }
 
   const mine = new Map<string, CorpusEntry>();
   const others = new Map<string, CorpusEntry>();
   let maxN = 1;
+  const optSpkLower = opts.speaker.toLowerCase();
   for (const e of entries) {
-    const target = e.speaker === opts.speaker ? mine : others;
+    const isMine = (e.speaker || '').toLowerCase() === optSpkLower || (e.speaker || '').toLowerCase().includes(optSpkLower);
+    const target = isMine ? mine : others;
+    target.set(normalizeText(e.word), e);
     target.set(e.word, e);
     const c = e.code || encodeVnWord(e.word);
-    if (c) target.set(c, e);
+    if (c) {
+      target.set(c, e);
+      target.set(normalizeText(c), e);
+    }
     maxN = Math.max(maxN, e.word.split(' ').length);
   }
 
