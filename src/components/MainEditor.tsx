@@ -216,10 +216,10 @@ export const MainEditor: React.FC<MainEditorProps> = ({
         <button
           onClick={onConvert}
           disabled={isConverting || !text.trim()}
-          className={`px-8 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2.5 text-white transition-all shadow-md ${
+          className={`min-w-[260px] h-12 px-10 py-3 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2.5 text-white transition-all shadow-md ${
             isConverting || !text.trim()
               ? 'bg-[#B0B2C5] cursor-not-allowed opacity-75'
-              : 'bg-[#6255CF] hover:bg-[#5144BD] shadow-[#6255CF]/25 hover:shadow-lg hover:shadow-[#6255CF]/30 active:scale-[0.98] cursor-pointer'
+              : 'bg-[#6255CF] hover:bg-[#5144BD] shadow-[#6255CF]/25 hover:shadow-lg hover:shadow-[#6255CF]/35 active:scale-[0.98] cursor-pointer'
           }`}
         >
           {isConverting ? (
@@ -229,7 +229,7 @@ export const MainEditor: React.FC<MainEditorProps> = ({
             </>
           ) : (
             <>
-              <Volume2 className="w-4 h-4" />
+              <Volume2 className="w-5 h-5" />
               <span>Tạo audio</span>
             </>
           )}
