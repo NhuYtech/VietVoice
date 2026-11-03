@@ -86,36 +86,36 @@ export const PauseSettingsModal: React.FC<PauseSettingsModalProps> = ({
         onClick={onClose}
       />
 
-      {/* Modal Dialog */}
-      <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-xl w-full p-6 sm:p-7 z-10 animate-in zoom-in-95 duration-150">
+      {/* Modal Dialog: max-w-[650px] giúp 2 cột hiển thị thoải mái, không bị tràn viền */}
+      <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-[650px] w-full p-6 sm:p-7 z-10 animate-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between pb-5 border-b border-[#F0F2F9]">
+        <div className="flex items-center justify-between pb-4 border-b border-[#F0F2F9]">
           <h3 className="text-lg font-bold text-[#20213A]">Thiết lập ngắt nghỉ</h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#85879A] hover:text-[#20213A] hover:bg-[#F0F2F9] transition"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#85879A] hover:text-[#20213A] hover:bg-[#F0F2F9] transition cursor-pointer"
             aria-label="Đóng"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content: 2x2 Grid - Các nút và nhãn được căn chỉnh hoàn toàn đồng đều và bằng nhau */}
-        <div className="py-6 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+        {/* Content: 2 Cột cân đối, nhãn không bị rớt dòng và các nút stepper đồng kích thước */}
+        <div className="py-6 grid grid-cols-1 sm:grid-cols-2 gap-x-8 sm:gap-x-10 gap-y-5">
           {/* 1. Dấu chấm */}
           <div className="flex items-center justify-between gap-3 p-1">
-            <div className="flex items-center gap-2.5 min-w-[135px]">
-              <span className="text-sm font-semibold text-[#20213A]">Dấu chấm</span>
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <span className="text-sm font-semibold text-[#20213A] whitespace-nowrap">Dấu chấm</span>
               <span className="w-6 h-6 rounded-md bg-[#F0F2F9] text-[#6255CF] flex items-center justify-center text-xs font-bold font-mono shrink-0">
                 •
               </span>
             </div>
 
-            <div className="w-[124px] flex items-center border border-[#E2E4F0] rounded-xl overflow-hidden bg-white shadow-2xs shrink-0">
+            <div className="w-[116px] flex items-center border border-[#E2E4F0] rounded-xl overflow-hidden bg-white shadow-2xs shrink-0">
               <button
                 type="button"
                 onClick={() => updateVal('period', -0.05)}
-                className="w-8 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0"
+                className="w-7 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0 cursor-pointer"
               >
                 <Minus className="w-3.5 h-3.5" />
               </button>
@@ -125,7 +125,7 @@ export const PauseSettingsModal: React.FC<PauseSettingsModalProps> = ({
               <button
                 type="button"
                 onClick={() => updateVal('period', 0.05)}
-                className="w-8 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0"
+                className="w-7 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -134,18 +134,18 @@ export const PauseSettingsModal: React.FC<PauseSettingsModalProps> = ({
 
           {/* 2. Dấu phẩy */}
           <div className="flex items-center justify-between gap-3 p-1">
-            <div className="flex items-center gap-2.5 min-w-[135px]">
-              <span className="text-sm font-semibold text-[#20213A]">Dấu phẩy</span>
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <span className="text-sm font-semibold text-[#20213A] whitespace-nowrap">Dấu phẩy</span>
               <span className="w-6 h-6 rounded-md bg-[#F0F2F9] text-[#6255CF] flex items-center justify-center text-xs font-bold font-mono shrink-0">
                 ,
               </span>
             </div>
 
-            <div className="w-[124px] flex items-center border border-[#E2E4F0] rounded-xl overflow-hidden bg-white shadow-2xs shrink-0">
+            <div className="w-[116px] flex items-center border border-[#E2E4F0] rounded-xl overflow-hidden bg-white shadow-2xs shrink-0">
               <button
                 type="button"
                 onClick={() => updateVal('comma', -0.05)}
-                className="w-8 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0"
+                className="w-7 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0 cursor-pointer"
               >
                 <Minus className="w-3.5 h-3.5" />
               </button>
@@ -155,7 +155,7 @@ export const PauseSettingsModal: React.FC<PauseSettingsModalProps> = ({
               <button
                 type="button"
                 onClick={() => updateVal('comma', 0.05)}
-                className="w-8 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0"
+                className="w-7 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -164,18 +164,18 @@ export const PauseSettingsModal: React.FC<PauseSettingsModalProps> = ({
 
           {/* 3. Dấu chấm phẩy */}
           <div className="flex items-center justify-between gap-3 p-1">
-            <div className="flex items-center gap-2.5 min-w-[135px]">
-              <span className="text-sm font-semibold text-[#20213A]">Dấu chấm phẩy</span>
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <span className="text-sm font-semibold text-[#20213A] whitespace-nowrap">Dấu chấm phẩy</span>
               <span className="w-6 h-6 rounded-md bg-[#F0F2F9] text-[#6255CF] flex items-center justify-center text-xs font-bold font-mono shrink-0">
                 ;
               </span>
             </div>
 
-            <div className="w-[124px] flex items-center border border-[#E2E4F0] rounded-xl overflow-hidden bg-white shadow-2xs shrink-0">
+            <div className="w-[116px] flex items-center border border-[#E2E4F0] rounded-xl overflow-hidden bg-white shadow-2xs shrink-0">
               <button
                 type="button"
                 onClick={() => updateVal('semicolon', -0.05)}
-                className="w-8 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0"
+                className="w-7 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0 cursor-pointer"
               >
                 <Minus className="w-3.5 h-3.5" />
               </button>
@@ -185,7 +185,7 @@ export const PauseSettingsModal: React.FC<PauseSettingsModalProps> = ({
               <button
                 type="button"
                 onClick={() => updateVal('semicolon', 0.05)}
-                className="w-8 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0"
+                className="w-7 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -194,18 +194,18 @@ export const PauseSettingsModal: React.FC<PauseSettingsModalProps> = ({
 
           {/* 4. Xuống dòng */}
           <div className="flex items-center justify-between gap-3 p-1">
-            <div className="flex items-center gap-2.5 min-w-[135px]">
-              <span className="text-sm font-semibold text-[#20213A]">Xuống dòng</span>
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <span className="text-sm font-semibold text-[#20213A] whitespace-nowrap">Xuống dòng</span>
               <span className="w-6 h-6 rounded-md bg-[#F0F2F9] text-[#6255CF] flex items-center justify-center shrink-0">
                 <AlignLeft className="w-3.5 h-3.5" />
               </span>
             </div>
 
-            <div className="w-[124px] flex items-center border border-[#E2E4F0] rounded-xl overflow-hidden bg-white shadow-2xs shrink-0">
+            <div className="w-[116px] flex items-center border border-[#E2E4F0] rounded-xl overflow-hidden bg-white shadow-2xs shrink-0">
               <button
                 type="button"
                 onClick={() => updateVal('newline', -0.05)}
-                className="w-8 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0"
+                className="w-7 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0 cursor-pointer"
               >
                 <Minus className="w-3.5 h-3.5" />
               </button>
@@ -215,7 +215,7 @@ export const PauseSettingsModal: React.FC<PauseSettingsModalProps> = ({
               <button
                 type="button"
                 onClick={() => updateVal('newline', 0.05)}
-                className="w-8 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0"
+                className="w-7 h-8 flex items-center justify-center text-[#555870] hover:bg-[#F3F4FB] hover:text-[#6255CF] active:bg-[#E8EAF6] transition shrink-0 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -228,14 +228,14 @@ export const PauseSettingsModal: React.FC<PauseSettingsModalProps> = ({
           <button
             type="button"
             onClick={handleResetDefault}
-            className="px-5 py-2.5 rounded-xl border border-[#D5D7E8] text-[#3E4259] hover:bg-[#F4F5FB] font-semibold text-xs transition"
+            className="px-5 py-2.5 rounded-xl border border-[#D5D7E8] text-[#3E4259] hover:bg-[#F4F5FB] font-semibold text-xs transition cursor-pointer"
           >
             Đặt mặc định
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="px-7 py-2.5 rounded-xl bg-[#6255CF] hover:bg-[#5144BD] text-white font-semibold text-xs transition shadow-md shadow-[#6255CF]/25 active:scale-95"
+            className="px-7 py-2.5 rounded-xl bg-[#6255CF] hover:bg-[#5144BD] text-white font-semibold text-xs transition shadow-md shadow-[#6255CF]/25 active:scale-95 cursor-pointer"
           >
             Lưu
           </button>
