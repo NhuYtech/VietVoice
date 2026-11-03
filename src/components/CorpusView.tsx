@@ -209,31 +209,30 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex-1 min-h-0 flex flex-col space-y-3">
       {/* Overview Banner */}
-      <div className="bg-white rounded-2xl border border-[#E8E8F0] p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-[#E8E8F0] px-5 py-3 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Database className="w-5 h-5 text-[#6255CF]" />
-            <h2 className="text-lg font-bold text-[#20213A]">Ngữ liệu song song văn bản — âm thanh</h2>
+          <div className="flex items-center gap-2 mb-0.5">
+            <Database className="w-4 h-4 text-[#6255CF]" />
+            <h2 className="text-sm md:text-base font-bold text-[#20213A]">Ngữ liệu song song văn bản — âm thanh</h2>
           </div>
           <p className="text-xs text-[#85879A] max-w-2xl leading-relaxed">
-            Hệ thống quản lý ngữ liệu âm thanh với <strong>{combinedList.length.toLocaleString()}</strong> âm tiết tiếng Việt chuẩn (datasetTV) cùng các bản ghi âm người dùng tự thu.
-            Tên file được quy ước mã hóa theo bảng mã VNI để đảm bảo tính đồng bộ của đồ án.
+            Hệ thống quản lý ngữ liệu âm thanh với <strong>{combinedList.length.toLocaleString()}</strong> âm tiết tiếng Việt chuẩn (datasetTV) cùng các bản ghi âm riêng.
           </p>
         </div>
 
         <button
           onClick={onOpenRecordModal}
-          className="px-5 py-3 rounded-xl bg-[#6255CF] hover:bg-[#5144BD] text-white text-xs font-semibold flex items-center gap-2 shadow-md shadow-[#6255CF]/20 transition flex-shrink-0 active:scale-95 cursor-pointer"
+          className="px-4 py-2 rounded-xl bg-[#6255CF] hover:bg-[#5144BD] text-white text-xs font-semibold flex items-center gap-2 shadow-md shadow-[#6255CF]/20 transition flex-shrink-0 active:scale-95 cursor-pointer"
         >
-          <Mic className="w-4 h-4" />
+          <Mic className="w-3.5 h-3.5" />
           <span>Thu âm từ mới</span>
         </button>
       </div>
 
-      {/* Main Table Card */}
-      <div className="bg-white rounded-2xl border border-[#E8E8F0] shadow-sm p-6">
+      {/* Main Table Card: flex-1 min-h-0 tự co giãn theo chiều cao khả dụng */}
+      <div className="bg-white rounded-2xl border border-[#E8E8F0] shadow-sm p-4 sm:p-5 flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Toolbar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#F0F2F9]">
           <div className="flex items-center gap-3">
@@ -306,19 +305,19 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
           </div>
         </div>
 
-        {/* Corpus Table */}
-        <div className="overflow-x-auto mt-4 rounded-xl border border-[#E8E8F0] shadow-2xs">
-          <table className="w-full text-left text-xs text-[#555870] min-w-[850px] table-fixed">
-            <thead className="bg-[#FAFBFD] text-[#85879A] uppercase text-[10px] tracking-wider border-b border-[#E8E8F0]">
+        {/* Corpus Table: Chỉ cuộn riêng danh sách từ vựng này */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto mt-3 rounded-xl border border-[#E8E8F0] shadow-2xs overscroll-contain">
+          <table className="w-full text-left text-xs text-[#555870] min-w-[1020px] table-fixed select-none">
+            <thead className="bg-[#FAFBFD] text-[#85879A] uppercase text-[10px] tracking-wider border-b border-[#E8E8F0] sticky top-0 z-10 shadow-2xs select-none">
               <tr>
-                <th className="py-3.5 px-3.5 w-[64px] text-center whitespace-nowrap font-bold">STT</th>
-                <th className="py-3.5 px-3.5 w-[16%] font-bold text-[#20213A] whitespace-nowrap">Từ tiếng Việt</th>
-                <th className="py-3.5 px-3.5 w-[13%] whitespace-nowrap">Mã hóa VNI</th>
-                <th className="py-3.5 px-3.5 w-[12%] whitespace-nowrap">Giọng đọc</th>
-                <th className="py-3.5 px-3.5 w-[19%] whitespace-nowrap">Tên file (.wav)</th>
-                <th className="py-3.5 px-3.5 w-[13%] whitespace-nowrap">Thời lượng</th>
-                <th className="py-3.5 px-3.5 w-[14%] whitespace-nowrap">Nguồn</th>
-                <th className="py-3.5 px-3.5 w-[13%] text-right whitespace-nowrap">Thao tác</th>
+                <th className="py-3.5 px-3.5 w-14 min-w-[56px] text-center whitespace-nowrap font-bold">STT</th>
+                <th className="py-3.5 px-3.5 min-w-[140px] w-[16%] font-bold text-[#20213A] whitespace-nowrap">Từ tiếng Việt</th>
+                <th className="py-3.5 px-3.5 min-w-[110px] w-[12%] whitespace-nowrap">Mã hóa VNI</th>
+                <th className="py-3.5 px-3.5 min-w-[100px] w-[11%] whitespace-nowrap">Giọng đọc</th>
+                <th className="py-3.5 px-3.5 min-w-[170px] w-[18%] whitespace-nowrap">Tên file (.wav)</th>
+                <th className="py-3.5 px-3.5 min-w-[120px] w-[13%] whitespace-nowrap">Thời lượng</th>
+                <th className="py-3.5 px-3.5 min-w-[140px] w-[15%] whitespace-nowrap">Nguồn</th>
+                <th className="py-3.5 px-3.5 min-w-[110px] w-[11%] text-right whitespace-nowrap">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F0F2F9] bg-white">
@@ -420,9 +419,9 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
           </table>
         </div>
 
-        {/* Pagination Bar */}
+        {/* Pagination Bar: Cố định ở đáy card */}
         {totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-[#F0F2F9] mt-3">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-[#F0F2F9] mt-2 shrink-0">
             <span className="text-xs text-[#85879A]">
               Hiển thị {(currentPage - 1) * pageSize + 1} -{' '}
               {Math.min(currentPage * pageSize, filtered.length)} trên tổng số{' '}
