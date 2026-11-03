@@ -332,7 +332,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F8FC] flex text-[#20213A]">
+    <div className="h-screen w-screen overflow-hidden bg-[#F7F8FC] flex text-[#20213A]">
       {/* 1. Left Fixed Sidebar */}
       <Sidebar
         currentTab={currentTab}
@@ -344,7 +344,7 @@ export const App: React.FC = () => {
       />
 
       {/* 2. Main Content Area */}
-      <div className="flex-1 ml-[240px] flex flex-col min-w-0 pt-[72px]">
+      <div className="flex-1 ml-[240px] flex flex-col min-w-0 h-screen overflow-hidden pt-[72px]">
         {/* Top Header */}
         <Header currentTab={currentTab} />
 
@@ -357,18 +357,18 @@ export const App: React.FC = () => {
         {/* Workspace Body: Cố định cả tab Chuyển văn bản và tab Dữ liệu trong màn hình (chỉ cuộn list/bảng) */}
         {currentTab === 'about' ? (
           <main
-            className={`px-4 sm:px-6 pt-4 max-w-[1400px] w-full mx-auto overflow-y-auto ${
-              isPlayerOpen ? 'pb-28' : 'pb-10'
+            className={`flex-1 min-h-0 px-4 sm:px-6 pt-4 max-w-[1400px] w-full mx-auto overflow-y-auto overscroll-contain transition-[margin] duration-200 ${
+              isPlayerOpen ? 'mb-[76px] pb-6' : 'pb-8'
             }`}
           >
             <AboutView />
           </main>
         ) : (
           <main
-            className={`px-4 sm:px-6 pt-4 max-w-[1400px] w-full mx-auto flex flex-col overflow-hidden transition-[height,margin] duration-200 ${
+            className={`flex-1 min-h-0 px-4 sm:px-6 pt-4 max-w-[1400px] w-full mx-auto flex flex-col overflow-hidden transition-[margin] duration-200 ${
               isPlayerOpen
-                ? 'h-[calc(100vh-72px-76px)] mb-[76px] pb-2'
-                : 'h-[calc(100vh-72px)] pb-3'
+                ? 'mb-[76px] pb-2'
+                : 'pb-3'
             }`}
           >
             {currentTab === 'tts' && (
