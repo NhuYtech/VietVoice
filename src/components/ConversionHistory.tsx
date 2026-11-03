@@ -20,7 +20,7 @@ import type { PlayerTrack } from './BottomAudioPlayer';
 
 interface ConversionHistoryProps {
   items: ConversionHistoryItem[];
-  onDelete: (id: string) => void;
+  onDelete: (idOrIds: string | string[]) => void;
   onRefresh: () => void;
   currentPlayingId?: string | null;
   isPlayingAudio?: boolean;
@@ -125,20 +125,8 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
 
   const handleDeleteSelected = () => {
     if (selectedIds.size === 0) return;
-    onShowNotification?.({
-      type: 'warning',
-      title: 'Xác nhận xóa các mục đã chọn',
-      message: `Bạn có chắc chắn muốn xóa ${selectedIds.size} mục chuyển đổi đã chọn khỏi lịch sử?`,
-      confirmText: 'Xóa ngay',
-      cancelText: 'Hủy',
-      action: {
-        label: 'Xác nhận xóa',
-        onClick: () => {
-          selectedIds.forEach((id) => onDelete(id));
-          setSelectedIds(new Set());
-        },
-      },
-    });
+    onDelete(Array.from(selectedIds));
+    setSelectedIds(new Set());
   };
 
   const handlePlayHistoryAudio = (item: ConversionHistoryItem) => {
@@ -561,19 +549,9 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                           <button
                             onClick={() => {
                               setActiveMenuId(null);
-                              onShowNotification?.({
-                                type: 'warning',
-                                title: 'Xác nhận xóa bản ghi',
-                                message: `Bạn có chắc chắn muốn xóa bản ghi: "${item.text}" khỏi danh sách chuyển đổi?`,
-                                confirmText: 'Xóa ngay',
-                                cancelText: 'Hủy',
-                                action: {
-                                  label: 'Xóa ngay',
-                                  onClick: () => onDelete(item.id),
-                                },
-                              });
+                              onDelete(item.id);
                             }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 text-left transition"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 text-left transition cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             <span>Xóa mục này</span>

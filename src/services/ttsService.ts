@@ -47,7 +47,7 @@ export function getStoredHistory(): ConversionHistoryItem[] {
     if (!Array.isArray(parsed)) return [];
     const real = parsed.filter((it: any) => it && !String(it.id).startsWith('hist-'));
     return real.map((item: any, idx: number) => ({
-      id: item?.id || `conv-${idx}-${Date.now()}`,
+      id: String(item?.id || `conv-${idx}`),
       text: String(item?.text || ''),
       speaker: (item?.speaker === 'Nữ' || item?.speaker === 'Nữ 01' ? 'Nữ' : 'Nam') as 'Nam' | 'Nữ',
       duration: typeof item?.duration === 'number' && !isNaN(item.duration) ? item.duration : 0.6,
@@ -126,6 +126,19 @@ export function removeHistoryEntry(id: string): ConversionHistoryItem[] {
   const current = getStoredHistory();
   const updated = current.filter((item) => item.id !== id);
   saveHistory(updated);
+  historyAudioCache.delete(id);
+  return updated;
+}
+
+/**
+ * Xóa nhiều mục lịch sử cùng lúc
+ */
+export function removeHistoryEntries(ids: string[]): ConversionHistoryItem[] {
+  const idSet = new Set(ids);
+  const current = getStoredHistory();
+  const updated = current.filter((item) => !idSet.has(item.id));
+  saveHistory(updated);
+  ids.forEach((id) => historyAudioCache.delete(id));
   return updated;
 }
 

@@ -15,6 +15,7 @@ import {
   getStoredHistory,
   addHistoryEntry,
   removeHistoryEntry,
+  removeHistoryEntries,
   performSynthesis,
   mapSpeakerToCore,
   resolveTrackAudioBlob,
@@ -264,18 +265,25 @@ Bạn có thể nghe phát âm thanh tại thanh điều khiển cố định b�
     }
   };
 
-  // Xóa mục lịch sử với popup xác nhận
-  const handleDeleteHistory = (id: string) => {
+  // Xóa mục lịch sử với popup xác nhận (hỗ trợ cả xóa 1 mục hoặc xóa nhiều mục cùng lúc)
+  const handleDeleteHistory = (idOrIds: string | string[]) => {
+    const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+    if (ids.length === 0) return;
+    const isMultiple = ids.length > 1;
+
     setNotificationModal({
       type: 'confirm',
-      title: 'Xóa lịch sử chuyển đổi',
-      message: 'Bạn có chắc chắn muốn xóa mục này khỏi danh sách lịch sử chuyển đổi không?',
+      title: isMultiple ? 'Xóa các mục đã chọn' : 'Xóa lịch sử chuyển đổi',
+      message: isMultiple
+        ? `Bạn có chắc chắn muốn xóa ${ids.length} mục chuyển đổi đã chọn khỏi lịch sử?`
+        : 'Bạn có chắc chắn muốn xóa mục này khỏi danh sách lịch sử chuyển đổi không?',
       confirmText: 'Xóa ngay',
       cancelText: 'Hủy bỏ',
       onConfirm: () => {
-        const updated = removeHistoryEntry(id);
+        const idSet = new Set(ids);
+        const updated = removeHistoryEntries(ids);
         setHistoryItems(updated);
-        if (playerTrack?.id === id) {
+        if (playerTrack && idSet.has(playerTrack.id || '')) {
           if (updated.length > 0) {
             setPlayerTrack({
               id: updated[0].id,
@@ -287,6 +295,7 @@ Bạn có thể nghe phát âm thanh tại thanh điều khiển cố định b�
             });
           } else {
             setPlayerTrack(null);
+            setIsPlayerOpen(false);
           }
         }
       },
