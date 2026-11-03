@@ -35,12 +35,12 @@ export const Header: React.FC<HeaderProps> = ({ currentTab }) => {
         <p className="text-xs text-[#85879A] mt-0.5">{subtitle}</p>
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* <div className="flex items-center gap-3">
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#F0F2F9] text-[#555870] border border-[#E2E4F0]">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           Ghép nối ngữ liệu (Concatenative)
         </span>
-      </div>
+      </div> */}
     </header>
   );
 };
