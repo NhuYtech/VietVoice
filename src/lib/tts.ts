@@ -322,28 +322,54 @@ export const wordFromFilename = (name: string): string => {
 };
 
 export interface ManifestItem {
+  id?: string;
   word: string;
   speaker: string;
   file: string;
+  code?: string;
+  audioUrl?: string;
+  cloudinaryPublicId?: string;
   duration?: number;
 }
 
 export let cachedManifestWords: ManifestItem[] = [];
 export const manifestLookup = new Map<string, ManifestItem>();
 
-/** Nạp danh mục bộ dữ liệu từ public/corpus/manifest.json siêu nhanh (không tải trước hàng nghìn file). */
+/** Nạp danh mục bộ dữ liệu từ MongoDB Backend API (fallback sang /corpus/manifest.json nếu offline). */
 export async function loadManifest(existing: Set<string>): Promise<CorpusEntry[]> {
   try {
-    const res = await fetch('/corpus/manifest.json', { cache: 'no-store' });
-    if (!res.ok) return [];
-    const data = await res.json();
-    cachedManifestWords = data.words || [];
+    let words: ManifestItem[] = [];
+
+    // Ưu tiên nạp danh mục ngữ liệu trực tiếp từ MongoDB Backend
+    try {
+      const res = await fetch('/api/audio/manifest');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.words) && data.words.length > 0) {
+          words = data.words;
+          console.log(`[VietVoice] Đã nạp ${words.length} từ từ MongoDB Database!`);
+        }
+      }
+    } catch (apiErr) {
+      console.warn('[VietVoice] Backend MongoDB chưa khởi động, dùng manifest dự phòng:', apiErr);
+    }
+
+    // Fallback sang file local manifest nếu chưa có
+    if (words.length === 0) {
+      const res = await fetch('/corpus/manifest.json', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        words = data.words || [];
+      }
+    }
+
+    cachedManifestWords = words;
     manifestLookup.clear();
     for (const m of cachedManifestWords) {
       const spk = (m.speaker || 'nam').toLowerCase();
       const normW = normalizeText(m.word);
       manifestLookup.set(`${spk}::${normW}`, m);
-      const code = encodeVnWord(normW);
+      const code = m.code || encodeVnWord(normW);
       if (code && code !== normW) {
         manifestLookup.set(`${spk}::${code}`, m);
       }
@@ -354,13 +380,16 @@ export async function loadManifest(existing: Set<string>): Promise<CorpusEntry[]
   return [];
 }
 
-/** Tải và nạp âm thanh của một từ từ manifest vào IndexedDB theo nhu cầu */
+/** Tải và nạp âm thanh của một từ từ Cloudinary (hoặc local manifest) vào IndexedDB theo nhu cầu */
 export async function fetchManifestWord(m: ManifestItem): Promise<CorpusEntry | null> {
   try {
-    // Không dùng encodeURIComponent trên tên file vì dấu '+' trong tên file (như xa+y0.wav, d-o+i3.wav)
-    // sẽ bị biến thành '%2B' khiến web server trả về index.html thay vì file âm thanh thật
-    const cleanPath = m.file.replace(/^\/+/, '');
-    const fileUrl = `/corpus/${cleanPath}`;
+    // Ưu tiên audioUrl từ Cloudinary được lưu trong MongoDB
+    let fileUrl = m.audioUrl;
+    if (!fileUrl) {
+      const cleanPath = m.file.replace(/^\/+/, '');
+      fileUrl = `/corpus/${cleanPath}`;
+    }
+
     const res = await fetch(fileUrl);
     if (!res.ok) return null;
     const contentType = res.headers.get('content-type') || '';
@@ -377,4 +406,3 @@ export async function fetchManifestWord(m: ManifestItem): Promise<CorpusEntry | 
     return null;
   }
 }
-

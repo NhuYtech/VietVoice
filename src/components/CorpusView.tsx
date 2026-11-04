@@ -46,6 +46,8 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
     (Array.isArray(realEntries) ? realEntries : []).forEach((e) => {
       const spk = (String(e?.speaker).toLowerCase().includes('nam') ? 'Nam' : 'Nữ') as 'Nam' | 'Nữ';
       const cleanW = String(e?.word || '').trim();
+      const c = e?.code || encodeVnFilename(cleanW).replace('.wav', '') || 'code';
+      realMap.set(`${spk.toLowerCase()}::${c.toLowerCase()}`, e);
       realMap.set(`${spk.toLowerCase()}::${cleanW.toLowerCase()}`, e);
 
       let createdAtStr = 'Vừa xong';
@@ -61,31 +63,35 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
       list.push({
         id: e?.id || `entry-${cleanW}`,
         word: cleanW,
-        code: e?.code || encodeVnFilename(cleanW).replace('.wav', '') || 'code',
+        code: c,
         speaker: spk,
         filename: encodeVnFilename(cleanW),
         duration: typeof e?.duration === 'number' && !isNaN(e.duration) ? e.duration : 0.45,
         createdAt: createdAtStr,
         isMock: false,
+        source: e.source,
       });
     });
 
-    // Thêm các từ trong datasetTV chưa có trong IndexedDB
+    // Thêm các từ trong MongoDB / Cloudinary chưa có trong IndexedDB
     cachedManifestWords.forEach((m, idx) => {
       const spk = (m.speaker || 'nam').toLowerCase() === 'nam' ? 'Nam' : 'Nữ';
       const cleanW = (m.word || '').trim();
-      const key = `${spk.toLowerCase()}::${cleanW.toLowerCase()}`;
+      const c = m.code || (m.file ? m.file.replace(/^wavs\//, '').replace(/\.wav$/, '') : cleanW);
+      const key = `${spk.toLowerCase()}::${c.toLowerCase()}`;
 
       if (!realMap.has(key)) {
         list.push({
-          id: `manifest-${idx}-${cleanW}`,
+          id: m.id || `manifest-${idx}-${cleanW}`,
           word: cleanW,
-          code: m.file.replace(/^wavs\//, '').replace(/\.wav$/, ''),
+          code: c,
           speaker: spk,
-          filename: m.file.replace(/^wavs\//, ''),
+          filename: m.file ? m.file.replace(/^wavs\//, '') : `${c}.wav`,
           duration: typeof m.duration === 'number' ? m.duration : 0.45,
-          createdAt: 'datasetTV',
+          createdAt: m.audioUrl ? 'MongoDB • Cloudinary' : 'datasetTV',
           isMock: false,
+          audioUrl: m.audioUrl,
+          source: 'manifest',
         });
       }
     });
@@ -177,8 +183,9 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
     );
     if (m) {
       const a = document.createElement('a');
-      a.href = `/corpus/${m.file}`;
+      a.href = m.audioUrl || `/corpus/${m.file}`;
       a.download = item.filename || `${item.word}.wav`;
+      a.target = '_blank';
       a.click();
     }
   };
@@ -222,13 +229,22 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenRecordModal}
-          className="px-4 py-2 rounded-xl bg-[#6255CF] hover:bg-[#5144BD] text-white text-xs font-semibold flex items-center gap-2 shadow-md shadow-[#6255CF]/20 transition flex-shrink-0 active:scale-95 cursor-pointer"
-        >
-          <Mic className="w-3.5 h-3.5" />
-          <span>Thu âm từ mới</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            MongoDB: Đã kết nối
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#F3F0FF] text-[#6255CF] border border-[#E0D8FF] shadow-2xs">
+            Cloudinary: wximbfoz
+          </span>
+          <button
+            onClick={onOpenRecordModal}
+            className="px-4 py-2 rounded-xl bg-[#6255CF] hover:bg-[#5144BD] text-white text-xs font-semibold flex items-center gap-2 shadow-md shadow-[#6255CF]/20 transition flex-shrink-0 active:scale-95 cursor-pointer"
+          >
+            <Mic className="w-3.5 h-3.5" />
+            <span>Thu âm từ mới</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Table Card: flex-1 min-h-0 tự co giãn theo chiều cao khả dụng */}
@@ -330,7 +346,8 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
               ) : (
                 currentPageItems.map((item, idx) => {
                   const globalIdx = (currentPage - 1) * pageSize + idx + 1;
-                  const isManifest = item.id.startsWith('manifest-');
+                  const isRecorded = item.source === 'record' || item.source === 'upload';
+                  const isManifest = !isRecorded;
 
                   return (
                     <tr key={item.id} className="hover:bg-[#FAFBFD] transition group">
@@ -368,13 +385,17 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
                         {(Number(item.duration) || 0.45).toFixed(2)}s
                       </td>
                       <td className="py-3.5 px-3.5 whitespace-nowrap align-middle">
-                        {isManifest ? (
-                          <span className="text-[10px] px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200 inline-block whitespace-nowrap">
-                            datasetTV
-                          </span>
-                        ) : (
+                        {isRecorded ? (
                           <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200 inline-block whitespace-nowrap">
                             Ghi âm riêng
+                          </span>
+                        ) : item.audioUrl || (item.createdAt && item.createdAt.includes('Cloudinary')) ? (
+                          <span className="text-[10px] px-2.5 py-1 rounded-full bg-purple-50 text-[#6255CF] font-semibold border border-[#E0D8FF] inline-block whitespace-nowrap">
+                            Cloudinary
+                          </span>
+                        ) : (
+                          <span className="text-[10px] px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200 inline-block whitespace-nowrap">
+                            datasetTV
                           </span>
                         )}
                       </td>

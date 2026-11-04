@@ -1,0 +1,246 @@
+import express from 'express';
+import cors from 'cors';
+import { MongoClient, ObjectId } from 'mongodb';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const app = express();
+const port = parseInt(process.env.PORT || '5000', 10);
+const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017';
+const dbName = process.env.DB_NAME || 'VietVoice';
+
+app.use(cors());
+app.use(express.json());
+
+let client = null;
+let db = null;
+let audioCollection = null;
+
+// Cache manifest trong RAM để tăng tốc tối đa cho module TTS phía client
+let cachedManifestData = null;
+let lastCacheTime = 0;
+const CACHE_TTL_MS = 60 * 1000; // 1 phút
+
+async function connectToMongo() {
+  try {
+    client = new MongoClient(uri);
+    await client.connect();
+    db = client.db(dbName);
+    audioCollection = db.collection('Audio');
+    console.log(`[MongoDB] Đã kết nối thành công tới database "${dbName}"`);
+  } catch (err) {
+    console.error('[MongoDB] Lỗi kết nối:', err.message);
+  }
+}
+
+// Middleware kiểm tra database
+app.use((req, res, next) => {
+  if (!audioCollection) {
+    return res.status(503).json({ error: 'Database chưa sẵn sàng, vui lòng thử lại sau.' });
+  }
+  next();
+});
+
+// 1. Health check & Trạng thái kết nối
+app.get('/api/health', async (req, res) => {
+  try {
+    const count = await audioCollection.estimatedDocumentCount();
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      dbName,
+      totalAudios: count,
+      cloudinaryCloud: process.env.CLOUDINARY_CLOUD_NAME || 'wximbfoz',
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// 2. Lấy toàn bộ manifest nhẹ cho TTS engine (có in-memory cache)
+app.get('/api/audio/manifest', async (req, res) => {
+  try {
+    const forceReload = req.query.reload === 'true';
+    const now = Date.now();
+
+    if (!forceReload && cachedManifestData && now - lastCacheTime < CACHE_TTL_MS) {
+      return res.json(cachedManifestData);
+    }
+
+    const docs = await audioCollection
+      .find({}, {
+        projection: {
+          word: 1,
+          code: 1,
+          cloudinaryPublicId: 1,
+          audioUrl: 1,
+          speaker: 1,
+          duration: 1
+        }
+      })
+      .toArray();
+
+    const words = docs.map((d) => ({
+      id: d._id.toString(),
+      word: d.word,
+      code: d.code,
+      cloudinaryPublicId: d.cloudinaryPublicId,
+      file: `${d.code}.wav`,
+      audioUrl: d.audioUrl,
+      speaker: (d.speaker || 'Nam').toLowerCase(),
+      duration: d.duration || 0.45,
+    }));
+
+    cachedManifestData = {
+      name: 'Vietnamese Syllables Speech Dataset (Cloudinary + MongoDB)',
+      total: words.length,
+      source: 'mongodb',
+      words
+    };
+    lastCacheTime = now;
+
+    res.json(cachedManifestData);
+  } catch (err) {
+    console.error('Lỗi khi lấy manifest:', err);
+    res.status(500).json({ error: 'Không thể lấy dữ liệu manifest' });
+  }
+});
+
+// 3. Tìm kiếm và phân trang danh sách Audio (cho CorpusView)
+app.get('/api/audio', async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10)));
+    const q = (req.query.q || '').trim().toLowerCase();
+    const speaker = req.query.speaker;
+
+    const filter = {};
+    if (speaker && speaker !== 'all') {
+      filter.speaker = new RegExp(`^${speaker}$`, 'i');
+    }
+
+    if (q) {
+      filter.$or = [
+        { word: { $regex: q, $options: 'i' } },
+        { code: { $regex: q, $options: 'i' } },
+        { cloudinaryPublicId: { $regex: q, $options: 'i' } }
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      audioCollection
+        .find(filter)
+        .sort({ word: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .toArray(),
+      audioCollection.countDocuments(filter)
+    ]);
+
+    res.json({
+      items: items.map((it) => ({
+        ...it,
+        id: it._id.toString()
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (err) {
+    console.error('Lỗi khi truy vấn audio:', err);
+    res.status(500).json({ error: 'Không thể lấy danh sách audio' });
+  }
+});
+
+// 4. Lấy chi tiết âm thanh của 1 từ cụ thể
+app.get('/api/audio/word/:word', async (req, res) => {
+  try {
+    const word = req.params.word.trim().toLowerCase();
+    const speaker = req.query.speaker || 'Nam';
+
+    const item = await audioCollection.findOne({
+      $or: [
+        { word, speaker: new RegExp(`^${speaker}$`, 'i') },
+        { code: word, speaker: new RegExp(`^${speaker}$`, 'i') },
+        { cloudinaryPublicId: word, speaker: new RegExp(`^${speaker}$`, 'i') }
+      ]
+    });
+
+    if (!item) {
+      return res.status(404).json({ error: `Không tìm thấy từ "${word}"` });
+    }
+
+    res.json({
+      ...item,
+      id: item._id.toString()
+    });
+  } catch (err) {
+    console.error('Lỗi khi tìm từ:', err);
+    res.status(500).json({ error: 'Lỗi server' });
+  }
+});
+
+// 5. Thêm / cập nhật bản ghi âm thanh mới (ví dụ người dùng thu âm hoặc upload)
+app.post('/api/audio', async (req, res) => {
+  try {
+    const { word, code, audioUrl, speaker, duration, format, cloudinaryPublicId } = req.body;
+    if (!word || !audioUrl) {
+      return res.status(400).json({ error: 'Thiếu word hoặc audioUrl' });
+    }
+
+    const cleanWord = word.trim().toLowerCase();
+    const doc = {
+      word: cleanWord,
+      code: code || cleanWord,
+      cloudinaryPublicId: cloudinaryPublicId || code || cleanWord,
+      audioUrl,
+      speaker: speaker || 'Nam',
+      gender: (speaker || '').toLowerCase().includes('nữ') ? 'female' : 'male',
+      duration: Number(duration) || 0.45,
+      format: format || 'wav',
+      source: 'upload',
+      updatedAt: new Date()
+    };
+
+    const result = await audioCollection.updateOne(
+      { word: cleanWord, speaker: doc.speaker },
+      { $set: doc, $setOnInsert: { createdAt: new Date() } },
+      { upsert: true }
+    );
+
+    // Xóa cache để lần gọi tiếp theo nạp lại
+    cachedManifestData = null;
+
+    res.json({ success: true, upsertedId: result.upsertedId, modifiedCount: result.modifiedCount });
+  } catch (err) {
+    console.error('Lỗi khi lưu audio:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6. Xóa bản ghi
+app.delete('/api/audio/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await audioCollection.deleteOne({ _id: new ObjectId(id) });
+    cachedManifestData = null;
+    res.json({ success: result.deletedCount > 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Khởi động server
+connectToMongo().then(() => {
+  app.listen(port, () => {
+    console.log(`=======================================================`);
+    console.log(`✓ VietVoice Backend Server đang chạy tại: http://localhost:${port}`);
+    console.log(`✓ Kết nối MongoDB: ${uri}/${dbName}`);
+    console.log(`✓ Cloudinary Cloud: ${process.env.CLOUDINARY_CLOUD_NAME || 'wximbfoz'}`);
+    console.log(`=======================================================`);
+  });
+});
+

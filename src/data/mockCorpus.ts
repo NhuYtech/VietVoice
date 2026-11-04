@@ -7,6 +7,8 @@ export interface CorpusItem {
   duration: number; // giây
   createdAt: string;
   isMock: boolean;
+  audioUrl?: string;
+  source?: string;
 }
 
 export interface ConversionHistoryItem {
