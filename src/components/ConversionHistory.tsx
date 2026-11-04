@@ -410,8 +410,18 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                     {/* Text Title & Subtitle */}
                     <div className="min-w-0 flex-1">
                       <div
-                        className="font-semibold text-xs md:text-sm text-[#20213A] truncate leading-snug"
-                        title={item.text}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(item.text);
+                          onShowNotification?.({
+                            type: 'success',
+                            title: 'Đã sao chép',
+                            message: `Đã sao chép: "${item.text}"`,
+                            confirmText: 'Đóng',
+                          });
+                        }}
+                        className="font-semibold text-xs md:text-sm text-[#20213A] truncate leading-snug cursor-pointer select-none hover:text-[#6255CF] transition"
+                        title="Bấm để sao chép văn bản này"
                       >
                         {item.text}
                       </div>

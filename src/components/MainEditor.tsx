@@ -10,6 +10,8 @@ import {
   Sliders,
   ChevronDown,
   Sparkles,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { PauseSettingsModal, type PauseSettings } from './PauseSettingsModal';
 import type { NotificationModalData } from './NotificationModal';
@@ -51,6 +53,14 @@ export const MainEditor: React.FC<MainEditorProps> = ({
   onShowNotification,
 }) => {
   const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
+  const [copiedNormalized, setCopiedNormalized] = useState(false);
+
+  const handleCopyNormalized = (normalizedStr: string) => {
+    if (!normalizedStr) return;
+    navigator.clipboard.writeText(normalizedStr);
+    setCopiedNormalized(true);
+    setTimeout(() => setCopiedNormalized(false), 2000);
+  };
   const charCount = text.length;
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
 
@@ -137,17 +147,66 @@ export const MainEditor: React.FC<MainEditorProps> = ({
         {/* Vocabulary availability helper tags */}
         {text.trim() && (
           <div className="mt-3.5 space-y-2.5">
-            {hasNumbers(text) && (
-              <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#F3F1FD] border border-[#E0DCFB] text-xs text-[#20213A] shadow-2xs">
-                <span className="font-semibold text-[#6255CF] flex items-center gap-1.5 shrink-0">
-                  <Sparkles className="w-3.5 h-3.5 text-[#6255CF]" />
-                  Đọc số tự động:
-                </span>
-                <span className="text-[#3A3D52] font-medium italic truncate">
-                  "{normalizeNumbersInText(text)}"
-                </span>
-              </div>
-            )}
+            {hasNumbers(text) && (() => {
+              const normText = normalizeNumbersInText(text);
+              return (
+                <div
+                  onClick={() => handleCopyNormalized(normText)}
+                  className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#F3F1FD] border border-[#DDD7FD] text-xs text-[#20213A] shadow-2xs cursor-pointer select-none hover:bg-[#ECE8FD] hover:border-[#6255CF]/50 transition group"
+                  title="Nhấn vào để sao chép văn bản đã đọc số"
+                >
+                  <div className="flex items-center gap-2 overflow-hidden flex-1">
+                    <span className="font-semibold text-[#6255CF] flex items-center gap-1.5 shrink-0">
+                      <Sparkles className="w-3.5 h-3.5 text-[#6255CF]" />
+                      Đọc số tự động:
+                    </span>
+                    <span className="text-[#3A3D52] font-medium italic truncate">
+                      "{normText}"
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopyNormalized(normText);
+                      }}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer select-none ${
+                        copiedNormalized
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-white text-[#6255CF] border border-[#DDD7FD] group-hover:border-[#6255CF] group-hover:bg-[#6255CF] group-hover:text-white shadow-2xs'
+                      }`}
+                      title="Sao chép toàn bộ văn bản đọc số"
+                    >
+                      {copiedNormalized ? (
+                        <>
+                          <Check className="w-3 h-3 text-white" />
+                          <span>Đã sao chép</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Sao chép</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onChangeText(normText);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white text-[#555870] border border-[#DDD7FD] hover:bg-[#6255CF] hover:text-white hover:border-[#6255CF] transition cursor-pointer select-none shadow-2xs"
+                      title="Thay thế ô nhập bằng văn bản đã đọc số"
+                    >
+                      Áp dụng
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
             <div className="p-3 rounded-xl bg-[#F8F9FD] border border-[#EAEBF5] text-xs flex flex-wrap items-center gap-2">
               <span className="font-semibold text-[#555870]">Kiểm tra ngữ liệu:</span>
               {vocabCheck.tokens.length === 0 ? null : (
