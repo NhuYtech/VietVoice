@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Mic, Square, Play, Save, AlertCircle, CheckCircle2, Volume2, Sparkles } from 'lucide-react';
 import { encodeVnFilename, decodeVnWord } from '../lib/vniCodec';
 import { addToCorpus } from '../lib/tts';
-import { playSamples, decodeBlob, encodeWav, SR } from '../lib/dsp';
+import { playSamples, stopPlayback, decodeBlob, encodeWav, SR } from '../lib/dsp';
 import type { CorpusEntry } from '../lib/types';
 
 interface RecordModalProps {
@@ -28,6 +28,8 @@ export const RecordModal: React.FC<RecordModalProps> = ({
   const [audioLevel, setAudioLevel] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const audioSamplesRef = useRef<Float32Array | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -57,6 +59,11 @@ export const RecordModal: React.FC<RecordModalProps> = ({
       setAudioUrl(null);
       setErrorMsg('');
       setIsRecording(false);
+      setIsPlayingPreview(false);
+      audioSamplesRef.current = null;
+    } else {
+      stopPlayback();
+      setIsPlayingPreview(false);
     }
   }, [isOpen, initialWord, defaultSpeaker]);
 
@@ -141,6 +148,7 @@ export const RecordModal: React.FC<RecordModalProps> = ({
 
           // Chuyển đổi âm thanh sang chuẩn WAV 44.1 kHz PCM Lossless thật 100%
           const samples = await decodeBlob(rawBlob);
+          audioSamplesRef.current = samples;
           const wavBlob = encodeWav(samples, SR);
           setAudioBlob(wavBlob);
           const url = URL.createObjectURL(wavBlob);
@@ -177,9 +185,27 @@ export const RecordModal: React.FC<RecordModalProps> = ({
   };
 
   const handlePlayPreview = () => {
-    if (!audioUrl) return;
-    const audio = new Audio(audioUrl);
-    audio.play();
+    if (isPlayingPreview) {
+      stopPlayback();
+      setIsPlayingPreview(false);
+      return;
+    }
+
+    if (audioSamplesRef.current && audioSamplesRef.current.length > 0) {
+      setIsPlayingPreview(true);
+      playSamples(audioSamplesRef.current, SR, () => {
+        setIsPlayingPreview(false);
+      });
+      return;
+    }
+
+    if (audioUrl) {
+      setIsPlayingPreview(true);
+      const audio = new Audio(audioUrl);
+      audio.onended = () => setIsPlayingPreview(false);
+      audio.onerror = () => setIsPlayingPreview(false);
+      audio.play().catch(() => setIsPlayingPreview(false));
+    }
   };
 
   const handleSaveToCorpus = async () => {
@@ -387,10 +413,24 @@ export const RecordModal: React.FC<RecordModalProps> = ({
                   <button
                     type="button"
                     onClick={handlePlayPreview}
-                    className="px-4 py-3 rounded-xl border border-[#E8E8F0] hover:bg-[#F7F8FC] text-xs font-semibold text-[#20213A] flex items-center gap-2 transition cursor-pointer"
+                    className={`px-4 py-3 rounded-xl border text-xs font-semibold flex items-center gap-2 transition cursor-pointer shadow-xs ${
+                      isPlayingPreview
+                        ? 'bg-[#6255CF] text-white border-[#6255CF] ring-2 ring-[#6255CF]/30 animate-pulse'
+                        : 'border-[#E8E8F0] hover:bg-[#F2EFFD] hover:border-[#6255CF]/50 text-[#20213A]'
+                    }`}
+                    title="Bấm để nghe lại đoạn âm thanh vừa thu"
                   >
-                    <Play className="w-4 h-4 fill-current ml-0.5" />
-                    <span>Nghe lại ({audioBlob.size > 0 ? (audioBlob.size / 1024).toFixed(1) + ' KB' : ''})</span>
+                    {isPlayingPreview ? (
+                      <>
+                        <Square className="w-4 h-4 fill-current ml-0.5" />
+                        <span>Đang phát ({audioBlob.size > 0 ? (audioBlob.size / 1024).toFixed(1) + ' KB' : ''})...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 fill-current ml-0.5 text-[#6255CF]" />
+                        <span>Nghe lại ({audioBlob.size > 0 ? (audioBlob.size / 1024).toFixed(1) + ' KB' : ''})</span>
+                      </>
+                    )}
                   </button>
                 )}
               </div>
