@@ -25,6 +25,7 @@ interface MainEditorProps {
   onPreview?: () => void;
   isPreviewing?: boolean;
   entries: CorpusEntry[];
+  manifestCount?: number;
   onPlayPreviewVoice: (voice: 'Nam' | 'Nữ') => void;
   isPlayingPreview: 'Nam' | 'Nữ' | null;
   onOpenRecordModal?: (word?: string) => void;
@@ -41,6 +42,7 @@ export const MainEditor: React.FC<MainEditorProps> = ({
   onPreview,
   isPreviewing = false,
   entries,
+  manifestCount,
   onPlayPreviewVoice,
   isPlayingPreview,
   onOpenRecordModal,

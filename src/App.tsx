@@ -33,6 +33,7 @@ export const App: React.FC = () => {
   const [activeResult, setActiveResult] = useState<SynthResult | null>(null);
   const [historyItems, setHistoryItems] = useState<ConversionHistoryItem[]>([]);
   const [realEntries, setRealEntries] = useState<CorpusEntry[]>([]);
+  const [manifestCount, setManifestCount] = useState<number>(() => cachedManifestWords.length);
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [isPlayingPreview, setIsPlayingPreview] = useState<'Nam' | 'Nữ' | null>(null);
   const [notificationModal, setNotificationModal] = useState<NotificationModalData | null>(null);
@@ -50,7 +51,8 @@ export const App: React.FC = () => {
     try {
       const initial = await getAllEntries();
       const existingIds = new Set(initial.map((e) => e.id));
-      await loadManifest(existingIds).catch(() => []);
+      const count = await loadManifest(existingIds).catch(() => 0);
+      setManifestCount(typeof count === 'number' && count > 0 ? count : cachedManifestWords.length);
       const entries = await getAllEntries();
       setRealEntries(entries);
     } catch (err) {
@@ -461,6 +463,7 @@ export const App: React.FC = () => {
                     onPreview={handlePreview}
                     isPreviewing={isPreviewing}
                     entries={realEntries}
+                    manifestCount={manifestCount}
                     onPlayPreviewVoice={handlePlayPreviewVoice}
                     isPlayingPreview={isPlayingPreview}
                     onOpenRecordModal={(word) => {

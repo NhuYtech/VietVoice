@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { MongoClient, ObjectId } from 'mongodb';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 
 dotenv.config();
 
@@ -20,7 +22,20 @@ let audioCollection = null;
 // Cache manifest trong RAM để tăng tốc tối đa cho module TTS phía client
 let cachedManifestData = null;
 let lastCacheTime = 0;
-const CACHE_TTL_MS = 60 * 1000; // 1 phút
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 giờ
+
+// Nạp sẵn dữ liệu 6.674 từ vào RAM server ngay khi khởi động
+try {
+  const localManifestPath = path.join(process.cwd(), 'public', 'corpus', 'manifest.json');
+  if (fs.existsSync(localManifestPath)) {
+    const raw = fs.readFileSync(localManifestPath, 'utf-8');
+    cachedManifestData = JSON.parse(raw);
+    lastCacheTime = Date.now();
+    console.log(`[Cache] Đã nạp sẵn ${cachedManifestData.words?.length || 0} từ vào RAM server!`);
+  }
+} catch (e) {
+  console.warn('[Cache] Lỗi nạp manifest local:', e.message);
+}
 
 async function connectToMongo() {
   try {
