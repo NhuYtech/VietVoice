@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Database,
   Search,
@@ -37,6 +37,23 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50;
+
+  const [dbStatus, setDbStatus] = useState<'connected' | 'checking' | 'offline'>('checking');
+  const [dbCount, setDbCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.status === 'ok') {
+          setDbStatus('connected');
+          setDbCount(d.totalAudios || 6674);
+        } else {
+          setDbStatus('offline');
+        }
+      })
+      .catch(() => setDbStatus('offline'));
+  }, []);
 
   // Gộp cả dữ liệu thật trong IndexedDB và danh mục 6.674 từ trong datasetTV
   const combinedList = useMemo<CorpusItem[]>(() => {
@@ -230,10 +247,22 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            MongoDB: Đã kết nối
-          </span>
+          {dbStatus === 'connected' ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              MongoDB: Đã kết nối ({dbCount?.toLocaleString()} từ)
+            </span>
+          ) : dbStatus === 'checking' ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-50 text-gray-600 border border-gray-200 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+              MongoDB: Đang kiểm tra...
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs" title="Đang chạy ở chế độ dự phòng dữ liệu tĩnh">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              MongoDB: Ngoại tuyến (Dữ liệu tĩnh)
+            </span>
+          )}
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#F3F0FF] text-[#6255CF] border border-[#E0D8FF] shadow-2xs">
             Cloudinary: wximbfoz
           </span>
