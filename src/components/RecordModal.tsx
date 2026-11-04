@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Mic, Square, Play, Save, AlertCircle, CheckCircle2, Volume2, Sparkles } from 'lucide-react';
 import { encodeVnFilename, decodeVnWord } from '../lib/vniCodec';
 import { addToCorpus } from '../lib/tts';
-import { playSamples } from '../lib/dsp';
+import { playSamples, decodeBlob, encodeWav, SR } from '../lib/dsp';
 import type { CorpusEntry } from '../lib/types';
 
 interface RecordModalProps {
@@ -113,24 +113,48 @@ export const RecordModal: React.FC<RecordModalProps> = ({
       };
       updateLevel();
 
-      const mediaRecorder = new MediaRecorder(stream);
+      let mimeType = '';
+      if (typeof MediaRecorder.isTypeSupported === 'function') {
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          mimeType = 'audio/webm;codecs=opus';
+        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+          mimeType = 'audio/webm';
+        } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+          mimeType = 'audio/ogg;codecs=opus';
+        }
+      }
+
+      const mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        setAudioBlob(blob);
-        const url = URL.createObjectURL(blob);
-        setAudioUrl(url);
+      mediaRecorder.onstop = async () => {
+        try {
+          const rawBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
+          stopRecordingCleanup();
+
+          // Chuyển đổi âm thanh sang chuẩn WAV 44.1 kHz PCM Lossless thật 100%
+          const samples = await decodeBlob(rawBlob);
+          const wavBlob = encodeWav(samples, SR);
+          setAudioBlob(wavBlob);
+          const url = URL.createObjectURL(wavBlob);
+          setAudioUrl(url);
+        } catch (convErr) {
+          console.warn('Lỗi chuyển đổi sang WAV:', convErr);
+          const fallbackBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+          stopRecordingCleanup();
+          setAudioBlob(fallbackBlob);
+          setAudioUrl(URL.createObjectURL(fallbackBlob));
+        }
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(100);
       setIsRecording(true);
     } catch (err: any) {
       console.error(err);
@@ -140,9 +164,15 @@ export const RecordModal: React.FC<RecordModalProps> = ({
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
       setIsRecording(false);
-      stopRecordingCleanup();
+      try {
+        if (mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.requestData();
+          mediaRecorderRef.current.stop();
+        }
+      } catch (e) {
+        console.warn('Lỗi khi dừng recorder:', e);
+      }
     }
   };
 
@@ -165,8 +195,42 @@ export const RecordModal: React.FC<RecordModalProps> = ({
     setIsSaving(true);
     setErrorMsg('');
     try {
+      const cleanWord = wordInput.trim().toLowerCase();
       const coreSpeaker = speaker === 'Nam' ? 'nam' : 'nu';
-      await addToCorpus(audioBlob, wordInput.trim(), coreSpeaker, 'record');
+
+      // 1. Lưu vào IndexedDB trình duyệt
+      await addToCorpus(audioBlob, cleanWord, coreSpeaker, 'record');
+
+      // 2. Tự động đồng bộ lên Database MongoDB Atlas & Cloudinary
+      try {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(audioBlob);
+        });
+        const audioBase64 = await base64Promise;
+
+        const res = await fetch('/api/audio/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            word: cleanWord,
+            speaker,
+            code: encodeVnFilename(cleanWord).replace(/\.wav$/, ''),
+            audioBase64,
+            duration: audioBlob.size > 0 ? audioBlob.size / (SR * 2) : 0.45,
+          }),
+        });
+        if (res.ok) {
+          console.log(`[VietVoice] Đã lưu thành công từ "${cleanWord}" lên MongoDB Atlas & Cloudinary!`);
+        } else {
+          console.warn('Backend upload response status:', res.status);
+        }
+      } catch (syncErr) {
+        console.warn('Không thể đồng bộ lên MongoDB Atlas server:', syncErr);
+      }
+
       onSaved();
       onClose();
     } catch (err: any) {

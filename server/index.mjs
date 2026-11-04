@@ -4,8 +4,16 @@ import { MongoClient, ObjectId } from 'mongodb';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { v2 as cloudinary } from 'cloudinary';
 
 dotenv.config();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'wximbfoz',
+  api_key: process.env.CLOUDINARY_API_KEY || '997752814949472',
+  api_secret: process.env.CLOUDINARY_API_SECRET || 'i7WA0ilQjUuYbOJnNeWdUP8tZ7M',
+  secure: true
+});
 
 const app = express();
 const port = parseInt(process.env.PORT || '5000', 10);
@@ -13,7 +21,7 @@ const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017';
 const dbName = process.env.DB_NAME || 'VietVoice';
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
 
 let client = null;
 let db = null;
@@ -195,6 +203,86 @@ app.get('/api/audio/word/:word', async (req, res) => {
   } catch (err) {
     console.error('Lỗi khi tìm từ:', err);
     res.status(500).json({ error: 'Lỗi server' });
+  }
+});
+
+// 4b. Nhận file thu âm từ client, upload lên Cloudinary và lưu vào MongoDB Atlas
+app.post('/api/audio/upload', async (req, res) => {
+  try {
+    const { word, speaker, code, audioBase64, duration } = req.body;
+    if (!word || !audioBase64) {
+      return res.status(400).json({ error: 'Thiếu word hoặc dữ liệu âm thanh' });
+    }
+
+    const cleanWord = word.trim().toLowerCase();
+    const docCode = code || cleanWord;
+    const speakerLabel = speaker === 'Nữ' || speaker === 'nu' ? 'Nữ' : 'Nam';
+    const publicId = `recordings/${speakerLabel === 'Nữ' ? 'nu' : 'nam'}_${docCode.replace(/\+/g, '_')}`;
+
+    let audioUrl = '';
+    let uploadedPublicId = publicId;
+
+    try {
+      const uploadResult = await cloudinary.uploader.upload(audioBase64, {
+        resource_type: 'video',
+        public_id: publicId,
+        folder: 'VietVoice_Corpus',
+        overwrite: true
+      });
+      audioUrl = uploadResult.secure_url;
+      uploadedPublicId = uploadResult.public_id;
+      console.log(`[Cloudinary] Đã upload thành công từ "${cleanWord}":`, audioUrl);
+    } catch (cldErr) {
+      console.warn('[Cloudinary] Lỗi upload Cloudinary, lưu data URI dự phòng:', cldErr.message);
+      audioUrl = audioBase64;
+    }
+
+    const doc = {
+      word: cleanWord,
+      code: docCode,
+      cloudinaryPublicId: uploadedPublicId,
+      audioUrl,
+      speaker: speakerLabel,
+      gender: speakerLabel === 'Nữ' ? 'female' : 'male',
+      duration: Number(duration) || 0.45,
+      format: 'wav',
+      source: 'record',
+      updatedAt: new Date()
+    };
+
+    const result = await audioCollection.updateOne(
+      { word: cleanWord, speaker: doc.speaker },
+      { $set: doc, $setOnInsert: { createdAt: new Date() } },
+      { upsert: true }
+    );
+
+    // Cập nhật ngay vào cache RAM server
+    if (cachedManifestData && Array.isArray(cachedManifestData.words)) {
+      const existingIdx = cachedManifestData.words.findIndex(
+        (w) => w.word === cleanWord && (w.speaker || '').toLowerCase() === doc.speaker.toLowerCase()
+      );
+      const newWordItem = {
+        id: result.upsertedId ? result.upsertedId.toString() : 'rec-' + Date.now(),
+        word: cleanWord,
+        code: docCode,
+        file: `${docCode}.wav`,
+        audioUrl,
+        speaker: doc.speaker.toLowerCase(),
+        duration: doc.duration
+      };
+      if (existingIdx !== -1) {
+        cachedManifestData.words[existingIdx] = newWordItem;
+      } else {
+        cachedManifestData.words.push(newWordItem);
+        cachedManifestData.total = cachedManifestData.words.length;
+      }
+    }
+
+    console.log(`[MongoDB] Đã lưu thành công từ mới "${cleanWord}" (${speakerLabel}) vào database!`);
+    res.json({ success: true, audioUrl, doc });
+  } catch (err) {
+    console.error('Lỗi khi lưu audio:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
