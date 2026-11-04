@@ -89,11 +89,11 @@ export const PauseSettingsModal: React.FC<PauseSettingsModalProps> = ({
       {/* Modal Dialog: max-w-[680px] rộng rãi, bố cục thẻ tinh tế không bao giờ tràn viền */}
       <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-[680px] w-full p-6 z-10 animate-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-[#F0F2F9]">
-          <h3 className="text-lg font-bold text-[#20213A]">Thiết lập ngắt nghỉ</h3>
+        <div className="relative flex items-center justify-center pb-4 border-b border-[#F0F2F9]">
+          <h3 className="text-lg font-bold text-[#20213A] text-center">Thiết lập ngắt nghỉ</h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#85879A] hover:text-[#20213A] hover:bg-[#F0F2F9] transition cursor-pointer"
+            className="absolute right-0 top-0 w-8 h-8 rounded-lg flex items-center justify-center text-[#85879A] hover:text-[#20213A] hover:bg-[#F0F2F9] transition cursor-pointer"
             aria-label="Đóng"
           >
             <X className="w-5 h-5" />

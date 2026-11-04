@@ -180,19 +180,19 @@ export const RecordModal: React.FC<RecordModalProps> = ({
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl border border-[#E8E8F0] shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#E8E8F0] flex items-center justify-between bg-[#FAFAFD]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#6255CF]/10 text-[#6255CF] flex items-center justify-center">
-              <Mic className="w-4 h-4" />
-            </div>
-            <div>
+        <div className="relative px-6 py-4 border-b border-[#E8E8F0] flex items-center justify-center bg-[#FAFAFD]">
+          <div className="flex flex-col items-center text-center">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#6255CF]/10 text-[#6255CF] flex items-center justify-center">
+                <Mic className="w-4 h-4" />
+              </div>
               <h3 className="text-base font-bold text-[#20213A]">Phòng thu âm từ mới</h3>
-              <p className="text-[11px] text-[#85879A]">Ghi âm và đặt tên chuẩn mã hóa VNI</p>
             </div>
+            <p className="text-[11px] text-[#85879A] mt-0.5">Ghi âm và đặt tên chuẩn mã hóa VNI</p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#85879A] hover:text-[#20213A] hover:bg-[#F0F2F9] transition"
+            className="absolute right-4 top-4 w-8 h-8 rounded-lg flex items-center justify-center text-[#85879A] hover:text-[#20213A] hover:bg-[#F0F2F9] transition"
           >
             <X className="w-4 h-4" />
           </button>

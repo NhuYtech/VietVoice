@@ -128,25 +128,25 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ data, onCl
           <X className="w-5 h-5" />
         </button>
 
-        <div className="flex flex-col sm:flex-row items-start gap-4">
+        <div className="flex flex-col items-center text-center">
           {/* Icon Badge */}
           <div
-            className={`w-12 h-12 rounded-xl flex items-center justify-center border shrink-0 mx-auto sm:mx-0 shadow-xs ${getIconBg()}`}
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center border shrink-0 mb-3 shadow-xs ${getIconBg()}`}
           >
             {getIcon()}
           </div>
 
           {/* Text Content */}
-          <div className="flex-1 text-center sm:text-left mt-1 sm:mt-0">
-            <h3 className="text-base font-bold text-[#20213A]">{title}</h3>
-            <div className="mt-2 text-sm text-[#555870] leading-relaxed break-words whitespace-pre-line">
+          <div className="w-full text-center">
+            <h3 className="text-base font-bold text-[#20213A] text-center">{title}</h3>
+            <div className="mt-2 text-sm text-[#555870] leading-relaxed break-words whitespace-pre-line text-center">
               {data.message}
             </div>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5">
+        <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-center gap-2.5">
           {data.type === 'confirm' ? (
             <>
               <button
