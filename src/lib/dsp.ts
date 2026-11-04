@@ -322,6 +322,203 @@ export function processStudioWordAudio(
   return { audio: trimmed, duration, rmsDb, peakDb };
 }
 
+
+/** Lọc thượng tần (Lowpass) loại bỏ tiếng xì rít, nhiễu cao tần > 14.5kHz */
+export function applyLowpassFilter(audio: Float32Array, sampleRate = SR, cutoff = 14500): Float32Array {
+  const w0 = (2 * Math.PI * cutoff) / sampleRate;
+  const alpha = Math.sin(w0) / Math.SQRT2;
+  const cosw0 = Math.cos(w0);
+
+  const b0 = (1 - cosw0) / 2;
+  const b1 = 1 - cosw0;
+  const b2 = (1 - cosw0) / 2;
+  const a0 = 1 + alpha;
+  const a1 = -2 * cosw0;
+  const a2 = 1 - alpha;
+
+  const out = new Float32Array(audio.length);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < audio.length; i++) {
+    const x0 = audio[i];
+    const y0 = (b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0;
+    out[i] = y0;
+    x2 = x1;
+    x1 = x0;
+    y2 = y1;
+    y1 = y0;
+  }
+  return out;
+}
+
+/** Cắt vang phòng (De-reverb / Room decay suppression) - triệt tiêu đuôi phản xạ âm phòng kéo dài */
+export function applyDeReverb(audio: Float32Array, sampleRate = SR): Float32Array {
+  const frameLen = Math.floor(sampleRate * 0.015); // 15ms
+  const hopLen = Math.floor(sampleRate * 0.0075);  // 7.5ms
+  if (audio.length < frameLen * 2) return audio;
+
+  const out = audio.slice();
+  let prevEnergy = 0;
+  
+  for (let i = 0; i < audio.length - frameLen; i += hopLen) {
+    let energy = 0;
+    for (let j = 0; j < frameLen; j++) {
+      energy += audio[i + j] * audio[i + j];
+    }
+    energy = Math.sqrt(energy / frameLen);
+
+    // Phát hiện sườn dốc suy giảm nhanh (decaying tail - đặc trưng của đuôi vang phòng)
+    if (prevEnergy > 0.02 && energy < prevEnergy * 0.85) {
+      const dampFactor = Math.max(0.2, (energy / prevEnergy) * 0.7);
+      for (let j = 0; j < hopLen && i + j < out.length; j++) {
+        out[i + j] *= dampFactor;
+      }
+    }
+    prevEnergy = energy;
+  }
+  return out;
+}
+
+/**
+ * Cắt khoảng lặng thông minh có đệm an toàn:
+ * - Bảo toàn 100% phụ âm gió (s, x, th, kh, ph, h) với đệm an toàn 40ms ở đầu
+ * - Cắt sạch khoảng lặng chết và tiếng ồn thừa ở đầu/đuôi
+ * - Vuốt êm cosine fade 8ms chống tiếng click/bụp
+ */
+export function smartTrimWordAudio(
+  audio: Float32Array,
+  sampleRate = SR,
+  opts?: { silenceThreshDb?: number; leadPadMs?: number; tailPadMs?: number }
+): Float32Array {
+  const threshDb = opts?.silenceThreshDb ?? -44.0;
+  const leadPad = Math.floor(sampleRate * ((opts?.leadPadMs ?? 40) / 1000));
+  const tailPad = Math.floor(sampleRate * ((opts?.tailPadMs ?? 35) / 1000));
+
+  const frameLen = Math.floor(sampleRate * 0.015); // 15ms
+  const hopLen = Math.floor(sampleRate * 0.005);   // 5ms
+  const total = audio.length;
+  if (total < frameLen) return audio;
+
+  const numFrames = 1 + Math.floor((total - frameLen) / hopLen);
+  let firstSpeech = -1;
+  let lastSpeech = -1;
+
+  for (let i = 0; i < numFrames; i++) {
+    const start = i * hopLen;
+    let sum = 0;
+    for (let j = 0; j < frameLen; j++) sum += audio[start + j] * audio[start + j];
+    const rms = Math.sqrt(sum / frameLen + 1e-12);
+    const db = 20 * Math.log10(rms);
+    if (db >= threshDb) {
+      if (firstSpeech === -1) firstSpeech = i;
+      lastSpeech = i;
+    }
+  }
+
+  if (firstSpeech === -1) return audio;
+
+  const startSamp = Math.max(0, firstSpeech * hopLen - leadPad);
+  const endSamp = Math.min(total, (lastSpeech + 1) * hopLen + tailPad);
+
+  let trimmed = audio.slice(startSamp, endSamp);
+  if (trimmed.length < Math.floor(sampleRate * 0.06)) {
+    trimmed = audio;
+  }
+
+  return applyCosineFades(trimmed, sampleRate, 8);
+}
+
+/**
+ * Hạ nhiễu nền (Noise Gate / Downward Expander):
+ * Tự động làm sạch tiếng xì xào, gió quạt giữa các từ
+ */
+export function applyNoiseGate(
+  audio: Float32Array,
+  sampleRate = SR,
+  thresholdDb = -46.0,
+  maxReductionDb = 14.0
+): Float32Array {
+  const frameLen = Math.floor(sampleRate * 0.01); // 10ms
+  const out = new Float32Array(audio.length);
+  const threshAmp = Math.pow(10, thresholdDb / 20);
+  const minGain = Math.pow(10, -maxReductionDb / 20); // ~0.2 (-14dB)
+
+  let smoothedGain = 1.0;
+  const attackCoef = 0.8;
+  const releaseCoef = 0.05;
+
+  for (let i = 0; i < audio.length; i += frameLen) {
+    const end = Math.min(audio.length, i + frameLen);
+    let sum = 0;
+    for (let j = i; j < end; j++) sum += audio[j] * audio[j];
+    const rms = Math.sqrt(sum / Math.max(1, end - i));
+
+    let targetGain = 1.0;
+    if (rms < threshAmp) {
+      const ratio = Math.max(0, rms / threshAmp);
+      targetGain = minGain + (1.0 - minGain) * ratio * ratio;
+    }
+
+    const coef = targetGain > smoothedGain ? attackCoef : releaseCoef;
+    smoothedGain += coef * (targetGain - smoothedGain);
+
+    for (let j = i; j < end; j++) {
+      out[j] = audio[j] * smoothedGain;
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Cắt rè, chống méo tiếng & hạ âm đỉnh nếu quá cao (Studio Soft-Knee Limiter)
+ */
+export function applyStudioLimiter(audio: Float32Array, targetPeakDb = -1.2, ceiling = 0.98): Float32Array {
+  let peak = 0;
+  for (let i = 0; i < audio.length; i++) {
+    const a = Math.abs(audio[i]);
+    if (a > peak) peak = a;
+  }
+  if (peak <= 1e-6) return audio;
+
+  const targetAmp = Math.pow(10, targetPeakDb / 20); // -1.2 dB ≈ 0.87
+  let scale = 1.0;
+  // Nếu biên độ đỉnh quá cao, tự động nén hạ âm xuống
+  if (peak > targetAmp) {
+    scale = targetAmp / peak;
+  }
+
+  const out = new Float32Array(audio.length);
+  for (let i = 0; i < audio.length; i++) {
+    let s = audio[i] * scale;
+    // Soft-knee saturation bằng hàm tanh để sóng âm tròn trịa, tuyệt đối không bị gãy góc (rè/clipping)
+    if (Math.abs(s) > 0.85) {
+      s = Math.sign(s) * (0.85 + 0.13 * Math.tanh((Math.abs(s) - 0.85) / 0.13));
+    }
+    out[i] = Math.max(-ceiling, Math.min(ceiling, s));
+  }
+  return out;
+}
+
+/**
+ * Chuỗi xử lý Mastering Studio chuẩn cho toàn bộ câu nói:
+ * 1. Cân bằng tần số: Lọc Highpass 75Hz (cắt ù gió mic) + Lowpass 14.5kHz (cắt xì rít)
+ * 2. Hạ nhiễu nền (Noise Gate làm sạch khoảng lặng)
+ * 3. Chống rè, chống clip & hạ âm nếu quá cao (Soft-knee Limiter -1.2 dBFS)
+ */
+export function masterSpeechAudio(audio: Float32Array, sampleRate = SR): Float32Array {
+  // 1. Cân bằng tần số
+  let processed = applyHighpassFilter(audio, sampleRate, 75);
+  processed = applyLowpassFilter(processed, sampleRate, 14500);
+
+  // 2. Hạ nhiễu nền
+  processed = applyNoiseGate(processed, sampleRate, -46.0, 14.0);
+
+  // 3. Cắt rè, chống vỡ tiếng & hạ âm quá cao
+  processed = applyStudioLimiter(processed, -1.2, 0.98);
+
+  return processed;
+}
+
 /* ---------------- FFT / STFT / Mel / MFCC ---------------- */
 
 function fft(re: Float64Array, im: Float64Array) {
