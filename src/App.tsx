@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Sidebar, type NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MainEditor } from './components/MainEditor';
+import { ConcatenationInspector } from './components/ConcatenationInspector';
 import { ConversionHistory } from './components/ConversionHistory';
 import { CorpusView } from './components/CorpusView';
 import { AboutView } from './components/AboutView';
@@ -28,6 +29,7 @@ export const App: React.FC = () => {
   const [inputText, setInputText] = useState('');
   const [selectedVoice, setSelectedVoice] = useState<'Nam' | 'Nữ'>('Nam');
   const [isConverting, setIsConverting] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
   const [activeResult, setActiveResult] = useState<SynthResult | null>(null);
   const [historyItems, setHistoryItems] = useState<ConversionHistoryItem[]>([]);
   const [realEntries, setRealEntries] = useState<CorpusEntry[]>([]);
@@ -119,7 +121,81 @@ export const App: React.FC = () => {
     setPlayTrigger((c) => c + 1);
   };
 
-    // Xử lý tạo âm thanh (Chuyển văn bản)
+  // Xử lý nghe thử trước khi tạo chính thức (không lưu vào lịch sử)
+  const handlePreview = async () => {
+    if (!inputText.trim()) {
+      setNotificationModal({
+        type: 'warning',
+        title: 'Chưa nhập văn bản',
+        message: 'Vui lòng nhập văn bản cần nghe thử.',
+        confirmText: 'Đóng',
+      });
+      return;
+    }
+
+    setIsPreviewing(true);
+    try {
+      const res = await performSynthesis(inputText, selectedVoice, realEntries);
+      if (!res.success || !res.result) {
+        const isMissing = Boolean(res.missingTokens && res.missingTokens.length > 0 && !res.suggestedVoice);
+        setNotificationModal({
+          type: 'warning',
+          title: res.suggestedVoice
+            ? 'Đổi giọng đọc'
+            : isMissing
+            ? 'Chưa có bản ghi'
+            : 'Chưa thể nghe thử',
+          message: res.error || 'Chưa có file âm thanh trong ngữ liệu.',
+          action: res.suggestedVoice
+            ? {
+                label: `Chọn Giọng ${res.suggestedVoice}`,
+                onClick: () => {
+                  setSelectedVoice(res.suggestedVoice!);
+                },
+              }
+            : isMissing && res.missingTokens && res.missingTokens.length > 0
+            ? {
+                label: 'Thu âm ngay',
+                onClick: () => {
+                  setRecordInitialWord(res.missingTokens![0]);
+                  setIsRecordModalOpen(true);
+                },
+              }
+            : undefined,
+          confirmText: 'Đóng',
+        });
+        setActiveResult(null);
+      } else {
+        setActiveResult(res.result);
+
+        // Đưa vào Bottom Player để phát trực tiếp
+        const previewTrack: PlayerTrack = {
+          id: `preview-${Date.now()}`,
+          text: inputText,
+          speaker: selectedVoice,
+          durationSec: res.result.durationSec,
+          audioBlob: res.result.wav,
+          filename: `vietvoice_preview_${selectedVoice === 'Nam' ? 'nam' : 'nu'}.wav`,
+        };
+        setPlayerTrack(previewTrack);
+        setIsPlayerOpen(true);
+        setCurrentPlayingId(previewTrack.id || null);
+        setIsPlayingAudio(true);
+        setPlayTrigger((c) => c + 1);
+      }
+    } catch (err: any) {
+      setNotificationModal({
+        type: 'error',
+        title: 'Lỗi nghe thử',
+        message: err?.message || 'Không thể tạo âm thanh nghe thử.',
+        confirmText: 'Đóng',
+      });
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  // Xử lý tạo âm thanh (Chuyển văn bản)
   const handleConvert = async () => {
     if (!inputText.trim()) {
       setNotificationModal({
@@ -372,7 +448,7 @@ export const App: React.FC = () => {
             }`}
           >
             {currentTab === 'tts' && (
-              <div className="flex-1 min-h-0 flex flex-col">
+              <div className="flex-1 min-h-0 flex flex-col overflow-y-auto pr-1">
                 {/* Main Editor Card: Cố định vị trí phía trên */}
                 <div className="shrink-0">
                   <MainEditor
@@ -382,6 +458,8 @@ export const App: React.FC = () => {
                     onSelectVoice={setSelectedVoice}
                     onConvert={handleConvert}
                     isConverting={isConverting}
+                    onPreview={handlePreview}
+                    isPreviewing={isPreviewing}
                     entries={realEntries}
                     onPlayPreviewVoice={handlePlayPreviewVoice}
                     isPlayingPreview={isPlayingPreview}
@@ -391,6 +469,18 @@ export const App: React.FC = () => {
                     }}
                     onShowNotification={setNotificationModal}
                   />
+
+                  {/* Minh chứng ghép nối ngữ liệu (Concatenation Inspector) */}
+                  {activeResult && (
+                    <ConcatenationInspector
+                      result={activeResult}
+                      selectedVoice={selectedVoice}
+                      onSelectWordToRecord={(word) => {
+                        setRecordInitialWord(word);
+                        setIsRecordModalOpen(true);
+                      }}
+                    />
+                  )}
                 </div>
 
                 {/* Conversion History Section: Tự động co giãn theo chiều dọc và chỉ cuộn riêng phần danh sách */}
@@ -411,7 +501,7 @@ export const App: React.FC = () => {
             )}
 
             {currentTab === 'corpus' && (
-              <div className="flex-1 min-h-0 flex flex-col">
+              <div className="flex-1 min-h-0 flex flex-col overflow-y-auto pr-1">
                 <CorpusView
                   realEntries={realEntries}
                   onOpenRecordModal={() => {

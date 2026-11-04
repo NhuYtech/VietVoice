@@ -22,6 +22,8 @@ interface MainEditorProps {
   onSelectVoice: (voice: 'Nam' | 'Nữ') => void;
   onConvert: () => void;
   isConverting: boolean;
+  onPreview?: () => void;
+  isPreviewing?: boolean;
   entries: CorpusEntry[];
   onPlayPreviewVoice: (voice: 'Nam' | 'Nữ') => void;
   isPlayingPreview: 'Nam' | 'Nữ' | null;
@@ -36,6 +38,8 @@ export const MainEditor: React.FC<MainEditorProps> = ({
   onSelectVoice,
   onConvert,
   isConverting,
+  onPreview,
+  isPreviewing = false,
   entries,
   onPlayPreviewVoice,
   isPlayingPreview,
@@ -211,7 +215,33 @@ export const MainEditor: React.FC<MainEditorProps> = ({
       </div>
 
       {/* Main Action Bar */}
-      <div className="px-6 py-4 bg-[#F9FAFD] border-t border-[#E8E8F0] flex items-center justify-center">
+      <div className="px-6 py-4 bg-[#F9FAFD] border-t border-[#E8E8F0] flex flex-wrap items-center justify-center gap-3">
+        {/* Nút Nghe thử trước khi tạo */}
+        {onPreview && (
+          <button
+            type="button"
+            onClick={onPreview}
+            disabled={isConverting || isPreviewing || !text.trim()}
+            className={`min-w-[160px] h-12 px-6 py-3 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all border-2 ${
+              isConverting || isPreviewing || !text.trim()
+                ? 'border-[#D5D7E5] text-[#9EA1B7] bg-[#F1F2F8] cursor-not-allowed opacity-75'
+                : 'border-[#6255CF] text-[#6255CF] bg-white hover:bg-[#F2EFFD] active:scale-[0.98] shadow-xs cursor-pointer'
+            }`}
+            title="Nghe thử âm thanh đoạn văn trước khi tạo chính thức và lưu vào lịch sử"
+          >
+            {isPreviewing ? (
+              <>
+                <div className="w-4 h-4 border-2 border-[#6255CF]/30 border-t-[#6255CF] rounded-full animate-spin" />
+                <span>Đang nghe thử...</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4 fill-[#6255CF] text-[#6255CF]" />
+                <span>Nghe thử</span>
+              </>
+            )}
+          </button>
+        )}
         {/* Nút Tạo audio */}
         <button
           onClick={onConvert}

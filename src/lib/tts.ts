@@ -212,7 +212,15 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
         status = 'fallback';
       }
       if (e) {
-        const item: TraceItem = { token: key, status, entryId: e.id, speaker: e.speaker };
+        const item: TraceItem = {
+          token: key,
+          status,
+          entryId: e.id,
+          speaker: e.speaker,
+          code: e.code,
+          source: e.source,
+          blob: e.blob,
+        };
         trace.push(item);
         picked.push({ entry: e, item });
         i += n;

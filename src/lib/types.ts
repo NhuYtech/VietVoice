@@ -34,6 +34,9 @@ export interface TraceItem {
   speaker?: string;
   duration?: number;
   start?: number;
+  code?: string;
+  source?: 'manifest' | 'upload' | 'record' | string;
+  blob?: Blob;
 }
 
 export interface JoinInfo {
