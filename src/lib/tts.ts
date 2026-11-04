@@ -383,11 +383,12 @@ export async function loadManifest(existing: Set<string>): Promise<CorpusEntry[]
 /** Tải và nạp âm thanh của một từ từ Cloudinary (hoặc local manifest) vào IndexedDB theo nhu cầu */
 export async function fetchManifestWord(m: ManifestItem): Promise<CorpusEntry | null> {
   try {
-    // Ưu tiên audioUrl từ Cloudinary được lưu trong MongoDB
+    // Ưu tiên audioUrl từ Cloudinary CDN được lưu trong MongoDB
     let fileUrl = m.audioUrl;
     if (!fileUrl) {
-      const cleanPath = m.file.replace(/^\/+/, '');
-      fileUrl = `/corpus/${cleanPath}`;
+      const code = m.code || (m.file ? m.file.replace(/^wavs\//, '').replace(/\.wav$/, '') : m.word);
+      const publicId = m.cloudinaryPublicId || code.replace(/\+/g, '_');
+      fileUrl = `https://res.cloudinary.com/wximbfoz/video/upload/${publicId}.wav`;
     }
 
     const res = await fetch(fileUrl);

@@ -221,7 +221,9 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
     );
     if (m) {
       const a = document.createElement('a');
-      a.href = m.audioUrl || `/corpus/${m.file}`;
+      const code = m.code || (m.file ? m.file.replace(/^wavs\//, '').replace(/\.wav$/, '') : m.word);
+      const publicId = m.cloudinaryPublicId || code.replace(/\+/g, '_');
+      a.href = m.audioUrl || `https://res.cloudinary.com/wximbfoz/video/upload/${publicId}.wav`;
       a.download = item.filename || `${item.word}.wav`;
       a.target = '_blank';
       a.click();
