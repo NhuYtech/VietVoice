@@ -49,14 +49,21 @@ export interface SynthOptions {
 /**
  * Tính toán khoảng ngắt nghỉ giữa các từ dựa vào dấu câu (chấm, phẩy, chấm phẩy, xuống dòng)
  */
+export interface GapDetail {
+  gapMs: number;
+  punctuation?: string;
+  pauseLabel?: string;
+}
+
 function computeSegmentGaps(
   rawText: string,
   picked: { item: TraceItem }[],
   pauseSettings: PauseSettings,
   defaultGapMs: number
-): number[] {
+): { gaps: number[]; details: GapDetail[] } {
   const gaps: number[] = new Array(picked.length).fill(defaultGapMs);
-  if (picked.length <= 1) return gaps;
+  const details: GapDetail[] = new Array(picked.length).fill(null).map(() => ({ gapMs: defaultGapMs }));
+  if (picked.length <= 1) return { gaps, details };
 
   let searchIdx = 0;
   const positions: { start: number; end: number }[] = [];
@@ -79,19 +86,34 @@ function computeSegmentGaps(
     const between = currStart >= prevEnd ? rawText.slice(prevEnd, currStart) : '';
 
     if (between.includes('\n')) {
-      gaps[k] = Math.round((pauseSettings.newline ?? 0.6) * 1000);
+      const g = Math.round((pauseSettings.newline ?? 0.6) * 1000);
+      gaps[k] = g;
+      details[k] = { gapMs: g, punctuation: '↵', pauseLabel: 'Xuống dòng' };
     } else if (/[.!?]/.test(between)) {
-      gaps[k] = Math.round((pauseSettings.period ?? 0.45) * 1000);
+      const m = between.match(/[.!?]/);
+      const punct = m ? m[0] : '.';
+      const g = Math.round((pauseSettings.period ?? 0.45) * 1000);
+      gaps[k] = g;
+      const label = punct === '?' ? 'Dấu hỏi' : punct === '!' ? 'Dấu chấm than' : 'Dấu chấm';
+      details[k] = { gapMs: g, punctuation: punct, pauseLabel: label };
     } else if (between.includes(';') || between.includes(':')) {
-      gaps[k] = Math.round((pauseSettings.semicolon ?? 0.3) * 1000);
-    } else if (between.includes(',') || between.includes(' - ') || between.includes(' — ')) {
-      gaps[k] = Math.round((pauseSettings.comma ?? 0.25) * 1000);
+      const m = between.match(/[;:]/);
+      const punct = m ? m[0] : ';';
+      const g = Math.round((pauseSettings.semicolon ?? 0.3) * 1000);
+      gaps[k] = g;
+      const label = punct === ':' ? 'Dấu hai chấm' : 'Dấu chấm phẩy';
+      details[k] = { gapMs: g, punctuation: punct, pauseLabel: label };
+    } else if (between.includes(',') || between.includes(' - ') || between.includes(' — ') || between.includes(' – ')) {
+      const g = Math.round((pauseSettings.comma ?? 0.25) * 1000);
+      gaps[k] = g;
+      details[k] = { gapMs: g, punctuation: ',', pauseLabel: 'Dấu phẩy' };
     } else {
       gaps[k] = defaultGapMs;
+      details[k] = { gapMs: defaultGapMs };
     }
   }
 
-  return gaps;
+  return { gaps, details };
 }
 
 export async function getProcessed(e: CorpusEntry, trim: boolean, normalize: boolean): Promise<Float32Array> {
@@ -242,7 +264,7 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
 
   const rawText = opts.rawText || text;
   const pauseSettings = opts.pauseSettings || DEFAULT_PAUSE_SETTINGS;
-  const segmentGaps = computeSegmentGaps(rawText, picked, pauseSettings, opts.gapMs);
+  const { gaps: segmentGaps, details: gapDetails } = computeSegmentGaps(rawText, picked, pauseSettings, opts.gapMs);
 
   const cf = Math.round((opts.crossfadeMs / 1000) * SR);
   const starts: number[] = [];
@@ -275,12 +297,22 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
     const f1 = edgeF0(segs[k - 1], true);
     const f2 = edgeF0(segs[k], false);
     const st = f1 > 0 && f2 > 0 ? Math.abs(12 * Math.log2(f2 / f1)) : null;
+    const prevEndSec = (starts[k - 1] + segs[k - 1].length) / SR;
+    const currStartSec = starts[k] / SR;
+    const detail = gapDetails[k] || { gapMs: opts.gapMs };
+    const actualGapMs = Math.max(0, Math.round((currStartSec - prevEndSec) * 1000));
+
     joins.push({
       left: picked[k - 1].item.token,
       right: picked[k].item.token,
       energyJumpDb: Math.round(dB * 10) / 10,
       f0JumpSemitone: st === null ? null : Math.round(st * 10) / 10,
       smooth: dB < 12 && (st === null || st < 4),
+      punctuation: detail.punctuation,
+      pauseLabel: detail.pauseLabel,
+      gapMs: actualGapMs || detail.gapMs,
+      pauseStartSec: Math.round(prevEndSec * 100) / 100,
+      pauseEndSec: Math.round(currStartSec * 100) / 100,
     });
   }
 

@@ -45,6 +45,11 @@ export interface JoinInfo {
   energyJumpDb: number;
   f0JumpSemitone: number | null;
   smooth: boolean;
+  punctuation?: string;
+  pauseLabel?: string;
+  gapMs?: number;
+  pauseStartSec?: number;
+  pauseEndSec?: number;
 }
 
 export interface SynthResult {

@@ -220,26 +220,60 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
                     </div>
                   </div>
 
-                  {/* Join Point Connector (Mối nối âm học) */}
+                  {/* Join Point Connector (Mối nối âm học) HOẶC Khối Dấu câu ngắt nghỉ */}
                   {idx < validWords.length - 1 && (
-                    <div className="flex flex-col items-center justify-center px-1 py-1" title="Điểm nối thuật toán (DSP Crossfade 20ms)">
-                      <div className="flex items-center gap-0.5 text-[#85879A]">
-                        <span className="h-[2px] w-2 bg-[#D3D6E5]" />
-                        <div
-                          className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold border flex items-center gap-0.5 shadow-2xs ${
-                            join?.smooth
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}
-                          title={`Điểm nối giữa "${wordItem.token}" và "${validWords[idx + 1]?.token}": Chênh lệch năng lượng: ${join?.energyJumpDb || 0} dB, Lệch cao độ F0: ${join?.f0JumpSemitone !== null ? `${join?.f0JumpSemitone} st` : 'N/A'}`}
-                        >
-                          <span>⚡</span>
-                          <span>Nối #{idx + 1}</span>
+                    join?.punctuation ? (
+                      /* Khối Dấu câu ngắt nghỉ nổi bật trên Timeline */
+                      <div className="flex flex-col items-center justify-center px-1.5 py-1">
+                        <div className="flex items-center gap-1">
+                          <span className="h-[2px] w-2.5 bg-[#6255CF]/30" />
+                          <div
+                            className="px-3 py-2 rounded-xl border-2 border-indigo-300 bg-gradient-to-b from-[#F5F3FF] via-[#EEF2FF] to-[#EDE9FE] shadow-sm flex flex-col items-center min-w-[118px] select-none"
+                            title={`${join.pauseLabel || 'Dấu câu'} "${join.punctuation}": Ngắt nghỉ ${join.gapMs || 0}ms từ ${join.pauseStartSec?.toFixed(2)}s đến ${join.pauseEndSec?.toFixed(2)}s`}
+                          >
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="text-[15px] font-extrabold text-[#6255CF] font-mono leading-none bg-white px-2 py-0.5 rounded shadow-2xs border border-indigo-200">
+                                {join.punctuation}
+                              </span>
+                              <span className="text-[10px] font-bold text-indigo-950 bg-white/90 px-1.5 py-0.5 rounded border border-indigo-200">
+                                {join.pauseLabel || 'Dấu câu'}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-indigo-800 font-mono font-bold flex items-center gap-1">
+                              <span>⏸️</span>
+                              <span>Nghỉ {join.gapMs}ms</span>
+                            </div>
+                            <div className="text-[9px] text-[#6366F1] font-mono mt-0.5 font-medium">
+                              {join.pauseStartSec !== undefined && join.pauseEndSec !== undefined
+                                ? `${join.pauseStartSec.toFixed(2)}s ➔ ${join.pauseEndSec.toFixed(2)}s`
+                                : `${join.gapMs || 0}ms`}
+                            </div>
+                          </div>
+                          <span className="h-[2px] w-2.5 bg-[#6255CF]/30" />
                         </div>
-                        <span className="h-[2px] w-2 bg-[#D3D6E5]" />
+                        <span className="text-[8px] text-[#7C3AED] font-semibold mt-1">Ngắt câu theo thiết lập</span>
                       </div>
-                      <span className="text-[8px] text-[#9A9DB5] mt-0.5">20ms fade</span>
-                    </div>
+                    ) : (
+                      /* Điểm nối mượt bình thường giữa 2 từ liên tiếp */
+                      <div className="flex flex-col items-center justify-center px-1 py-1" title="Điểm nối thuật toán (DSP Crossfade 20ms)">
+                        <div className="flex items-center gap-0.5 text-[#85879A]">
+                          <span className="h-[2px] w-2 bg-[#D3D6E5]" />
+                          <div
+                            className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold border flex items-center gap-0.5 shadow-2xs ${
+                              join?.smooth
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}
+                            title={`Điểm nối giữa "${wordItem.token}" và "${validWords[idx + 1]?.token}": Chênh lệch năng lượng: ${join?.energyJumpDb || 0} dB, Lệch cao độ F0: ${join?.f0JumpSemitone !== null ? `${join?.f0JumpSemitone} st` : 'N/A'}`}
+                          >
+                            <span>⚡</span>
+                            <span>Nối #{idx + 1}</span>
+                          </div>
+                          <span className="h-[2px] w-2 bg-[#D3D6E5]" />
+                        </div>
+                        <span className="text-[8px] text-[#9A9DB5] mt-0.5">20ms fade</span>
+                      </div>
+                    )
                   )}
                 </React.Fragment>
               );
@@ -332,14 +366,23 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
                           </td>
                           <td className="px-3.5 py-2">
                             {join ? (
-                              <div className="text-[11px] leading-tight">
-                                <span
-                                  className={`font-semibold ${
-                                    join.smooth ? 'text-emerald-600' : 'text-amber-600'
-                                  }`}
-                                >
-                                  {join.smooth ? '✓ Mượt mà' : '⚡ Độ lệch nhẹ'}
-                                </span>
+                              <div className="text-[11px] leading-tight space-y-0.5">
+                                {join.punctuation ? (
+                                  <div className="flex items-center gap-1.5 font-bold text-indigo-700">
+                                    <span className="px-1.5 py-0.5 rounded bg-indigo-100 border border-indigo-200 text-indigo-900 font-mono text-xs font-extrabold">
+                                      {join.punctuation}
+                                    </span>
+                                    <span>{join.pauseLabel || 'Dấu câu'} (Nghỉ {join.gapMs}ms)</span>
+                                  </div>
+                                ) : (
+                                  <span
+                                    className={`font-semibold ${
+                                      join.smooth ? 'text-emerald-600' : 'text-amber-600'
+                                    }`}
+                                  >
+                                    {join.smooth ? '✓ Mượt mà' : '⚡ Độ lệch nhẹ'}
+                                  </span>
+                                )}
                                 <div className="text-[10px] text-[#7E8299] font-mono">
                                   ΔE: {join.energyJumpDb} dB | ΔF0:{' '}
                                   {join.f0JumpSemitone !== null
