@@ -359,13 +359,6 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
               </div>
             </div>
 
-            {/* Explanation Note */}
-            <div className="mt-3 p-3 rounded-xl bg-[#F8F9FE] border border-[#E3E6F3] flex items-start gap-2.5 text-xs text-[#52556F]">
-              <Info className="w-4 h-4 text-[#6255CF] flex-shrink-0 mt-0.5" />
-              <div className="leading-relaxed">
-                <strong>Nguyên lý xác thực:</strong> Trong phương pháp tổng hợp tiếng nói ghép nối đơn vị (Concatenative Speech Synthesis), từng âm tiết hoặc từ được lấy ra độc lập từ kho ngữ liệu. Khi ghép lại, hệ thống áp dụng kỹ thuật chồng lấp và làm mượt biên dạng <i>(Crossfade & Windowing)</i> tại ranh giới mỗi từ. Việc có thể phát độc lập từng file từ gốc ở trên cùng với các thông số độ lệch năng lượng <code>(ΔE)</code> và cao độ <code>(ΔF0)</code> tại các mối nối là bằng chứng rõ ràng chứng minh câu nói được sinh ra từ thuật toán ghép nối, không phải là bản ghi âm một lèo từ trước.
-              </div>
-            </div>
           </div>
         )}
       </div>
