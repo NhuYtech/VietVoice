@@ -2,12 +2,17 @@ import { SR, decodeBlob, encodeWav, extractFeatures, estimateF0, fadeEdges, norm
 import { putEntry } from './store';
 import type { CorpusEntry, JoinInfo, SynthResult, TraceItem } from './types';
 import { encodeVnWord, isVniCode, decodeVnWord, wordAndCodeFromFilename } from './vniCodec';
+import { normalizeNumbersInText, hasNumbers } from './numberNormalizer';
 import type { PauseSettings } from '../components/PauseSettingsModal';
 import { DEFAULT_PAUSE_SETTINGS } from '../components/PauseSettingsModal';
 
 /* Bước 1: chuẩn hóa văn bản (hỗ trợ cả tiếng Việt có dấu và mã VNI quy ước a+, d-, o+...) */
 export function normalizeText(s: string): string {
-  return s
+  let text = s;
+  if (!isVniCode(text) && hasNumbers(text)) {
+    text = normalizeNumbersInText(text);
+  }
+  return text
     .normalize('NFC')
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s\+\-]/gu, ' ')
@@ -262,7 +267,7 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
     segs.push(x);
   }
 
-  const rawText = opts.rawText || text;
+  const rawText = opts.rawText ? normalizeNumbersInText(opts.rawText) : text;
   const pauseSettings = opts.pauseSettings || DEFAULT_PAUSE_SETTINGS;
   const { gaps: segmentGaps, details: gapDetails } = computeSegmentGaps(rawText, picked, pauseSettings, opts.gapMs);
 

@@ -9,11 +9,13 @@ import {
   Music,
   Sliders,
   ChevronDown,
+  Sparkles,
 } from 'lucide-react';
 import { PauseSettingsModal, type PauseSettings } from './PauseSettingsModal';
 import type { NotificationModalData } from './NotificationModal';
 import type { CorpusEntry } from '../lib/types';
 import { inspectVocabulary } from '../services/ttsService';
+import { normalizeNumbersInText, hasNumbers } from '../lib/numberNormalizer';
 
 interface MainEditorProps {
   text: string;
@@ -114,7 +116,7 @@ export const MainEditor: React.FC<MainEditorProps> = ({
         <textarea
           value={text}
           onChange={(e) => onChangeText(e.target.value)}
-          placeholder="Nhập văn bản tiếng Việt bạn muốn chuyển thành âm thanh..."
+          placeholder="Nhập văn bản hoặc số cần chuyển đổi thành giọng nói (ví dụ: 'hệ thống 4.0', 'tôi có 25 quả táo')..."
           rows={3}
           className="w-full resize-none text-[16px] text-[#20213A] placeholder-[#9AA0B4] focus:outline-none leading-relaxed bg-transparent min-h-[76px]"
         />
@@ -135,6 +137,17 @@ export const MainEditor: React.FC<MainEditorProps> = ({
         {/* Vocabulary availability helper tags */}
         {text.trim() && (
           <div className="mt-3.5 space-y-2.5">
+            {hasNumbers(text) && (
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#F3F1FD] border border-[#E0DCFB] text-xs text-[#20213A] shadow-2xs">
+                <span className="font-semibold text-[#6255CF] flex items-center gap-1.5 shrink-0">
+                  <Sparkles className="w-3.5 h-3.5 text-[#6255CF]" />
+                  Đọc số tự động:
+                </span>
+                <span className="text-[#3A3D52] font-medium italic truncate">
+                  "{normalizeNumbersInText(text)}"
+                </span>
+              </div>
+            )}
             <div className="p-3 rounded-xl bg-[#F8F9FD] border border-[#EAEBF5] text-xs flex flex-wrap items-center gap-2">
               <span className="font-semibold text-[#555870]">Kiểm tra ngữ liệu:</span>
               {vocabCheck.tokens.length === 0 ? null : (
