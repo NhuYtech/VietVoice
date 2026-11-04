@@ -383,10 +383,10 @@ export async function performSynthesis(
   try {
     const synthRes = await synthesize(norm, speakerEntries, {
       speaker: speakerKey,
-      gapMs: 80,
-      crossfadeMs: 25,
-      trim: true,
-      normalize: true,
+      gapMs: 40,
+      crossfadeMs: 20,
+      trim: false, // Giữ nguyên âm thanh gốc, không cắt xén đầu/cuối của từ
+      normalize: false, // Giữ nguyên biên độ gốc tự nhiên, không ép RMS làm méo âm
       fallbackSpeaker: false, // RÀNG BUỘC: Không tự động lấy giọng khác, phải đúng giọng đã chọn
       pauseSettings,
       rawText: text,

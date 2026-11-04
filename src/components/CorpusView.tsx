@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Database,
   Search,
@@ -40,6 +40,7 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
 
   const [dbStatus, setDbStatus] = useState<'connected' | 'checking' | 'offline'>('checking');
   const [dbCount, setDbCount] = useState<number | null>(null);
+  const activeWordAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     fetch('/api/health')
@@ -137,6 +138,10 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
   // Nghe thử âm thanh
   const handlePlayWord = async (item: CorpusItem) => {
     if (playingId === item.id) {
+      if (activeWordAudioRef.current) {
+        activeWordAudioRef.current.pause();
+        activeWordAudioRef.current = null;
+      }
       setPlayingId(null);
       return;
     }
@@ -160,8 +165,24 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
 
     if (real && real.blob) {
       try {
-        const samples = await decodeBlob(real.blob);
-        playSamples(samples, 22050, () => setPlayingId(null));
+        if (activeWordAudioRef.current) {
+          activeWordAudioRef.current.pause();
+          activeWordAudioRef.current = null;
+        }
+        const audioUrl = URL.createObjectURL(real.blob);
+        const audio = new Audio(audioUrl);
+        activeWordAudioRef.current = audio;
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          if (activeWordAudioRef.current === audio) activeWordAudioRef.current = null;
+          setPlayingId(null);
+        };
+        audio.onerror = () => {
+          URL.revokeObjectURL(audioUrl);
+          if (activeWordAudioRef.current === audio) activeWordAudioRef.current = null;
+          setPlayingId(null);
+        };
+        await audio.play();
       } catch (err) {
         console.error('Lỗi khi phát âm thanh:', err);
         setPlayingId(null);

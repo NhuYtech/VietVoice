@@ -1,9 +1,9 @@
 import type { Features } from './types';
 
-export const SR = 22050; // tần số lấy mẫu chuẩn của toàn hệ thống
-const HOP = 220; // 10 ms
-const WIN = 550; // 25 ms
-const NFFT = 512;
+export const SR = 44100; // tần số lấy mẫu chuẩn 44.1 kHz khớp 100% với file thu âm gốc
+const HOP = 441; // 10 ms
+const WIN = 1102; // 25 ms
+const NFFT = 1024;
 const NMEL = 26;
 const NMFCC = 13;
 
