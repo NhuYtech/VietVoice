@@ -151,14 +151,18 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
             {validWords.map((wordItem, idx) => {
               const join = result.joins && result.joins[idx];
               const isPlayingThis = playingWordIdx === idx;
-              const startSec = typeof wordItem.start === 'number' ? wordItem.start.toFixed(2) : '0.00';
-              const durSec = typeof wordItem.duration === 'number' ? (wordItem.duration * 1000).toFixed(0) : '0';
+              const startVal = typeof wordItem.start === 'number' ? wordItem.start : 0;
+              const durVal = typeof wordItem.duration === 'number' ? wordItem.duration : 0;
+              const endVal = startVal + durVal;
+              const startSec = startVal.toFixed(2);
+              const endSec = endVal.toFixed(2);
+              const durMs = Math.round(durVal * 1000);
 
               return (
                 <React.Fragment key={`${wordItem.token}-${idx}`}>
                   {/* Single Word Unit Card */}
                   <div
-                    className={`relative rounded-xl border p-2.5 transition-all shadow-xs flex flex-col justify-between min-w-[125px] ${
+                    className={`relative rounded-xl border p-2.5 transition-all shadow-xs flex flex-col justify-between min-w-[145px] ${
                       isPlayingThis
                         ? 'bg-purple-50 border-[#6255CF] ring-2 ring-[#6255CF]/30'
                         : 'bg-white hover:bg-[#F9FAFD] border-[#DFE2EE]'
@@ -200,9 +204,19 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
                     </div>
 
                     {/* Timestamp & Duration */}
-                    <div className="pt-1.5 border-t border-[#EEF0F8] flex items-center justify-between text-[10px] text-[#6B6E87]">
-                      <span>{startSec}s</span>
-                      <span className="font-semibold text-[#6255CF]">{durSec}ms</span>
+                    <div className="pt-1.5 border-t border-[#EEF0F8] flex flex-col gap-0.5 text-[10px]">
+                      <div className="flex items-center justify-between text-[#7A7D94]">
+                        <span>Vị trí:</span>
+                        <span className="font-mono font-medium text-[#20223A]">
+                          {startSec}s ➔ {endSec}s
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[#7A7D94]">Độ dài:</span>
+                        <span className="font-semibold text-[#6255CF] font-mono">
+                          {durMs}ms ({durVal.toFixed(2)}s)
+                        </span>
+                      </div>
                     </div>
                   </div>
 
