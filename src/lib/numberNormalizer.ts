@@ -133,8 +133,8 @@ export function normalizeNumbersInText(text: string): string {
     return readDigitsSequence(match);
   });
 
-  // 2. Giờ phút: 10h30, 8h15, 14:30
-  s = s.replace(/\b(\d{1,2})h(\d{1,2})\b/gi, (_, h, m) => {
+  // 2. Giờ phút: 10h30, 8h15, 14:30, 10 giờ 30
+  s = s.replace(/\b(\d{1,2})h(\d{1,2})(?:p|ph|phút)?\b/gi, (_, h, m) => {
     return `${readInteger(h)} giờ ${readInteger(m)} phút`;
   });
   s = s.replace(/\b(\d{1,2})h\b/gi, (_, h) => {
@@ -143,26 +143,33 @@ export function normalizeNumbersInText(text: string): string {
   s = s.replace(/\b([01]?\d|2[0-3]):([0-5]\d)\b/g, (_, h, m) => {
     return `${readInteger(h)} giờ ${readInteger(m)} phút`;
   });
+  s = s.replace(/\b(\d{1,2})\s*giờ\s*(\d{1,2})\b(?!\s*phút)/gi, (_, h, m) => {
+    return `${readInteger(h)} giờ ${readInteger(m)} phút`;
+  });
 
-  // 3. Ngày tháng: "ngày 4/11" hoặc "04/11/2024"
-  s = s.replace(/(?:ngày\s+)?\b(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?\b/gi, (_, d, m, y) => {
+  // 3. Ngày tháng: "ngày 4/11" hoặc "04/11" hoặc "04/11/2024"
+  s = s.replace(/(?:ngày\s+)?\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{4}))?\b/gi, (_, d, m, y) => {
     let res = `ngày ${readInteger(d)} tháng ${readInteger(m)}`;
     if (y) res += ` năm ${readInteger(y)}`;
     return res;
   });
 
-  // 4. Tiền tệ viết tắt: 500k, 100.000đ, 50.000 đồng
+  // 4. Tiền tệ viết tắt: 500k, 100.000đ, 2tr, 50.000 đồng
   s = s.replace(/(\d{1,3}(?:\.\d{3})+|\d+)\s*[kK]\b/g, (_, num) => {
     const cleanNum = num.replace(/\./g, '');
     return readInteger(cleanNum) + ' nghìn';
+  });
+  s = s.replace(/(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:tr|trieu|triệu)\b/gi, (_, num) => {
+    const cleanNum = num.replace(/\./g, '');
+    return readInteger(cleanNum) + ' triệu';
   });
   s = s.replace(/(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:đ|vnđ|vnd)(?!\w)/gi, (_, num) => {
     const cleanNum = num.replace(/\./g, '');
     return readInteger(cleanNum) + ' đồng';
   });
 
-  // 5. Tỷ lệ phần trăm: 50%, 12.5%
-  s = s.replace(/(\d+(?:[.,]\d+)?)%/g, (_, num) => {
+  // 5. Tỷ lệ phần trăm: 50%, 50 %, 12.5%
+  s = s.replace(/(\d+(?:[.,]\d+)?)\s*%/g, (_, num) => {
     return normalizeNumbersInText(num) + ' phần trăm';
   });
 

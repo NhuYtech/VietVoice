@@ -75,9 +75,8 @@ export const MainEditor: React.FC<MainEditorProps> = ({
           {/* Combobox chọn Giọng Nam / Nữ */}
           <div className="relative inline-flex items-center">
             <span
-              className={`absolute left-3 w-2 h-2 rounded-full pointer-events-none z-10 ${
-                selectedVoice === 'Nam' ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
-              }`}
+              className={`absolute left-3 w-2 h-2 rounded-full pointer-events-none z-10 ${selectedVoice === 'Nam' ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
+                }`}
             />
             <select
               value={selectedVoice}
@@ -126,7 +125,7 @@ export const MainEditor: React.FC<MainEditorProps> = ({
         <textarea
           value={text}
           onChange={(e) => onChangeText(e.target.value)}
-          placeholder="Nhập văn bản hoặc số cần chuyển đổi thành giọng nói (ví dụ: 'hệ thống 4.0', 'tôi có 25 quả táo')..."
+          placeholder="Nhập văn bản tại đây..."
           rows={3}
           className="w-full resize-none text-[16px] text-[#20213A] placeholder-[#9AA0B4] focus:outline-none leading-relaxed bg-transparent min-h-[76px]"
         />
@@ -143,6 +142,34 @@ export const MainEditor: React.FC<MainEditorProps> = ({
             Hệ thống hỗ trợ các từ có trong bộ dữ liệu thu âm.
           </div>
         </div>
+
+        {/* Quick Sample Chips: Tiền tệ, Ngày tháng, Giờ giấc, Phần trăm */}
+        {!text.trim() && (
+          <div className="mt-3 pt-2.5 border-t border-[#F0F2F9] flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-[#85879A] text-[11px] font-medium flex items-center gap-1 mr-1">
+              <Sparkles className="w-3 h-3 text-[#6255CF]" />
+              Gợi ý thử nhanh:
+            </span>
+            {[
+              { label: '500k', text: 'giá 500k' },
+              { label: '100.000đ', text: '100.000đ' },
+              { label: '04/11', text: 'ngày 04/11' },
+              { label: '10h30', text: 'lúc 10h30' },
+              { label: '50%', text: 'đạt 50%' },
+              { label: 'Ví dụ tổng hợp', text: 'giá 500k hoặc 100.000đ vào ngày 04/11 lúc 10h30 đạt 50%' },
+            ].map((sample) => (
+              <button
+                key={sample.label}
+                type="button"
+                onClick={() => onChangeText(sample.text)}
+                className="px-2.5 py-1 rounded-lg bg-[#F4F5FB] hover:bg-[#6255CF] text-[#555870] hover:text-white border border-[#E8E8F0] hover:border-[#6255CF] font-medium transition cursor-pointer text-[11px] shadow-2xs active:scale-95"
+                title={`Nhấn để điền thử mẫu: "${sample.text}"`}
+              >
+                {sample.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Vocabulary availability helper tags */}
         {text.trim() && (
@@ -172,11 +199,10 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                         e.stopPropagation();
                         handleCopyNormalized(normText);
                       }}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer select-none ${
-                        copiedNormalized
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer select-none ${copiedNormalized
                           ? 'bg-emerald-600 text-white shadow-xs'
                           : 'bg-white text-[#6255CF] border border-[#DDD7FD] group-hover:border-[#6255CF] group-hover:bg-[#6255CF] group-hover:text-white shadow-2xs'
-                      }`}
+                        }`}
                       title="Sao chép toàn bộ văn bản đọc số"
                     >
                       {copiedNormalized ? (
@@ -296,11 +322,10 @@ export const MainEditor: React.FC<MainEditorProps> = ({
             type="button"
             onClick={onPreview}
             disabled={isConverting || isPreviewing || !text.trim()}
-            className={`min-w-[160px] h-12 px-6 py-3 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all border-2 ${
-              isConverting || isPreviewing || !text.trim()
+            className={`min-w-[160px] h-12 px-6 py-3 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all border-2 ${isConverting || isPreviewing || !text.trim()
                 ? 'border-[#D5D7E5] text-[#9EA1B7] bg-[#F1F2F8] cursor-not-allowed opacity-75'
                 : 'border-[#6255CF] text-[#6255CF] bg-white hover:bg-[#F2EFFD] active:scale-[0.98] shadow-xs cursor-pointer'
-            }`}
+              }`}
             title="Nghe thử âm thanh đoạn văn trước khi tạo chính thức và lưu vào lịch sử"
           >
             {isPreviewing ? (
@@ -320,11 +345,10 @@ export const MainEditor: React.FC<MainEditorProps> = ({
         <button
           onClick={onConvert}
           disabled={isConverting || !text.trim()}
-          className={`min-w-[260px] h-12 px-10 py-3 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2.5 text-white transition-all shadow-md ${
-            isConverting || !text.trim()
+          className={`min-w-[260px] h-12 px-10 py-3 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2.5 text-white transition-all shadow-md ${isConverting || !text.trim()
               ? 'bg-[#B0B2C5] cursor-not-allowed opacity-75'
               : 'bg-[#6255CF] hover:bg-[#5144BD] shadow-[#6255CF]/25 hover:shadow-lg hover:shadow-[#6255CF]/35 active:scale-[0.98] cursor-pointer'
-          }`}
+            }`}
         >
           {isConverting ? (
             <>

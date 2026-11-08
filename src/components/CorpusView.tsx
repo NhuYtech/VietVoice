@@ -76,7 +76,7 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
             createdAtStr = d.toISOString().slice(0, 16).replace('T', ' ');
           }
         }
-      } catch {}
+      } catch { }
 
       list.push({
         id: e?.id || `entry-${cleanW}`,
@@ -264,31 +264,28 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
             <Database className="w-4 h-4 text-[#6255CF]" />
             <h2 className="text-sm md:text-base font-bold text-[#20213A]">Ngữ liệu song song văn bản — âm thanh</h2>
           </div>
-          <p className="text-xs text-[#85879A] max-w-2xl leading-relaxed">
+          {/* <p className="text-xs text-[#85879A] max-w-2xl leading-relaxed">
             Hệ thống quản lý ngữ liệu âm thanh với <strong>{combinedList.length.toLocaleString()}</strong> âm tiết tiếng Việt chuẩn (datasetTV) cùng các bản ghi âm riêng.
-          </p>
+          </p> */}
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
           {dbStatus === 'connected' ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              MongoDB: Đã kết nối ({dbCount?.toLocaleString()} từ)
+              Đã kết nối
             </span>
           ) : dbStatus === 'checking' ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-50 text-gray-600 border border-gray-200 shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-              MongoDB: Đang kiểm tra...
+              Đang kiểm tra...
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs" title="Đang chạy ở chế độ dự phòng dữ liệu tĩnh">
-              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-              MongoDB: Ngoại tuyến (Dữ liệu tĩnh)
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+              Ngắt kết nối
             </span>
           )}
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#F3F0FF] text-[#6255CF] border border-[#E0D8FF] shadow-2xs">
-            Cloudinary: wximbfoz
-          </span>
           <button
             onClick={onOpenRecordModal}
             className="px-4 py-2 rounded-xl bg-[#6255CF] hover:bg-[#5144BD] text-white text-xs font-semibold flex items-center gap-2 shadow-md shadow-[#6255CF]/20 transition flex-shrink-0 active:scale-95 cursor-pointer"
@@ -321,7 +318,7 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
-                placeholder="Tìm từ, mã VNI, tên file..."
+                placeholder="Tìm kiếm..."
                 className="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-[#E8E8F0] bg-[#FAFBFD] focus:outline-none focus:border-[#6255CF] text-[#20213A] placeholder-[#9CA1B7] w-52 transition"
               />
             </div>
@@ -333,9 +330,8 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
                   setSelectedSpeaker('all');
                   setCurrentPage(1);
                 }}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                  selectedSpeaker === 'all' ? 'bg-white shadow-xs text-[#6255CF] font-bold' : 'hover:text-[#20213A]'
-                }`}
+                className={`px-3 py-1 rounded-lg transition cursor-pointer ${selectedSpeaker === 'all' ? 'bg-white shadow-xs text-[#6255CF] font-bold' : 'hover:text-[#20213A]'
+                  }`}
               >
                 Tất cả
               </button>
@@ -344,9 +340,8 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
                   setSelectedSpeaker('Nam');
                   setCurrentPage(1);
                 }}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                  selectedSpeaker === 'Nam' ? 'bg-white shadow-xs text-[#5578D8] font-bold' : 'hover:text-[#20213A]'
-                }`}
+                className={`px-3 py-1 rounded-lg transition cursor-pointer ${selectedSpeaker === 'Nam' ? 'bg-white shadow-xs text-[#5578D8] font-bold' : 'hover:text-[#20213A]'
+                  }`}
               >
                 Nam
               </button>
@@ -355,9 +350,8 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
                   setSelectedSpeaker('Nữ');
                   setCurrentPage(1);
                 }}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                  selectedSpeaker === 'Nữ' ? 'bg-white shadow-xs text-[#B16BC1] font-bold' : 'hover:text-[#20213A]'
-                }`}
+                className={`px-3 py-1 rounded-lg transition cursor-pointer ${selectedSpeaker === 'Nữ' ? 'bg-white shadow-xs text-[#B16BC1] font-bold' : 'hover:text-[#20213A]'
+                  }`}
               >
                 Nữ
               </button>
@@ -416,16 +410,14 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
                       </td>
                       <td className="py-3.5 px-3.5 whitespace-nowrap align-middle">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold text-[11px] whitespace-nowrap ${
-                            String(item.speaker).includes('Nam')
-                              ? 'bg-[#5578D8]/10 text-[#5578D8]'
-                              : 'bg-[#B16BC1]/10 text-[#B16BC1]'
-                          }`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold text-[11px] whitespace-nowrap ${String(item.speaker).includes('Nam')
+                            ? 'bg-[#5578D8]/10 text-[#5578D8]'
+                            : 'bg-[#B16BC1]/10 text-[#B16BC1]'
+                            }`}
                         >
                           <span
-                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                              String(item.speaker).includes('Nam') ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
-                            }`}
+                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${String(item.speaker).includes('Nam') ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
+                              }`}
                           />
                           {String(item.speaker).includes('Nam') ? 'Nam' : 'Nữ'}
                         </span>

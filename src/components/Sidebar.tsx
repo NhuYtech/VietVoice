@@ -44,7 +44,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, corpu
           />
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-lg text-[#20213A] tracking-tight">VietVoice</span>
+              <span className="font-extrabold text-lg tracking-tight flex items-center">
+                <span className="text-[#1E2040]">Viet</span>
+                <span className="bg-gradient-to-r from-[#2CB4FE] via-[#528FFC] to-[#CB69F7] bg-clip-text text-transparent font-black">
+                  Voice
+                </span>
+              </span>
               <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#6255CF]/10 text-[#6255CF]">
                 TTS
               </span>

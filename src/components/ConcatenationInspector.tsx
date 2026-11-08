@@ -90,15 +90,9 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-[#1E2040]">
-                Minh chứng ghép nối ngữ liệu (Concatenation Inspector)
+                Biểu diễn ghép nối ngữ liệu
               </h3>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#6255CF]/10 text-[#6255CF] border border-[#6255CF]/20">
-                Unit Selection TTS
-              </span>
             </div>
-            <p className="text-[11px] text-[#6F728F] mt-0.5">
-              Chứng minh âm thanh được lắp ghép từ <strong>{validWords.length} file âm thanh riêng lẻ</strong>, không phải thu âm nguyên câu.
-            </p>
           </div>
         </div>
 
@@ -106,7 +100,7 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
         <div className="flex items-center gap-2 text-xs">
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-[#E2E4F0] text-[#44465B] shadow-2xs">
             <Database className="w-3.5 h-3.5 text-[#6255CF]" />
-            <span>Nguồn: <strong>MongoDB & Cloudinary</strong></span>
+            <span>Nguồn: <strong>Kho dữ liệu trực tuyến</strong></span>
           </div>
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-[#E2E4F0] text-[#44465B] shadow-2xs">
             <Cpu className="w-3.5 h-3.5 text-emerald-600" />
@@ -137,12 +131,8 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
       <div className="p-5">
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2 text-xs font-semibold text-[#30324E]">
-            <Sparkles className="w-3.5 h-3.5 text-[#6255CF]" />
-            <span>Sơ đồ trục thời gian ghép nối (Audio Stitching Timeline):</span>
+            <span>Sơ đồ trục thời gian ghép nối:</span>
           </div>
-          <span className="text-[11px] text-[#80839C]">
-            Bấm vào biểu tượng loa <Volume2 className="w-3 h-3 inline text-[#6255CF]" /> của từng từ để nghe file gốc độc lập
-          </span>
         </div>
 
         {/* Timeline Horizontal Scroll Container */}
@@ -162,11 +152,10 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
                 <React.Fragment key={`${wordItem.token}-${idx}`}>
                   {/* Single Word Unit Card */}
                   <div
-                    className={`relative rounded-xl border p-2.5 transition-all shadow-xs flex flex-col justify-between min-w-[145px] ${
-                      isPlayingThis
-                        ? 'bg-purple-50 border-[#6255CF] ring-2 ring-[#6255CF]/30'
-                        : 'bg-white hover:bg-[#F9FAFD] border-[#DFE2EE]'
-                    }`}
+                    className={`relative rounded-xl border p-2.5 transition-all shadow-xs flex flex-col justify-between min-w-[145px] ${isPlayingThis
+                      ? 'bg-purple-50 border-[#6255CF] ring-2 ring-[#6255CF]/30'
+                      : 'bg-white hover:bg-[#F9FAFD] border-[#DFE2EE]'
+                      }`}
                   >
                     {/* Index & Play Solo Button */}
                     <div className="flex items-center justify-between mb-1.5">
@@ -177,11 +166,10 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
                         <button
                           type="button"
                           onClick={() => handlePlaySingleWord(wordItem, idx)}
-                          className={`w-6 h-6 rounded-full flex items-center justify-center transition cursor-pointer shadow-2xs ${
-                            isPlayingThis
-                              ? 'bg-[#6255CF] text-white animate-pulse'
-                              : 'bg-[#F0EFFD] text-[#6255CF] hover:bg-[#6255CF] hover:text-white'
-                          }`}
+                          className={`w-6 h-6 rounded-full flex items-center justify-center transition cursor-pointer shadow-2xs ${isPlayingThis
+                            ? 'bg-[#6255CF] text-white animate-pulse'
+                            : 'bg-[#F0EFFD] text-[#6255CF] hover:bg-[#6255CF] hover:text-white'
+                            }`}
                           title={`Nghe thử file âm thanh gốc độc lập của từ "${wordItem.token}"`}
                         >
                           {isPlayingThis ? (
@@ -259,11 +247,10 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
                         <div className="flex items-center gap-0.5 text-[#85879A]">
                           <span className="h-[2px] w-2 bg-[#D3D6E5]" />
                           <div
-                            className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold border flex items-center gap-0.5 shadow-2xs ${
-                              join?.smooth
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-amber-50 text-amber-700 border-amber-200'
-                            }`}
+                            className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold border flex items-center gap-0.5 shadow-2xs ${join?.smooth
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                              }`}
                             title={`Điểm nối giữa "${wordItem.token}" và "${validWords[idx + 1]?.token}": Chênh lệch năng lượng: ${join?.energyJumpDb || 0} dB, Lệch cao độ F0: ${join?.f0JumpSemitone !== null ? `${join?.f0JumpSemitone} st` : 'N/A'}`}
                           >
                             <span>⚡</span>
@@ -313,9 +300,8 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
                       return (
                         <tr
                           key={`table-${item.token}-${idx}`}
-                          className={`hover:bg-[#F9FAFE] transition ${
-                            isPlayingThis ? 'bg-purple-50/70' : ''
-                          }`}
+                          className={`hover:bg-[#F9FAFE] transition ${isPlayingThis ? 'bg-purple-50/70' : ''
+                            }`}
                         >
                           <td className="px-3.5 py-2 font-mono text-[#85879A]">#{idx + 1}</td>
                           <td className="px-3.5 py-2 font-bold text-[#1E2040]">"{item.token}"</td>
@@ -341,11 +327,10 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handlePlaySingleWord(item, idx)}
-                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
-                                  isPlayingThis
-                                    ? 'bg-[#6255CF] text-white'
-                                    : 'bg-[#F2F1FC] hover:bg-[#6255CF] text-[#6255CF] hover:text-white'
-                                }`}
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${isPlayingThis
+                                  ? 'bg-[#6255CF] text-white'
+                                  : 'bg-[#F2F1FC] hover:bg-[#6255CF] text-[#6255CF] hover:text-white'
+                                  }`}
                                 title={`Nghe riêng file âm thanh gốc của từ "${item.token}"`}
                               >
                                 {isPlayingThis ? (
@@ -376,9 +361,8 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
                                   </div>
                                 ) : (
                                   <span
-                                    className={`font-semibold ${
-                                      join.smooth ? 'text-emerald-600' : 'text-amber-600'
-                                    }`}
+                                    className={`font-semibold ${join.smooth ? 'text-emerald-600' : 'text-amber-600'
+                                      }`}
                                   >
                                     {join.smooth ? '✓ Mượt mà' : '⚡ Độ lệch nhẹ'}
                                   </span>

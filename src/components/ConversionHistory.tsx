@@ -191,9 +191,8 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
           className="flex items-center gap-2 text-left group focus:outline-none"
         >
           <ChevronDown
-            className={`w-4 h-4 text-[#1E2040] transition-transform duration-200 ${
-              isCollapsed ? '-rotate-90' : ''
-            }`}
+            className={`w-4 h-4 text-[#1E2040] transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''
+              }`}
           />
           <h2 className="text-[14px] md:text-[15px] font-bold text-[#1E2040] tracking-tight group-hover:text-[#6255CF] transition">
             Danh sách chuyển đổi
@@ -221,11 +220,10 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                 setIsCalendarOpen(!isCalendarOpen);
                 setIsFilterOpen(false);
               }}
-              className={`p-2 rounded-lg border transition ${
-                selectedDate
+              className={`p-2 rounded-lg border transition ${selectedDate
                   ? 'border-[#6255CF] bg-[#F7F6FD] text-[#6255CF]'
                   : 'border-[#E2E4F0] text-[#555870] hover:text-[#20213A] hover:bg-gray-50'
-              }`}
+                }`}
               title="Lọc theo ngày"
             >
               <Calendar className="w-3.5 h-3.5" />
@@ -265,11 +263,10 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                 setIsFilterOpen(!isFilterOpen);
                 setIsCalendarOpen(false);
               }}
-              className={`p-2 rounded-lg border transition ${
-                statusFilter !== 'all'
+              className={`p-2 rounded-lg border transition ${statusFilter !== 'all'
                   ? 'border-[#6255CF] bg-[#F7F6FD] text-[#6255CF]'
                   : 'border-[#E2E4F0] text-[#555870] hover:text-[#20213A] hover:bg-gray-50'
-              }`}
+                }`}
               title="Phân loại trạng thái"
             >
               <Filter className="w-3.5 h-3.5" />
@@ -285,11 +282,10 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                     setStatusFilter('all');
                     setIsFilterOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${
-                    statusFilter === 'all'
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${statusFilter === 'all'
                       ? 'bg-[#F7F6FD] text-[#6255CF] font-semibold'
                       : 'text-[#20213A] hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   <span>Tất cả</span>
                   {statusFilter === 'all' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
@@ -299,11 +295,10 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                     setStatusFilter('converting');
                     setIsFilterOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${
-                    statusFilter === 'converting'
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${statusFilter === 'converting'
                       ? 'bg-[#F7F6FD] text-[#6255CF] font-semibold'
                       : 'text-[#20213A] hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   <span>Đang chuyển đổi</span>
                   {statusFilter === 'converting' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
@@ -313,11 +308,10 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                     setStatusFilter('completed');
                     setIsFilterOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${
-                    statusFilter === 'completed'
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${statusFilter === 'completed'
                       ? 'bg-[#F7F6FD] text-[#6255CF] font-semibold'
                       : 'text-[#20213A] hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   <span>Thành công</span>
                   {statusFilter === 'completed' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
@@ -327,11 +321,10 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                     setStatusFilter('failed');
                     setIsFilterOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${
-                    statusFilter === 'failed'
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left ${statusFilter === 'failed'
                       ? 'bg-[#F7F6FD] text-[#6255CF] font-semibold'
                       : 'text-[#20213A] hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   <span>Thất bại</span>
                   {statusFilter === 'failed' && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
@@ -393,9 +386,8 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
               return (
                 <div
                   key={item.id}
-                  className={`relative flex items-center justify-between px-5 py-3 transition hover:bg-[#FAFAFD] ${
-                    isSelected ? 'bg-[#FAF8FE]' : ''
-                  }`}
+                  className={`relative flex items-center justify-between px-5 py-3 transition hover:bg-[#FAFAFD] ${isSelected ? 'bg-[#FAF8FE]' : ''
+                    }`}
                 >
                   {/* Left Side: Checkbox & Main Info */}
                   <div className="flex items-center gap-3.5 min-w-0 max-w-[42%] pr-4">
@@ -443,11 +435,10 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                   {/* Middle Side: Nữ / Nam ở CHÍNH GIỮA hàng */}
                   <div className="hidden sm:flex absolute left-1/2 -translate-x-1/2 items-center justify-center">
                     <span
-                      className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                        isFemale
+                      className={`text-xs font-semibold px-3 py-1 rounded-full ${isFemale
                           ? 'bg-[#B16BC1]/10 text-[#B16BC1] border border-[#B16BC1]/20'
                           : 'bg-[#5578D8]/10 text-[#5578D8] border border-[#5578D8]/20'
-                      }`}
+                        }`}
                     >
                       {isFemale ? 'Nữ' : 'Nam'}
                     </span>
@@ -483,19 +474,18 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                         }
                       }}
                       disabled={isConvertingItem}
-                      className={`w-7 h-7 rounded-full flex items-center justify-center transition shadow-xs cursor-pointer ${
-                        isConvertingItem
+                      className={`w-7 h-7 rounded-full flex items-center justify-center transition shadow-xs cursor-pointer ${isConvertingItem
                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                           : isPlaying
-                          ? 'bg-[#6255CF] text-white ring-2 ring-[#6255CF]/30'
-                          : 'bg-[#1E2040] hover:bg-[#6255CF] text-white'
-                      }`}
+                            ? 'bg-[#6255CF] text-white ring-2 ring-[#6255CF]/30'
+                            : 'bg-[#1E2040] hover:bg-[#6255CF] text-white'
+                        }`}
                       title={
                         isConvertingItem
                           ? 'Đang chuyển đổi...'
                           : isPlaying
-                          ? 'Tạm dừng phát'
-                          : 'Phát âm thanh'
+                            ? 'Tạm dừng phát'
+                            : 'Phát âm thanh'
                       }
                     >
                       {isPlaying ? (
@@ -509,9 +499,8 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                     <button
                       onClick={() => handleDownloadItem(item)}
                       disabled={isConvertingItem}
-                      className={`p-1.5 transition rounded-lg hover:bg-gray-50 ${
-                        isConvertingItem ? 'text-gray-300 cursor-not-allowed' : 'text-[#555870] hover:text-[#6255CF]'
-                      }`}
+                      className={`p-1.5 transition rounded-lg hover:bg-gray-50 ${isConvertingItem ? 'text-gray-300 cursor-not-allowed' : 'text-[#555870] hover:text-[#6255CF]'
+                        }`}
                       title="Tải về file WAV"
                     >
                       <Download className="w-4 h-4" />
@@ -532,11 +521,10 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                       {/* Dropdown Menu */}
                       {activeMenuId === item.id && (
                         <div
-                          className={`absolute right-0 ${
-                            idx >= filtered.length - 2 && filtered.length > 2
+                          className={`absolute right-0 ${idx >= filtered.length - 2 && filtered.length > 2
                               ? 'bottom-full mb-1'
                               : 'top-full mt-1'
-                          } w-44 bg-white rounded-xl border border-[#E2E4F0] shadow-xl py-1.5 z-40 animate-in fade-in zoom-in-95 text-xs font-medium`}
+                            } w-44 bg-white rounded-xl border border-[#E2E4F0] shadow-xl py-1.5 z-40 animate-in fade-in zoom-in-95 text-xs font-medium`}
                         >
                           {onSelectSampleText && (
                             <button
