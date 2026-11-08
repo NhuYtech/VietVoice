@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Mic, Square, Play, Save, AlertCircle, CheckCircle2, Volume2, Sparkles } from 'lucide-react';
+import { X, Mic, Square, Play, Save, AlertCircle, CheckCircle2, Volume2, Sparkles, User, RotateCcw } from 'lucide-react';
 import { encodeVnFilename, decodeVnWord } from '../lib/vniCodec';
 import { addToCorpus } from '../lib/tts';
 import { playSamples, stopPlayback, decodeBlob, encodeWav, SR } from '../lib/dsp';
@@ -9,7 +9,7 @@ interface RecordModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaved: () => void;
-  defaultSpeaker?: 'Nam' | 'Nữ';
+  defaultSpeaker?: 'Hữu Thọ' | 'Nam' | string;
   initialWord?: string;
 }
 
@@ -17,11 +17,11 @@ export const RecordModal: React.FC<RecordModalProps> = ({
   isOpen,
   onClose,
   onSaved,
-  defaultSpeaker = 'Nam',
+  defaultSpeaker = 'Hữu Thọ',
   initialWord = '',
 }) => {
   const [wordInput, setWordInput] = useState(initialWord);
-  const [speaker, setSpeaker] = useState<'Nam' | 'Nữ'>(defaultSpeaker);
+  const [speaker, setSpeaker] = useState<'Hữu Thọ' | 'Nam' | string>(defaultSpeaker);
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -222,10 +222,10 @@ export const RecordModal: React.FC<RecordModalProps> = ({
     setErrorMsg('');
     try {
       const cleanWord = wordInput.trim().toLowerCase();
-      const coreSpeaker = speaker === 'Nam' ? 'nam' : 'nu';
+      const finalSpeaker = speaker.trim() || 'Hữu Thọ';
 
       // 1. Lưu vào IndexedDB trình duyệt
-      await addToCorpus(audioBlob, cleanWord, coreSpeaker, 'record');
+      await addToCorpus(audioBlob, cleanWord, finalSpeaker, 'record');
 
       // 2. Tự động đồng bộ lên Database MongoDB Atlas & Cloudinary
       try {
@@ -242,14 +242,14 @@ export const RecordModal: React.FC<RecordModalProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             word: cleanWord,
-            speaker,
+            speaker: finalSpeaker,
             code: encodeVnFilename(cleanWord).replace(/\.wav$/, ''),
             audioBase64,
             duration: audioBlob.size > 0 ? audioBlob.size / (SR * 2) : 0.45,
           }),
         });
         if (res.ok) {
-          console.log(`[VietVoice] Đã lưu thành công từ "${cleanWord}" lên MongoDB Atlas & Cloudinary!`);
+          console.log(`[VietVoice] Đã lưu thành công từ "${cleanWord}" (${finalSpeaker}) lên MongoDB Atlas & Cloudinary!`);
         } else {
           console.warn('Backend upload response status:', res.status);
         }
@@ -297,36 +297,53 @@ export const RecordModal: React.FC<RecordModalProps> = ({
             </div>
           )}
 
-          {/* Voice selection */}
+          {/* Voice selection / Người thu âm */}
           <div>
-            <label className="block text-xs font-bold text-[#555870] mb-2 uppercase tracking-wider">
-              1. Chọn giọng người thu
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setSpeaker('Nam')}
-                className={`p-3 rounded-xl border text-left transition flex items-center gap-2.5 ${speaker === 'Nam'
-                  ? 'border-[#5578D8] bg-[#5578D8]/5 text-[#5578D8] font-bold shadow-xs'
-                  : 'border-[#E8E8F0] text-[#555870] hover:bg-[#FAFBFD]'
-                  }`}
-              >
-                <span className="w-2.5 h-2.5 rounded-full bg-[#5578D8]" />
-                <span className="text-xs">Nam (Giọng nam)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSpeaker('Nữ')}
-                className={`p-3 rounded-xl border text-left transition flex items-center gap-2.5 ${speaker === 'Nữ'
-                  ? 'border-[#B16BC1] bg-[#B16BC1]/5 text-[#B16BC1] font-bold shadow-xs'
-                  : 'border-[#E8E8F0] text-[#555870] hover:bg-[#FAFBFD]'
-                  }`}
-              >
-                <span className="w-2.5 h-2.5 rounded-full bg-[#B16BC1]" />
-                <span className="text-xs">Nữ (Giọng nữ)</span>
-              </button>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-[#555870] uppercase tracking-wider flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-[#5578D8]" />
+                <span>1. Người thu âm</span>
+              </label>
+              {speaker.trim() !== 'Hữu Thọ' && (
+                <button
+                  type="button"
+                  onClick={() => setSpeaker('Hữu Thọ')}
+                  className="text-[11px] text-[#5578D8] hover:text-[#4362b5] font-semibold flex items-center gap-1 cursor-pointer transition hover:underline"
+                  title="Nhấn để quay về người thu âm mặc định Hữu Thọ"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Mặc định: Hữu Thọ</span>
+                </button>
+              )}
             </div>
+
+            <div className="relative flex items-center">
+              <span className="absolute left-3.5 w-2.5 h-2.5 rounded-full bg-[#5578D8] pointer-events-none" />
+              <input
+                type="text"
+                value={speaker}
+                onChange={(e) => setSpeaker(e.target.value)}
+                placeholder="Nhập tên người thu (mặc định: Hữu Thọ)"
+                className="w-full pl-9 pr-24 py-2.5 text-xs font-semibold rounded-xl bg-white border border-[#E2E4F0] focus:border-[#5578D8] focus:ring-2 focus:ring-[#5578D8]/20 focus:outline-none text-[#20213A] placeholder-[#9AA0B4] shadow-xs transition"
+              />
+              {speaker.trim() === 'Hữu Thọ' ? (
+                <span className="absolute right-3 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#5578D8]/10 text-[#5578D8] pointer-events-none select-none">
+                  Mặc định
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSpeaker('Hữu Thọ')}
+                  className="absolute right-2 px-2 py-1 rounded-md text-[10px] font-bold bg-[#F4F5FB] hover:bg-[#EAEBF5] text-[#5578D8] border border-[#E2E4F0] transition cursor-pointer select-none"
+                  title="Đặt lại về Hữu Thọ"
+                >
+                  Đặt lại
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-[#85879A] mt-1.5 leading-normal">
+              Mặc định là <strong>Hữu Thọ</strong>. Bạn có thể giữ nguyên hoặc điền tên người thu âm khác tùy ý.
+            </p>
           </div>
 
           {/* Word Input & VNI Code Preview */}

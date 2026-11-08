@@ -216,8 +216,9 @@ app.post('/api/audio/upload', async (req, res) => {
 
     const cleanWord = word.trim().toLowerCase();
     const docCode = code || cleanWord;
-    const speakerLabel = speaker === 'Nữ' || speaker === 'nu' ? 'Nữ' : 'Nam';
-    const publicId = `recordings/${speakerLabel === 'Nữ' ? 'nu' : 'nam'}_${docCode.replace(/\+/g, '_')}`;
+    const speakerLabel = (speaker || 'Hữu Thọ').trim();
+    const safeSpkId = speakerLabel.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'huu_tho';
+    const publicId = `recordings/${safeSpkId}_${docCode.replace(/\+/g, '_')}`;
 
     let audioUrl = '';
     let uploadedPublicId = publicId;
@@ -243,7 +244,7 @@ app.post('/api/audio/upload', async (req, res) => {
       cloudinaryPublicId: uploadedPublicId,
       audioUrl,
       speaker: speakerLabel,
-      gender: speakerLabel === 'Nữ' ? 'female' : 'male',
+      gender: 'male',
       duration: Number(duration) || 0.45,
       format: 'wav',
       source: 'record',

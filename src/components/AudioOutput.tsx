@@ -5,14 +5,14 @@ import { playSamples, stopPlayback, SR } from '../lib/dsp';
 
 interface AudioOutputProps {
   result: SynthResult | null;
-  selectedVoice: 'Nam' | 'Nữ';
+  selectedVoice?: 'Hữu Thọ' | 'Nam' | string;
   onDownload: () => void;
   isLoading?: boolean;
 }
 
 export const AudioOutput: React.FC<AudioOutputProps> = ({
   result,
-  selectedVoice,
+  selectedVoice = 'Hữu Thọ',
   onDownload,
   isLoading,
 }) => {

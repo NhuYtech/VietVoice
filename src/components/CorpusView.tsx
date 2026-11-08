@@ -33,7 +33,7 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
   onShowNotification,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSpeaker, setSelectedSpeaker] = useState<'all' | 'Nam' | 'Nữ'>('all');
+  const [selectedSpeaker, setSelectedSpeaker] = useState<string>('all');
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50;
@@ -62,11 +62,13 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
     const realMap = new Map<string, CorpusEntry>();
 
     (Array.isArray(realEntries) ? realEntries : []).forEach((e) => {
-      const spk = (String(e?.speaker).toLowerCase().includes('nam') ? 'Nam' : 'Nữ') as 'Nam' | 'Nữ';
+      const spk = e?.speaker && e.speaker.toLowerCase() !== 'nam' ? e.speaker : 'Hữu Thọ';
       const cleanW = String(e?.word || '').trim();
       const c = e?.code || encodeVnFilename(cleanW).replace('.wav', '') || 'code';
       realMap.set(`${spk.toLowerCase()}::${c.toLowerCase()}`, e);
       realMap.set(`${spk.toLowerCase()}::${cleanW.toLowerCase()}`, e);
+      realMap.set(`nam::${c.toLowerCase()}`, e);
+      realMap.set(`nam::${cleanW.toLowerCase()}`, e);
 
       let createdAtStr = 'Vừa xong';
       try {
@@ -93,10 +95,10 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
 
     // Thêm các từ trong MongoDB / Cloudinary chưa có trong IndexedDB
     cachedManifestWords.forEach((m, idx) => {
-      const spk = (m.speaker || 'nam').toLowerCase() === 'nam' ? 'Nam' : 'Nữ';
+      const spk: 'Hữu Thọ' = 'Hữu Thọ';
       const cleanW = (m.word || '').trim();
       const c = m.code || (m.file ? m.file.replace(/^wavs\//, '').replace(/\.wav$/, '') : cleanW);
-      const key = `${spk.toLowerCase()}::${c.toLowerCase()}`;
+      const key = `nam::${c.toLowerCase()}`;
 
       if (!realMap.has(key)) {
         list.push({
@@ -116,6 +118,15 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
 
     return list;
   }, [realEntries, cachedManifestWords]);
+
+  const availableSpeakers = useMemo(() => {
+    const set = new Set<string>();
+    set.add('Hữu Thọ');
+    combinedList.forEach((it) => {
+      if (it.speaker && it.speaker.trim()) set.add(it.speaker.trim());
+    });
+    return Array.from(set);
+  }, [combinedList]);
 
   const filtered = useMemo(() => {
     return combinedList.filter((item) => {
@@ -324,7 +335,7 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
             </div>
 
             {/* Voice filter */}
-            <div className="flex items-center rounded-xl border border-[#E8E8F0] bg-[#FAFBFD] p-0.5 text-xs font-medium text-[#555870]">
+            <div className="flex items-center rounded-xl border border-[#E8E8F0] bg-[#FAFBFD] p-0.5 text-xs font-medium text-[#555870] flex-wrap gap-0.5">
               <button
                 onClick={() => {
                   setSelectedSpeaker('all');
@@ -335,26 +346,19 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
               >
                 Tất cả
               </button>
-              <button
-                onClick={() => {
-                  setSelectedSpeaker('Nam');
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer ${selectedSpeaker === 'Nam' ? 'bg-white shadow-xs text-[#5578D8] font-bold' : 'hover:text-[#20213A]'
-                  }`}
-              >
-                Nam
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedSpeaker('Nữ');
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer ${selectedSpeaker === 'Nữ' ? 'bg-white shadow-xs text-[#B16BC1] font-bold' : 'hover:text-[#20213A]'
-                  }`}
-              >
-                Nữ
-              </button>
+              {availableSpeakers.map((spk) => (
+                <button
+                  key={spk}
+                  onClick={() => {
+                    setSelectedSpeaker(spk);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1 rounded-lg transition cursor-pointer ${selectedSpeaker === spk ? 'bg-white shadow-xs text-[#5578D8] font-bold' : 'hover:text-[#20213A]'
+                    }`}
+                >
+                  {spk}
+                </button>
+              ))}
             </div>
 
             <button
@@ -409,17 +413,9 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
                         </span>
                       </td>
                       <td className="py-3.5 px-3.5 whitespace-nowrap align-middle">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold text-[11px] whitespace-nowrap ${String(item.speaker).includes('Nam')
-                            ? 'bg-[#5578D8]/10 text-[#5578D8]'
-                            : 'bg-[#B16BC1]/10 text-[#B16BC1]'
-                            }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${String(item.speaker).includes('Nam') ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
-                              }`}
-                          />
-                          {String(item.speaker).includes('Nam') ? 'Nam' : 'Nữ'}
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold text-[11px] whitespace-nowrap bg-[#5578D8]/10 text-[#5578D8]">
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[#5578D8]" />
+                          Hữu Thọ
                         </span>
                       </td>
                       <td className="py-3.5 px-3.5 font-mono text-[11px] text-[#63667E] whitespace-nowrap align-middle truncate">

@@ -378,7 +378,6 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
             </div>
           ) : (
             filtered.map((item, idx) => {
-              const isFemale = item.speaker === 'Nữ';
               const isPlaying = Boolean(isPlayingAudio && currentPlayingId === item.id);
               const isSelected = selectedIds.has(item.id);
               const isConvertingItem = item.status === 'converting';
@@ -425,22 +424,17 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                         <span>{(Number(item.duration) || 0.72).toFixed(2)}s</span>
                         <span>•</span>
                         <span className="font-medium text-[#555870]">WAV</span>
-                        <span className="sm:hidden font-semibold text-[#6255CF]">
-                          • {isFemale ? 'Nữ' : 'Nam'}
+                        <span className="sm:hidden font-semibold text-[#5578D8]">
+                          • Hữu Thọ
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Middle Side: Nữ / Nam ở CHÍNH GIỮA hàng */}
+                  {/* Middle Side: Hữu Thọ ở CHÍNH GIỮA hàng */}
                   <div className="hidden sm:flex absolute left-1/2 -translate-x-1/2 items-center justify-center">
-                    <span
-                      className={`text-xs font-semibold px-3 py-1 rounded-full ${isFemale
-                          ? 'bg-[#B16BC1]/10 text-[#B16BC1] border border-[#B16BC1]/20'
-                          : 'bg-[#5578D8]/10 text-[#5578D8] border border-[#5578D8]/20'
-                        }`}
-                    >
-                      {isFemale ? 'Nữ' : 'Nam'}
+                    <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#5578D8]/10 text-[#5578D8] border border-[#5578D8]/20">
+                      Hữu Thọ
                     </span>
                   </div>
 

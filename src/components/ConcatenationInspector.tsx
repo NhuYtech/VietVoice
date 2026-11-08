@@ -18,13 +18,13 @@ import type { SynthResult, TraceItem, JoinInfo } from '../lib/types';
 
 interface ConcatenationInspectorProps {
   result: SynthResult | null;
-  selectedVoice: 'Nam' | 'Nữ';
+  selectedVoice?: 'Hữu Thọ' | 'Nam' | string;
   onSelectWordToRecord?: (word: string) => void;
 }
 
 export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
   result,
-  selectedVoice,
+  selectedVoice = 'Hữu Thọ',
 }) => {
   const [playingWordIdx, setPlayingWordIdx] = useState<number | null>(null);
   const [isTableExpanded, setIsTableExpanded] = useState<boolean>(true);
@@ -274,7 +274,7 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
             <div className="text-xs font-semibold text-[#30324E] mb-2.5 flex items-center justify-between">
               <span>Bảng thông số kiểm tra chi tiết từng từ ghép:</span>
               <span className="text-[11px] font-normal text-[#6B6E87]">
-                Tổng thời lượng: <strong>{result.durationSec.toFixed(2)}s</strong> ({selectedVoice})
+                Tổng thời lượng: <strong>{result.durationSec.toFixed(2)}s</strong> (Hữu Thọ)
               </span>
             </div>
 

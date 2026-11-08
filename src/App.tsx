@@ -27,7 +27,7 @@ import { NotificationModal, type NotificationModalData } from './components/Noti
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavTab>('tts');
   const [inputText, setInputText] = useState('');
-  const [selectedVoice, setSelectedVoice] = useState<'Nam' | 'Nữ'>('Nam');
+  const [selectedVoice, setSelectedVoice] = useState<'Hữu Thọ'>('Hữu Thọ');
   const [isConverting, setIsConverting] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [activeResult, setActiveResult] = useState<SynthResult | null>(null);
@@ -35,7 +35,7 @@ export const App: React.FC = () => {
   const [realEntries, setRealEntries] = useState<CorpusEntry[]>([]);
   const [manifestCount, setManifestCount] = useState<number>(() => cachedManifestWords.length);
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
-  const [isPlayingPreview, setIsPlayingPreview] = useState<'Nam' | 'Nữ' | null>(null);
+  const [isPlayingPreview, setIsPlayingPreview] = useState<'Hữu Thọ' | null>(null);
   const [notificationModal, setNotificationModal] = useState<NotificationModalData | null>(null);
   const [recordInitialWord, setRecordInitialWord] = useState('');
 
@@ -174,10 +174,10 @@ export const App: React.FC = () => {
         const previewTrack: PlayerTrack = {
           id: `preview-${Date.now()}`,
           text: inputText,
-          speaker: selectedVoice,
+          speaker: 'Hữu Thọ',
           durationSec: res.result.durationSec,
           audioBlob: res.result.wav,
-          filename: `vietvoice_preview_${selectedVoice === 'Nam' ? 'nam' : 'nu'}.wav`,
+          filename: 'vietvoice_preview_huutho.wav',
         };
         setPlayerTrack(previewTrack);
         setIsPlayerOpen(true);
@@ -214,10 +214,10 @@ export const App: React.FC = () => {
     const pendingItem: ConversionHistoryItem = {
       id: tempId,
       text: inputText.trim(),
-      speaker: selectedVoice,
+      speaker: 'Hữu Thọ',
       duration: 0,
       createdAt: 'Vừa xong',
-      filename: `vietvoice_${selectedVoice === 'Nam' ? 'nam' : 'nu'}.wav`,
+      filename: 'vietvoice_huutho.wav',
       status: 'converting',
     };
     setHistoryItems((prev) => [pendingItem, ...prev]);
@@ -328,7 +328,7 @@ export const App: React.FC = () => {
       const url = URL.createObjectURL(trk.audioBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = trk.filename || `vietvoice_${trk.speaker === 'Nam' ? 'nam' : 'nu'}_audio.wav`;
+      a.download = trk.filename || 'vietvoice_huutho_audio.wav';
       a.click();
       URL.revokeObjectURL(url);
     } else {
@@ -336,7 +336,7 @@ export const App: React.FC = () => {
       const url = URL.createObjectURL(dummy);
       const a = document.createElement('a');
       a.href = url;
-      a.download = trk.filename || `vietvoice_${trk.speaker === 'Nam' ? 'nam' : 'nu'}_audio.wav`;
+      a.download = trk.filename || 'vietvoice_huutho_audio.wav';
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -379,14 +379,13 @@ export const App: React.FC = () => {
     });
   };
 
-  // Nghe thử giọng mẫu của Nam hoặc Nữ
-  const handlePlayPreviewVoice = async (voice: 'Nam' | 'Nữ') => {
+  // Nghe thử giọng mẫu của Hữu Thọ
+  const handlePlayPreviewVoice = async (_voice?: 'Hữu Thọ') => {
     if (isPlayingPreview) return;
-    setIsPlayingPreview(voice);
+    setIsPlayingPreview('Hữu Thọ');
 
-    const targetCore = mapSpeakerToCore(voice);
     const sampleEntry = realEntries.find(
-      (e) => e.speaker === targetCore && e.blob
+      (e) => (e.speaker === 'nam' || e.speaker === 'Hữu Thọ') && e.blob
     );
 
     if (sampleEntry && sampleEntry.blob) {
@@ -403,7 +402,7 @@ export const App: React.FC = () => {
       setNotificationModal({
         type: 'warning',
         title: 'Chưa có bản thu',
-        message: `Giọng ${voice} chưa có bản thu mẫu.`,
+        message: 'Giọng Hữu Thọ chưa có bản thu mẫu.',
         confirmText: 'Đóng',
       });
     }

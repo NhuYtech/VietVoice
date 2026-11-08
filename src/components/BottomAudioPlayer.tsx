@@ -14,7 +14,7 @@ import {
 export interface PlayerTrack {
   id?: string;
   text: string;
-  speaker: 'Nam' | 'Nữ';
+  speaker: 'Hữu Thọ' | 'Nam' | string;
   durationSec: number;
   audioBlob?: Blob;
   audioUrl?: string;
@@ -353,12 +353,11 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
 
   if (!isOpen || !track) return null;
 
-  const isFemale = track.speaker === 'Nữ';
   const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
 
   return (
     <div className="fixed bottom-0 left-0 md:left-[240px] right-0 z-40 bg-white border-t border-[#E8E8F0] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-4 sm:px-6 py-2.5 flex items-center justify-between min-h-[68px] select-none">
-      {/* 1. Bên trái: Tên bản ghi + Giọng (Nam / Nữ) */}
+      {/* 1. Bên trái: Tên bản ghi + Giọng đọc Hữu Thọ */}
       <div className="flex items-center gap-3 min-w-0 max-w-[240px] sm:max-w-[300px] md:max-w-[340px] shrink-0">
         <div className="min-w-0 flex-1">
           <div
@@ -368,12 +367,8 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
             {track.text}
           </div>
           <div className="text-[11px] text-[#85879A] mt-0.5 font-medium flex items-center gap-1.5">
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                isFemale ? 'bg-[#B16BC1]' : 'bg-[#5578D8]'
-              }`}
-            />
-            <span>{isFemale ? 'Nữ' : 'Nam'}</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#5578D8]" />
+            <span>Hữu Thọ</span>
           </div>
         </div>
       </div>

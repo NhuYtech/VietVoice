@@ -2,7 +2,7 @@ export interface CorpusItem {
   id: string;
   word: string;
   code: string;
-  speaker: 'Nam' | 'Nữ';
+  speaker: string;
   filename: string;
   duration: number; // giây
   createdAt: string;
@@ -14,7 +14,7 @@ export interface CorpusItem {
 export interface ConversionHistoryItem {
   id: string;
   text: string;
-  speaker: 'Nam' | 'Nữ';
+  speaker: string;
   duration: number;
   createdAt: string;
   audioBlob?: Blob;

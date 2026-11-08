@@ -11,7 +11,7 @@ export const historyAudioCache = new Map<string, Blob>();
  * Tự động tìm Blob âm thanh trong cache hoặc tổng hợp nhanh tức thì nếu thiếu
  */
 export async function resolveTrackAudioBlob(
-  track: { id?: string; text: string; speaker: 'Nam' | 'Nữ'; audioBlob?: Blob },
+  track: { id?: string; text: string; speaker: 'Hữu Thọ' | 'Nam' | string; audioBlob?: Blob },
   entries: CorpusEntry[]
 ): Promise<Blob | null> {
   if (track.audioBlob) return track.audioBlob;
@@ -23,7 +23,7 @@ export async function resolveTrackAudioBlob(
     return historyAudioCache.get(cleanKey)!;
   }
   try {
-    const synthRes = await performSynthesis(track.text, track.speaker, entries);
+    const synthRes = await performSynthesis(track.text, 'Hữu Thọ', entries);
     if (synthRes.success && synthRes.result?.wav) {
       if (track.id) historyAudioCache.set(track.id, synthRes.result.wav);
       historyAudioCache.set(cleanKey, synthRes.result.wav);
@@ -49,7 +49,7 @@ export function getStoredHistory(): ConversionHistoryItem[] {
     return real.map((item: any, idx: number) => ({
       id: String(item?.id || `conv-${idx}`),
       text: String(item?.text || ''),
-      speaker: (item?.speaker === 'Nữ' || item?.speaker === 'Nữ 01' ? 'Nữ' : 'Nam') as 'Nam' | 'Nữ',
+      speaker: 'Hữu Thọ' as 'Hữu Thọ',
       duration: typeof item?.duration === 'number' && !isNaN(item.duration) ? item.duration : 0.6,
       createdAt: String(item?.createdAt || ''),
       filename: String(item?.filename || 'vietvoice_audio.wav'),
@@ -83,7 +83,7 @@ export function saveHistory(items: ConversionHistoryItem[]): void {
  */
 export function addHistoryEntry(
   text: string,
-  speaker: 'Nam' | 'Nữ',
+  speaker: 'Hữu Thọ' | 'Nam' = 'Hữu Thọ',
   duration: number,
   audioBlob?: Blob,
   audioUrl?: string,
@@ -95,12 +95,12 @@ export function addHistoryEntry(
   ).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   const cleanText = (text || '').trim().slice(0, 15).replace(/\s+/g, '_').toLowerCase();
-  const filename = `vietvoice_${speaker === 'Nam' ? 'nam' : 'nu'}_${cleanText || 'audio'}.wav`;
+  const filename = `vietvoice_huutho_${cleanText || 'audio'}.wav`;
 
   const newItem: ConversionHistoryItem = {
     id: `conv-${Date.now()}`,
     text: (text || '').trim(),
-    speaker,
+    speaker: 'Hữu Thọ',
     duration: typeof duration === 'number' && !isNaN(duration) ? duration : 0.6,
     createdAt: dateStr,
     audioBlob,
@@ -143,36 +143,33 @@ export function removeHistoryEntries(ids: string[]): ConversionHistoryItem[] {
 }
 
 /**
- * Chuẩn hóa tên speaker cho thư viện tts
+ * Chuẩn hóa tên speaker cho thư viện tts (Hữu Thọ tương ứng mã 'nam')
  */
-export function mapSpeakerToCore(speaker: 'Nam' | 'Nữ'): string {
-  return speaker === 'Nam' ? 'nam' : 'nu';
+export function mapSpeakerToCore(_speaker?: string): string {
+  return 'nam';
 }
 
 export interface WordVoiceCheck {
   token: string;
   inCurrentVoice: boolean;
-  inOtherVoice: boolean;
+  inOtherVoice?: boolean;
   isAvailableAnywhere: boolean;
-  correctVoice?: 'Nam' | 'Nữ';
+  correctVoice?: 'Hữu Thọ';
 }
 
 /**
- * Kiểm tra ràng buộc chọn giọng đọc cho từng từ:
- * - Nếu từ có bản thu âm là giọng Nữ: Bắt buộc người dùng phải chọn giọng Nữ
- * - Nếu từ có bản thu âm là giọng Nam: Bắt buộc người dùng phải chọn giọng Nam
- * - Nếu không đúng giọng: Thông báo rõ ràng để người dùng chọn lại giọng đọc cho đúng
+ * Kiểm tra từ vựng có trong bộ dữ liệu thu âm của Hữu Thọ hay không
  */
 export function inspectVocabularyWithVoice(
   text: string,
-  selectedVoice: 'Nam' | 'Nữ',
+  _selectedVoice: 'Hữu Thọ' | 'Nam' = 'Hữu Thọ',
   entries: CorpusEntry[]
 ): {
   tokens: string[];
   wordChecks: WordVoiceCheck[];
   hasWrongVoice: boolean;
   wrongVoiceWords: string[];
-  suggestedVoice?: 'Nam' | 'Nữ';
+  suggestedVoice?: 'Hữu Thọ';
   wrongVoiceMessage?: string;
   hasMissing: boolean;
   missingTokens: string[];
@@ -195,114 +192,69 @@ export function inspectVocabularyWithVoice(
   const tokens = norm.split(/\s+/).filter(Boolean);
   const safeEntries = Array.isArray(entries) ? entries : [];
 
-  // Tạo tập từ có sẵn của từng giọng (kết hợp cả dữ liệu thu âm thật và dữ liệu ngữ liệu)
-  const maleSet = new Set<string>();
-  const femaleSet = new Set<string>();
+  // Tập hợp toàn bộ từ có bản thu âm của Hữu Thọ
+  const availableSet = new Set<string>();
 
-  // Từ thật trong IndexedDB
+  // Từ trong IndexedDB / bản ghi âm thêm mới
   for (const e of safeEntries) {
-    const spk = (e?.speaker || '').toLowerCase();
     const w = (e?.word || '').toLowerCase();
     if (!w) continue;
-    if (spk === 'nam' || spk.includes('nam')) {
-      maleSet.add(w);
-      w.split(/\s+/).forEach((part) => maleSet.add(part));
-    } else {
-      femaleSet.add(w);
-      w.split(/\s+/).forEach((part) => femaleSet.add(part));
-    }
+    availableSet.add(w);
+    w.split(/\s+/).forEach((part) => availableSet.add(part));
   }
 
   // Từ mẫu trong Ngữ liệu
   for (const m of MOCK_CORPUS_ITEMS) {
     const w = (m.word || '').toLowerCase();
     if (!w) continue;
-    if (m.speaker === 'Nam') {
-      maleSet.add(w);
-      w.split(/\s+/).forEach((part) => maleSet.add(part));
-    } else {
-      femaleSet.add(w);
-      w.split(/\s+/).forEach((part) => femaleSet.add(part));
-    }
+    availableSet.add(w);
+    w.split(/\s+/).forEach((part) => availableSet.add(part));
   }
 
-  // Từ trong bộ dữ liệu datasetTV (6.674 từ Giọng Nam)
+  // Toàn bộ 6.674 từ trong bộ dữ liệu datasetTV của Hữu Thọ
   for (const m of cachedManifestWords) {
     const w = (m.word || '').toLowerCase();
     if (!w) continue;
-    const spk = (m.speaker || 'nam').toLowerCase();
-    if (spk === 'nam' || spk.includes('nam')) {
-      maleSet.add(w);
-      w.split(/\s+/).forEach((part) => maleSet.add(part));
-    } else {
-      femaleSet.add(w);
-      w.split(/\s+/).forEach((part) => femaleSet.add(part));
-    }
+    availableSet.add(w);
+    w.split(/\s+/).forEach((part) => availableSet.add(part));
   }
 
-  const otherVoice: 'Nam' | 'Nữ' = selectedVoice === 'Nam' ? 'Nữ' : 'Nam';
-  const currentSet = selectedVoice === 'Nam' ? maleSet : femaleSet;
-  const otherSet = selectedVoice === 'Nam' ? femaleSet : maleSet;
-
   const wordChecks: WordVoiceCheck[] = [];
-  const wrongVoiceWords: string[] = [];
   const missingTokens: string[] = [];
 
   for (const tok of tokens) {
-    const inCurrent = currentSet.has(tok);
-    const inOther = otherSet.has(tok);
+    const inCurrent = availableSet.has(tok);
 
     if (inCurrent) {
       wordChecks.push({
         token: tok,
         inCurrentVoice: true,
-        inOtherVoice: inOther,
         isAvailableAnywhere: true,
-        correctVoice: selectedVoice,
+        correctVoice: 'Hữu Thọ',
       });
-    } else if (inOther) {
-      // Từ này có file âm thanh nhưng là của giọng kia!
-      wordChecks.push({
-        token: tok,
-        inCurrentVoice: false,
-        inOtherVoice: true,
-        isAvailableAnywhere: true,
-        correctVoice: otherVoice,
-      });
-      wrongVoiceWords.push(tok);
     } else {
-      // Hoàn toàn chưa có trong ngữ liệu cả 2 giọng
       wordChecks.push({
         token: tok,
         inCurrentVoice: false,
-        inOtherVoice: false,
         isAvailableAnywhere: false,
       });
       missingTokens.push(tok);
     }
   }
 
-  const hasWrongVoice = wrongVoiceWords.length > 0;
   const hasMissing = missingTokens.length > 0;
-  const canConvert = tokens.length > 0 && !hasWrongVoice && !hasMissing;
-
-  let wrongVoiceMessage: string | undefined;
-  if (hasWrongVoice) {
-    wrongVoiceMessage = `Từ "${wrongVoiceWords.join(', ')}" yêu cầu Giọng ${otherVoice}.`;
-  }
+  const canConvert = tokens.length > 0 && !hasMissing;
 
   let missingMessage: string | undefined;
   if (hasMissing) {
-    missingMessage = `Từ "${missingTokens.join(', ')}" chưa có bản thu âm.`;
+    missingMessage = `Từ "${missingTokens.join(', ')}" chưa có bản thu âm của Hữu Thọ.`;
   }
 
   return {
     tokens,
     wordChecks,
-    hasWrongVoice,
-    wrongVoiceWords,
-    suggestedVoice: hasWrongVoice ? otherVoice : undefined,
-    wrongVoiceMessage,
+    hasWrongVoice: false,
+    wrongVoiceWords: [],
     hasMissing,
     missingTokens,
     missingMessage,
@@ -315,7 +267,7 @@ export function inspectVocabularyWithVoice(
  */
 export function inspectVocabulary(
   text: string,
-  speaker: 'Nam' | 'Nữ',
+  speaker: 'Hữu Thọ' | 'Nam' = 'Hữu Thọ',
   entries: CorpusEntry[]
 ) {
   const res = inspectVocabularyWithVoice(text, speaker, entries);
@@ -331,35 +283,26 @@ export function inspectVocabulary(
 }
 
 /**
- * Thực hiện tổng hợp âm thanh từ ngữ liệu thu âm thật với ràng buộc giọng đọc nghiêm ngặt
+ * Thực hiện tổng hợp âm thanh từ ngữ liệu thu âm thật của giọng Hữu Thọ
  */
 export async function performSynthesis(
   text: string,
-  speaker: 'Nam' | 'Nữ',
+  speaker: 'Hữu Thọ' | 'Nam' = 'Hữu Thọ',
   entries: CorpusEntry[]
 ): Promise<{
   success: boolean;
   result?: SynthResult;
   error?: string;
   missingTokens?: string[];
-  suggestedVoice?: 'Nam' | 'Nữ';
+  suggestedVoice?: 'Hữu Thọ';
 }> {
   const norm = normalizeText(text || '');
   if (!norm) {
     return { success: false, error: 'Vui lòng nhập văn bản tiếng Việt hợp lệ.' };
   }
 
-  // 1. Kiểm tra ràng buộc giọng đọc (nếu từ thu âm là Nữ thì bắt buộc chọn Nữ, nếu là Nam thì bắt buộc chọn Nam)
+  // Kiểm tra từ có bản thu âm chưa
   const voiceCheck = inspectVocabularyWithVoice(text, speaker, entries);
-  if (voiceCheck.hasWrongVoice) {
-    return {
-      success: false,
-      error: voiceCheck.wrongVoiceMessage,
-      suggestedVoice: voiceCheck.suggestedVoice,
-      missingTokens: voiceCheck.wrongVoiceWords,
-    };
-  }
-
   if (voiceCheck.hasMissing) {
     return {
       success: false,
@@ -370,13 +313,13 @@ export async function performSynthesis(
     };
   }
 
-  const speakerKey = mapSpeakerToCore(speaker);
+  const speakerKey = 'nam';
   const safeEntries = Array.isArray(entries) ? entries : [];
 
-  // Chỉ lấy đúng các mục của người nói này (KHÔNG fallback sang giọng khác)
+  // Chỉ lấy đúng các mục của Hữu Thọ (key 'nam')
   const speakerEntries = safeEntries.filter((e) => {
     const spk = (e?.speaker || '').toLowerCase();
-    return spk === speakerKey || spk.includes(speakerKey);
+    return spk === speakerKey || spk.includes(speakerKey) || spk.includes('hữu thọ');
   });
 
   const pauseSettings = getStoredPauseSettings();
@@ -387,7 +330,7 @@ export async function performSynthesis(
       crossfadeMs: 20,
       trim: true, // Cắt khoảng lặng thông minh (có đệm an toàn 40ms, bảo toàn nguyên âm/phụ âm)
       normalize: true, // Cân bằng biên độ nhẹ nhàng, hạ âm nếu quá to, chống rè
-      fallbackSpeaker: false, // RÀNG BUỘC: Không tự động lấy giọng khác, phải đúng giọng đã chọn
+      fallbackSpeaker: true,
       pauseSettings,
       rawText: text,
     });
@@ -397,7 +340,7 @@ export async function performSynthesis(
     if (synthRes.trace && oovTokens.length === synthRes.trace.length) {
       return {
         success: false,
-        error: `Các từ này chưa có file âm thanh cho Giọng ${speaker}.`,
+        error: `Các từ này chưa có file âm thanh cho Giọng Hữu Thọ.`,
         missingTokens: oovTokens,
       };
     }

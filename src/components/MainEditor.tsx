@@ -8,7 +8,6 @@ import {
   AlertCircle,
   Music,
   Sliders,
-  ChevronDown,
   Sparkles,
   Copy,
   Check,
@@ -22,16 +21,16 @@ import { normalizeNumbersInText, hasNumbers } from '../lib/numberNormalizer';
 interface MainEditorProps {
   text: string;
   onChangeText: (val: string) => void;
-  selectedVoice: 'Nam' | 'Nữ';
-  onSelectVoice: (voice: 'Nam' | 'Nữ') => void;
+  selectedVoice?: 'Hữu Thọ' | 'Nam' | string;
+  onSelectVoice?: (voice: 'Hữu Thọ') => void;
   onConvert: () => void;
   isConverting: boolean;
   onPreview?: () => void;
   isPreviewing?: boolean;
   entries: CorpusEntry[];
   manifestCount?: number;
-  onPlayPreviewVoice: (voice: 'Nam' | 'Nữ') => void;
-  isPlayingPreview: 'Nam' | 'Nữ' | null;
+  onPlayPreviewVoice?: (voice: 'Hữu Thọ') => void;
+  isPlayingPreview?: 'Hữu Thọ' | null;
   onOpenRecordModal?: (word?: string) => void;
   onShowNotification?: (data: NotificationModalData) => void;
 }
@@ -39,7 +38,7 @@ interface MainEditorProps {
 export const MainEditor: React.FC<MainEditorProps> = ({
   text,
   onChangeText,
-  selectedVoice,
+  selectedVoice = 'Hữu Thọ',
   onSelectVoice,
   onConvert,
   isConverting,
@@ -65,29 +64,17 @@ export const MainEditor: React.FC<MainEditorProps> = ({
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
 
   // Kiểm tra từ vựng hỗ trợ
-  const vocabCheck = inspectVocabulary(text, selectedVoice, entries);
+  const vocabCheck = inspectVocabulary(text, 'Hữu Thọ', entries);
 
   return (
     <div className="bg-white rounded-2xl border border-[#E8E8F0] shadow-sm overflow-hidden">
       {/* Top Toolbar */}
       <div className="px-6 py-3.5 border-b border-[#E8E8F0] flex flex-wrap items-center justify-between gap-3 bg-[#FAFAFD]">
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Combobox chọn Giọng Nam / Nữ */}
-          <div className="relative inline-flex items-center">
-            <span
-              className={`absolute left-3 w-2 h-2 rounded-full pointer-events-none z-10 ${selectedVoice === 'Nam' ? 'bg-[#5578D8]' : 'bg-[#B16BC1]'
-                }`}
-            />
-            <select
-              value={selectedVoice}
-              onChange={(e) => onSelectVoice(e.target.value as 'Nam' | 'Nữ')}
-              className="pl-7 pr-8 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#E2E4F0] hover:border-[#6255CF]/60 text-[#20213A] focus:outline-none focus:border-[#6255CF] cursor-pointer appearance-none shadow-2xs transition"
-              title="Chọn giọng đọc"
-            >
-              <option value="Nam">Giọng Nam</option>
-              <option value="Nữ">Giọng Nữ</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-[#85879A] absolute right-2.5 pointer-events-none" />
+          {/* Giọng đọc Hữu Thọ */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-[#E2E4F0] text-xs font-semibold text-[#20213A] shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-[#5578D8]" />
+            <span>Giọng đọc: <strong className="text-[#5578D8]">Hữu Thọ</strong></span>
           </div>
 
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E2E4F0] text-xs font-medium text-[#555870]">
@@ -244,26 +231,10 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                           <span
                             key={`${check.token}-${idx}`}
                             className="px-2.5 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            title={`Từ '${check.token}' có sẵn bản thu âm Giọng ${selectedVoice}`}
+                            title={`Từ '${check.token}' có sẵn bản thu âm Giọng Hữu Thọ`}
                           >
                             <span className="text-emerald-600 font-bold">✓</span> {check.token}
                           </span>
-                        );
-                      }
-                      if (check.inOtherVoice) {
-                        return (
-                          <button
-                            key={`${check.token}-${idx}`}
-                            type="button"
-                            onClick={() => onSelectVoice(check.correctVoice!)}
-                            className="px-2.5 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 transition cursor-pointer shadow-xs"
-                            title={`Bản thu của từ '${check.token}' là Giọng ${check.correctVoice}. Nhấn để chọn Giọng ${check.correctVoice}!`}
-                          >
-                            <span className="text-amber-600 font-bold">⚠️</span> {check.token}
-                            <span className="text-[10px] text-amber-700 font-normal underline ml-0.5">
-                              (Cần giọng {check.correctVoice})
-                            </span>
-                          </button>
                         );
                       }
                       return (
