@@ -1,4 +1,4 @@
-import { SR, decodeBlob, encodeWav, extractFeatures, estimateF0, fadeEdges, normalizeRms, trimSilence, applyHighpassFilter, applyDeReverb, smartTrimWordAudio, applyStudioLimiter, masterSpeechAudio } from './dsp';
+import { SR, decodeBlob, encodeWav, extractFeatures, estimateF0, fadeEdges, normalizeRms, trimSilence, applyHighpassFilter, smartTrimWordAudio, applyStudioLimiter, normalizeSpeechRms, masterSpeechAudio } from './dsp';
 import { putEntry } from './store';
 import type { CorpusEntry, JoinInfo, SynthResult, TraceItem } from './types';
 import { encodeVnWord, isVniCode, decodeVnWord, wordAndCodeFromFilename } from './vniCodec';
@@ -126,17 +126,15 @@ export async function getProcessed(e: CorpusEntry, trim: boolean, normalize: boo
   let x = procCache.get(key);
   if (!x) {
     x = await getRaw(e);
-    // 1. Cân bằng tần số: Lọc hạ tần 75Hz loại bỏ tiếng quạt, gió, ù mic
-    x = applyHighpassFilter(x, SR, 75);
-    // 2. Cắt khoảng lặng thông minh có đệm an toàn 40ms (bảo toàn phụ âm s, x, th, kh)
+    // 1. Cân bằng tần số: Lọc hạ tần 60Hz loại bỏ tiếng quạt, gió, ù mic rất thấp
+    x = applyHighpassFilter(x, SR, 60);
+    // 2. Cắt khoảng lặng thông minh gọn gàng (đệm an toàn 12ms đầu, 16ms cuối không bị mất phụ âm)
     if (trim) {
-      x = smartTrimWordAudio(x, SR, { silenceThreshDb: -44, leadPadMs: 40, tailPadMs: 35 });
+      x = smartTrimWordAudio(x, SR, { silenceThreshDb: -42, leadPadMs: 12, tailPadMs: 16 });
     }
-    // 3. Cắt vang phòng (De-reverb)
-    x = applyDeReverb(x, SR);
-    // 4. Hạ âm nếu quá cao & chống rè
+    // 3. Chuẩn hóa năng lượng tiếng nói đồng đều giữa mọi từ (-15.5 dBFS) triệt tiêu "chữ lớn chữ nhỏ"
     if (normalize) {
-      x = applyStudioLimiter(x, -2.0, 0.95);
+      x = normalizeSpeechRms(x, SR, -15.5);
     }
     x = fadeEdges(x, 2);
     procCache.set(key, x);

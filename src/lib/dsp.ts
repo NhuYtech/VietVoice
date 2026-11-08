@@ -14,7 +14,11 @@ let sharedDecodeCtx: AudioContext | null = null;
 function getDecodeContext(): AudioContext {
   if (!sharedDecodeCtx || sharedDecodeCtx.state === 'closed') {
     const Ctx = window.AudioContext || (window as any).webkitAudioContext;
-    sharedDecodeCtx = new Ctx();
+    try {
+      sharedDecodeCtx = new Ctx({ sampleRate: SR });
+    } catch {
+      sharedDecodeCtx = new Ctx();
+    }
   }
   return sharedDecodeCtx;
 }
@@ -35,7 +39,11 @@ export async function decodeBlob(blob: Blob): Promise<Float32Array> {
     // Nếu context bị lỗi do trình duyệt, khởi tạo lại context mới và thử giải mã lại
     try {
       const Ctx = window.AudioContext || (window as any).webkitAudioContext;
-      sharedDecodeCtx = new Ctx();
+      try {
+        sharedDecodeCtx = new Ctx({ sampleRate: SR });
+      } catch {
+        sharedDecodeCtx = new Ctx();
+      }
       ctx = sharedDecodeCtx;
       buf = await ctx.decodeAudioData(ab.slice(0));
     } catch (retryErr) {
@@ -44,7 +52,12 @@ export async function decodeBlob(blob: Blob): Promise<Float32Array> {
     }
   }
 
-  // Chuyển đổi định dạng / lấy mẫu lại về chuẩn SR (22050 Hz, mono) bằng OfflineAudioContext (không tốn hardware context)
+  // Nếu file đã đúng chuẩn tần số lấy mẫu SR (44.1kHz) và mono, lấy trực tiếp không qua resampler
+  if (buf.sampleRate === SR && buf.numberOfChannels === 1) {
+    return buf.getChannelData(0).slice();
+  }
+
+  // Nếu file khác tần số hoặc stereo, lấy mẫu lại về chuẩn SR (44.1 kHz, mono) bằng OfflineAudioContext
   const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(buf.duration * SR)), SR);
   const src = off.createBufferSource();
   src.buffer = buf;
@@ -244,6 +257,51 @@ export function normalizePeak(audio: Float32Array, targetPeakDb = -1.0): Float32
   const out = new Float32Array(audio.length);
   for (let i = 0; i < audio.length; i++) {
     out[i] = Math.max(-1, Math.min(1, audio[i] * scale));
+  }
+  return out;
+}
+
+/**
+ * Chuẩn hóa năng lượng tiếng nói thực tế (Speech RMS Normalization):
+ * Cân bằng mức âm lượng giữa tất cả các từ về cùng một mức chuẩn (-15.5 dBFS),
+ * triệt tiêu hoàn toàn hiện tượng "chữ lớn chữ nhỏ" do các từ được thu âm ở cự ly/âm lượng khác nhau.
+ */
+export function normalizeSpeechRms(audio: Float32Array, sampleRate = SR, targetRmsDb = -15.5): Float32Array {
+  const frameLen = Math.floor(sampleRate * 0.02); // 20ms
+  const hopLen = Math.floor(sampleRate * 0.01);  // 10ms
+  let sumSq = 0;
+  let count = 0;
+
+  for (let i = 0; i < audio.length - frameLen; i += hopLen) {
+    let frameSum = 0;
+    for (let j = 0; j < frameLen; j++) frameSum += audio[i + j] * audio[i + j];
+    const rms = Math.sqrt(frameSum / frameLen);
+    if (rms > 0.015) { // Chỉ đo phần có tiếng nói thực tế
+      sumSq += rms * rms;
+      count++;
+    }
+  }
+
+  const speechRms = count > 0 ? Math.sqrt(sumSq / count) : 0.05;
+  const targetRms = Math.pow(10, targetRmsDb / 20); // ~0.168 (-15.5 dBFS)
+  let gain = targetRms / Math.max(1e-4, speechRms);
+
+  // Giới hạn hệ số gain trong khoảng an toàn (0.3x đến 3.0x) để không làm vỡ âm
+  gain = Math.max(0.3, Math.min(3.0, gain));
+
+  // Bảo vệ đỉnh (Peak ceiling -1.0 dBFS) để không bị rè
+  let peak = 0;
+  for (let i = 0; i < audio.length; i++) {
+    const a = Math.abs(audio[i]);
+    if (a > peak) peak = a;
+  }
+  if (peak * gain > 0.89) {
+    gain = 0.89 / Math.max(1e-4, peak);
+  }
+
+  const out = new Float32Array(audio.length);
+  for (let i = 0; i < audio.length; i++) {
+    out[i] = audio[i] * gain;
   }
   return out;
 }

@@ -10,7 +10,7 @@ import { RecordModal } from './components/RecordModal';
 import { BottomAudioPlayer, type PlayerTrack } from './components/BottomAudioPlayer';
 import { getAllEntries } from './lib/store';
 import { loadManifest, cachedManifestWords } from './lib/tts';
-import { playSamples, decodeBlob } from './lib/dsp';
+import { playSamples, decodeBlob, SR } from './lib/dsp';
 import type { CorpusEntry, SynthResult } from './lib/types';
 import {
   getStoredHistory,
@@ -391,7 +391,7 @@ export const App: React.FC = () => {
     if (sampleEntry && sampleEntry.blob) {
       try {
         const samples = await decodeBlob(sampleEntry.blob);
-        playSamples(samples, 22050, () => {
+        playSamples(samples, SR, () => {
           setIsPlayingPreview(null);
         });
       } catch {

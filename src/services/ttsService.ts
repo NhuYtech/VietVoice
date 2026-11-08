@@ -326,10 +326,10 @@ export async function performSynthesis(
   try {
     const synthRes = await synthesize(norm, speakerEntries, {
       speaker: speakerKey,
-      gapMs: 35, // Khoảng cách tự nhiên 35ms giữa các từ
-      crossfadeMs: 20,
-      trim: true, // Cắt khoảng lặng thông minh (có đệm an toàn 40ms, bảo toàn nguyên âm/phụ âm)
-      normalize: true, // Cân bằng biên độ nhẹ nhàng, hạ âm nếu quá to, chống rè
+      gapMs: 0, // 0ms = kích hoạt chế độ Equal-Power Crossfade giúp các từ kết nối liền mạch, không bị đứt hơi
+      crossfadeMs: 22, // 22ms crossfade mượt mà tự nhiên như dòng lời nói liên tục
+      trim: true,
+      normalize: true,
       fallbackSpeaker: true,
       pauseSettings,
       rawText: text,
