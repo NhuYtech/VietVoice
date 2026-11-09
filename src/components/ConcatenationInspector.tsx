@@ -27,7 +27,7 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
   selectedVoice = 'Hữu Thọ',
 }) => {
   const [playingWordIdx, setPlayingWordIdx] = useState<number | null>(null);
-  const [isTableExpanded, setIsTableExpanded] = useState<boolean>(true);
+  const [isTableExpanded, setIsTableExpanded] = useState<boolean>(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   if (!result || !result.trace || result.trace.length === 0) {
@@ -279,7 +279,7 @@ export const ConcatenationInspector: React.FC<ConcatenationInspectorProps> = ({
             </div>
 
             <div className="border border-[#E2E4F0] rounded-xl overflow-hidden shadow-2xs">
-              <div className="overflow-x-auto max-h-[220px] overflow-y-auto">
+              <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-[#F8F9FD] border-b border-[#E2E4F0] text-[#555870] font-semibold sticky top-0 z-10">
                     <tr>

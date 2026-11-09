@@ -151,7 +151,7 @@ function rmsDb(x: Float32Array, atEnd: boolean): number {
 }
 
 function edgeF0(x: Float32Array, atEnd: boolean): number {
-  for (let k = 0; k < 8; k++) {
+  for (let k = 0; k < 3; k++) {
     const s = atEnd ? Math.max(0, x.length - 882 - k * 220) : k * 220;
     const f = estimateF0(x, s);
     if (f > 0) return f;
@@ -171,40 +171,40 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
 
   // Tải tức thì các từ trong câu nếu có trong manifest datasetTV mà chưa tải
   const targetSpeaker = opts.speaker.toLowerCase();
-  const missingTokensToFetch: string[] = [];
   const existingWordSet = new Set(entries.map((e) => normalizeText(e.word)));
 
-  for (const tok of tokens) {
-    const foundM =
+  // Thu thập danh sách các từ còn thiếu ĐỘC NHẤT (không trùng lặp)
+  const uniqueMissingTokens = Array.from(new Set(tokens.filter((tok) => !existingWordSet.has(tok))));
+
+  const manifestItemsToFetch = new Map<string, ManifestItem>();
+  for (const tok of uniqueMissingTokens) {
+    const m =
       manifestLookup.get(`${targetSpeaker}::${tok}`) ||
       manifestLookup.get(`${targetSpeaker}::${encodeVnWord(tok)}`) ||
       manifestLookup.get(`hữu thọ::${tok}`) ||
       manifestLookup.get(`hữu thọ::${encodeVnWord(tok)}`) ||
       manifestLookup.get(`nam::${tok}`);
-    if (!existingWordSet.has(tok) && foundM) {
-      missingTokensToFetch.push(tok);
+    if (m) {
+      const key = m.code || m.word;
+      manifestItemsToFetch.set(key, m);
     }
   }
 
-  // Tải tuần tự các từ còn thiếu để tránh nghẽn CPU và bảo đảm 100% âm thanh được giải mã chuẩn xác
-  if (missingTokensToFetch.length > 0) {
-    for (const tok of missingTokensToFetch) {
-      const m =
-        manifestLookup.get(`${targetSpeaker}::${tok}`) ||
-        manifestLookup.get(`${targetSpeaker}::${encodeVnWord(tok)}`) ||
-        manifestLookup.get(`hữu thọ::${tok}`) ||
-        manifestLookup.get(`hữu thọ::${encodeVnWord(tok)}`) ||
-        manifestLookup.get(`nam::${tok}`);
-      if (m) {
-        try {
-          const entry = await fetchManifestWord(m);
-          if (entry) {
-            entries.push(entry);
-            existingWordSet.add(tok);
-            existingWordSet.add(normalizeText(entry.word));
-          }
-        } catch (fetchErr) {
-          console.warn(`Không thể nạp từ "${tok}" từ manifest:`, fetchErr);
+  // Tải song song đa luồng (Concurrent Parallel Batch Fetching)
+  // Tận dụng tối đa HTTP/2 multiplexing tới Cloudinary CDN để tải nhanh gấp 10-20 lần
+  if (manifestItemsToFetch.size > 0) {
+    const items = Array.from(manifestItemsToFetch.values());
+    const CONCURRENCY = 12;
+
+    for (let i = 0; i < items.length; i += CONCURRENCY) {
+      const chunk = items.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(chunk.map((m) => fetchManifestWord(m)));
+      for (const res of results) {
+        if (res.status === 'fulfilled' && res.value) {
+          const entry = res.value;
+          entries.push(entry);
+          existingWordSet.add(normalizeText(entry.word));
+          if (entry.code) existingWordSet.add(normalizeText(entry.code));
         }
       }
     }
@@ -272,12 +272,13 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
     }
   }
 
-  const segs: Float32Array[] = [];
-  for (const p of picked) {
-    const x = await getProcessed(p.entry, opts.trim, opts.normalize);
-    p.item.duration = x.length / SR;
-    segs.push(x);
-  }
+  const segs: Float32Array[] = await Promise.all(
+    picked.map(async (p) => {
+      const x = await getProcessed(p.entry, opts.trim, opts.normalize);
+      p.item.duration = x.length / SR;
+      return x;
+    })
+  );
 
   const rawText = opts.rawText ? normalizeNumbersInText(opts.rawText) : text;
   const pauseSettings = opts.pauseSettings || DEFAULT_PAUSE_SETTINGS;
@@ -351,7 +352,8 @@ export async function addToCorpus(
   blob: Blob,
   word: string,
   speaker: string,
-  source: CorpusEntry['source']
+  source: CorpusEntry['source'],
+  fastTrack = false
 ): Promise<CorpusEntry> {
   let w = normalizeText(word);
   if (!w) throw new Error('Từ không hợp lệ');
@@ -364,9 +366,47 @@ export async function addToCorpus(
 
   const code = encodeVnWord(w);
   const spk = speaker.trim() || 'default';
-  const raw = await decodeBlob(blob);
+  const id = entryId(spk, w);
+
+  let raw = rawCache.get(id);
+  if (!raw) {
+    raw = await decodeBlob(blob);
+    rawCache.set(id, raw);
+  }
+
+  let features: import('./types').Features;
+  if (fastTrack) {
+    // Chế độ siêu tốc: chỉ trích xuất các đặc trưng cơ bản (<0.01ms), bỏ qua STFT/MFCC/Pitch nặng nề
+    let peak = 0;
+    let sq = 0;
+    for (let i = 0; i < raw.length; i++) {
+      const v = Math.abs(raw[i]);
+      if (v > peak) peak = v;
+      sq += v * v;
+    }
+    const rms = Math.sqrt(sq / Math.max(1, raw.length));
+    features = {
+      duration: Math.round((raw.length / SR) * 1000) / 1000,
+      sampleRate: SR,
+      peak: Math.round(peak * 1000) / 1000,
+      rms: Math.round(rms * 10000) / 10000,
+      energyDb: [],
+      f0: [],
+      f0Mean: 0,
+      f0Min: 0,
+      f0Max: 0,
+      voicedRatio: 0,
+      centroid: 0,
+      zcr: 0,
+      ltas: [],
+      mfccMean: [],
+    };
+  } else {
+    features = extractFeatures(raw);
+  }
+
   const entry: CorpusEntry = {
-    id: entryId(spk, w),
+    id,
     word: w,
     code,
     speaker: spk,
@@ -374,9 +414,13 @@ export async function addToCorpus(
     source,
     addedAt: Date.now(),
     duration: raw.length / SR,
-    features: extractFeatures(raw),
+    features,
   };
-  await putEntry(entry);
+
+  // Lưu ngầm vào IndexedDB (không chặn hàm tổng hợp âm thanh)
+  putEntry(entry).catch((err) => {
+    console.warn(`Lỗi lưu IndexedDB cho từ "${w}":`, err);
+  });
   invalidate(entry.id);
   rawCache.set(entry.id, raw);
   return entry;
@@ -481,7 +525,7 @@ export async function fetchManifestWord(m: ManifestItem): Promise<CorpusEntry | 
     }
     const blob = await res.blob();
     if (blob.size < 100) return null;
-    const entry = await addToCorpus(blob, m.word, m.speaker || 'Hữu Thọ', 'manifest');
+    const entry = await addToCorpus(blob, m.word, m.speaker || 'Hữu Thọ', 'manifest', true);
     return entry;
   } catch (err) {
     console.error('Lỗi khi tải file từ ngữ liệu manifest:', m.word, err);

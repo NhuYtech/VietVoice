@@ -454,9 +454,13 @@ export const App: React.FC = () => {
             }`}
           >
             {currentTab === 'tts' && (
-              <div className="flex-1 min-h-0 flex flex-col overflow-y-auto pr-1">
-                {/* Main Editor Card: Cố định vị trí phía trên */}
-                <div className="shrink-0">
+              <div
+                className={`flex-1 min-h-0 overflow-y-auto pr-1.5 sm:pr-2.5 space-y-5 overscroll-contain transition-all duration-200 ${
+                  isPlayerOpen ? 'pb-24' : 'pb-8'
+                }`}
+              >
+                {/* 1. Main Editor Card */}
+                <div className="w-full">
                   <MainEditor
                     text={inputText}
                     onChangeText={setInputText}
@@ -476,9 +480,11 @@ export const App: React.FC = () => {
                     }}
                     onShowNotification={setNotificationModal}
                   />
+                </div>
 
-                  {/* Minh chứng ghép nối ngữ liệu (Concatenation Inspector) */}
-                  {activeResult && (
+                {/* 2. Minh chứng ghép nối ngữ liệu (Concatenation Inspector) */}
+                {activeResult && (
+                  <div className="w-full">
                     <ConcatenationInspector
                       result={activeResult}
                       selectedVoice={selectedVoice}
@@ -487,23 +493,25 @@ export const App: React.FC = () => {
                         setIsRecordModalOpen(true);
                       }}
                     />
-                  )}
-                </div>
+                  </div>
+                )}
 
-                {/* Conversion History Section: Tự động co giãn theo chiều dọc và chỉ cuộn riêng phần danh sách */}
-                <ConversionHistory
-                  items={historyItems}
-                  onDelete={handleDeleteHistory}
-                  onRefresh={loadHistory}
-                  currentPlayingId={currentPlayingId}
-                  isPlayingAudio={isPlayingAudio}
-                  onTogglePlay={handleTogglePlayTrack}
-                  onShowNotification={setNotificationModal}
-                  onPlayTrack={(track) => handleTogglePlayTrack(track)}
-                  onSelectSampleText={(txt) => {
-                    setInputText(txt);
-                  }}
-                />
+                {/* 3. Conversion History Section */}
+                <div className="w-full">
+                  <ConversionHistory
+                    items={historyItems}
+                    onDelete={handleDeleteHistory}
+                    onRefresh={loadHistory}
+                    currentPlayingId={currentPlayingId}
+                    isPlayingAudio={isPlayingAudio}
+                    onTogglePlay={handleTogglePlayTrack}
+                    onShowNotification={setNotificationModal}
+                    onPlayTrack={(track) => handleTogglePlayTrack(track)}
+                    onSelectSampleText={(txt) => {
+                      setInputText(txt);
+                    }}
+                  />
+                </div>
               </div>
             )}
 

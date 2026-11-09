@@ -53,6 +53,7 @@ export const MainEditor: React.FC<MainEditorProps> = ({
 }) => {
   const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
   const [copiedNormalized, setCopiedNormalized] = useState(false);
+  const [showAllVocabTags, setShowAllVocabTags] = useState(false);
 
   const handleCopyNormalized = (normalizedStr: string) => {
     if (!normalizedStr) return;
@@ -220,10 +221,40 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                 </div>
               );
             })()}
-            <div className="p-3 rounded-xl bg-[#F8F9FD] border border-[#EAEBF5] text-xs flex flex-wrap items-center gap-2">
-              <span className="font-semibold text-[#555870]">Kiểm tra ngữ liệu:</span>
-              {vocabCheck.tokens.length === 0 ? null : (
-                <>
+            {/* Bảng trạng thái kiểm tra ngữ liệu */}
+            <div className="p-3 rounded-xl bg-[#F8F9FD] border border-[#EAEBF5] text-xs">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-[#555870]">Kiểm tra ngữ liệu:</span>
+                  {vocabCheck.tokens.length > 0 && (
+                    !vocabCheck.hasMissing ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Đầy đủ 100% ({vocabCheck.tokens.length} từ sẵn sàng)
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                        Thiếu {vocabCheck.missingTokens.length} từ
+                      </span>
+                    )
+                  )}
+                </div>
+
+                {vocabCheck.tokens.length > 10 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllVocabTags(!showAllVocabTags)}
+                    className="text-[11px] text-[#6255CF] hover:underline font-semibold cursor-pointer"
+                  >
+                    {showAllVocabTags ? 'Thu gọn danh sách từ' : `Xem chi tiết tất cả (${vocabCheck.tokens.length} từ)`}
+                  </button>
+                )}
+              </div>
+
+              {/* Danh sách tag từ vựng: tự động hiển thị nếu ít từ, hoặc có từ thiếu, hoặc khi người dùng bấm xem chi tiết */}
+              {(vocabCheck.tokens.length <= 10 || showAllVocabTags || vocabCheck.hasMissing) && (
+                <div className="mt-2.5 pt-2.5 border-t border-[#EEF0F8] flex flex-wrap items-center gap-1.5 max-h-[160px] overflow-y-auto">
                   {vocabCheck.wordChecks && vocabCheck.wordChecks.length > 0 ? (
                     vocabCheck.wordChecks.map((check, idx) => {
                       if (check.inCurrentVoice) {
@@ -253,7 +284,7 @@ export const MainEditor: React.FC<MainEditorProps> = ({
                       );
                     })
                   ) : null}
-                </>
+                </div>
               )}
             </div>
 

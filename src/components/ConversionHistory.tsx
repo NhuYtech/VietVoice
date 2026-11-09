@@ -182,7 +182,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-[#E8E8F0] shadow-sm mt-3 overflow-hidden flex flex-col flex-1 min-h-0">
+    <div className="bg-white rounded-xl border border-[#E8E8F0] shadow-sm overflow-hidden flex flex-col">
       {/* 1. Header Toolbar */}
       <div className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
         {/* Left: Collapse chevron + Title */}
@@ -366,10 +366,10 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
         </div>
       )}
 
-      {/* 2. List Body: Tự động co giãn theo chiều cao và chỉ cuộn riêng trong danh sách này */}
+      {/* 2. List Body: Hiển thị danh sách chuyển đổi trong luồng cuộn tự nhiên của trang */}
       {!isCollapsed && (
         <div
-          className="border-t border-[#F0F2F9] divide-y divide-[#F0F2F9] overflow-y-auto flex-1 min-h-0 overscroll-contain"
+          className="border-t border-[#F0F2F9] divide-y divide-[#F0F2F9]"
           ref={menuRef}
         >
           {filtered.length === 0 ? (
