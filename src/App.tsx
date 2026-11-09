@@ -9,7 +9,7 @@ import { AboutView } from './components/AboutView';
 import { RecordModal } from './components/RecordModal';
 import { BottomAudioPlayer, type PlayerTrack } from './components/BottomAudioPlayer';
 import { getAllEntries } from './lib/store';
-import { loadManifest, cachedManifestWords } from './lib/tts';
+import { loadManifest, cachedManifestWords, fetchManifestWord } from './lib/tts';
 import { playSamples, decodeBlob, SR } from './lib/dsp';
 import type { CorpusEntry, SynthResult } from './lib/types';
 import {
@@ -384,9 +384,14 @@ export const App: React.FC = () => {
     if (isPlayingPreview) return;
     setIsPlayingPreview('Hữu Thọ');
 
-    const sampleEntry = realEntries.find(
-      (e) => (e.speaker === 'nam' || e.speaker === 'Hữu Thọ') && e.blob
+    let sampleEntry = realEntries.find(
+      (e) => (e.speaker === 'Hữu Thọ' || e.speaker === 'nam') && e.blob
     );
+
+    if (!sampleEntry && cachedManifestWords.length > 0) {
+      const m = cachedManifestWords[0];
+      sampleEntry = (await fetchManifestWord(m)) || undefined;
+    }
 
     if (sampleEntry && sampleEntry.blob) {
       try {

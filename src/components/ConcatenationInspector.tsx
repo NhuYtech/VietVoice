@@ -18,7 +18,7 @@ import type { SynthResult, TraceItem, JoinInfo } from '../lib/types';
 
 interface ConcatenationInspectorProps {
   result: SynthResult | null;
-  selectedVoice?: 'Hữu Thọ' | 'Nam' | string;
+  selectedVoice?: 'Hữu Thọ' | string;
   onSelectWordToRecord?: (word: string) => void;
 }
 

@@ -158,40 +158,61 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
     }
 
     setPlayingId(item.id);
-    const itemSpeakerCore = item.speaker === 'Nam' ? 'nam' : 'nu';
+
+    // 1. Tìm trong IndexedDB
     let real = realEntries.find((e) => {
-      const eSpk = (e.speaker || '').toLowerCase();
-      return e.word.toLowerCase() === item.word.toLowerCase() && (eSpk === itemSpeakerCore || eSpk.includes(itemSpeakerCore));
+      return e.word.toLowerCase() === item.word.toLowerCase() || (item.code && e.code === item.code);
     });
 
-    // Nếu chưa có trong IndexedDB nhưng có trong manifest: tải tức thì file WAV từ public/corpus/wavs theo đúng giọng
+    // 2. Nếu chưa có trong IndexedDB: kiểm tra cachedManifestWords hoặc audioUrl
+    let playableUrl = item.audioUrl;
     if (!real || !real.blob) {
       const m = cachedManifestWords.find(
-        (w) => w.word.toLowerCase() === item.word.toLowerCase() && (w.speaker || 'nam').toLowerCase() === itemSpeakerCore
+        (w) => w.word.toLowerCase() === item.word.toLowerCase() || (item.code && w.code === item.code)
       );
       if (m) {
+        if (m.audioUrl) playableUrl = m.audioUrl;
         real = (await fetchManifestWord(m)) || undefined;
       }
     }
 
+    // 3. Xác định nguồn phát âm thanh
+    let audioSrc: string | null = null;
+    let isObjectUrl = false;
     if (real && real.blob) {
+      audioSrc = URL.createObjectURL(real.blob);
+      isObjectUrl = true;
+    } else if (playableUrl) {
+      audioSrc = playableUrl;
+    } else {
+      const code = item.code || encodeVnFilename(item.word).replace(/\.wav$/, '');
+      const publicId = code.replace(/\+/g, '_');
+      audioSrc = `https://res.cloudinary.com/wximbfoz/video/upload/${publicId}.wav`;
+    }
+
+    if (audioSrc) {
       try {
         if (activeWordAudioRef.current) {
           activeWordAudioRef.current.pause();
           activeWordAudioRef.current = null;
         }
-        const audioUrl = URL.createObjectURL(real.blob);
-        const audio = new Audio(audioUrl);
+        const audio = new Audio(audioSrc);
         activeWordAudioRef.current = audio;
         audio.onended = () => {
-          URL.revokeObjectURL(audioUrl);
+          if (isObjectUrl) URL.revokeObjectURL(audioSrc!);
           if (activeWordAudioRef.current === audio) activeWordAudioRef.current = null;
           setPlayingId(null);
         };
         audio.onerror = () => {
-          URL.revokeObjectURL(audioUrl);
+          if (isObjectUrl) URL.revokeObjectURL(audioSrc!);
           if (activeWordAudioRef.current === audio) activeWordAudioRef.current = null;
           setPlayingId(null);
+          onShowNotification?.({
+            type: 'warning',
+            title: 'Chưa thể phát',
+            message: `Không thể kết nối phát file âm thanh cho từ "${item.word}".`,
+            confirmText: 'Đóng',
+          });
         };
         await audio.play();
       } catch (err) {
@@ -211,10 +232,8 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
 
   // Tải file WAV
   const handleDownloadWord = (item: CorpusItem) => {
-    const itemSpeakerCore = item.speaker === 'Nam' ? 'nam' : 'nu';
     const real = realEntries.find((e) => {
-      const eSpk = (e.speaker || '').toLowerCase();
-      return e.word.toLowerCase() === item.word.toLowerCase() && (eSpk === itemSpeakerCore || eSpk.includes(itemSpeakerCore));
+      return e.word.toLowerCase() === item.word.toLowerCase() || (item.code && e.code === item.code);
     });
 
     if (real && real.blob) {
@@ -228,24 +247,22 @@ export const CorpusView: React.FC<CorpusViewProps> = ({
     }
 
     const m = cachedManifestWords.find(
-      (w) => w.word.toLowerCase() === item.word.toLowerCase() && (w.speaker || 'nam').toLowerCase() === itemSpeakerCore
+      (w) => w.word.toLowerCase() === item.word.toLowerCase() || (item.code && w.code === item.code)
     );
-    if (m) {
-      const a = document.createElement('a');
-      const code = m.code || (m.file ? m.file.replace(/^wavs\//, '').replace(/\.wav$/, '') : m.word);
-      const publicId = m.cloudinaryPublicId || code.replace(/\+/g, '_');
-      a.href = m.audioUrl || `https://res.cloudinary.com/wximbfoz/video/upload/${publicId}.wav`;
-      a.download = item.filename || `${item.word}.wav`;
-      a.target = '_blank';
-      a.click();
-    }
+    const code = item.code || (m && m.code) || (m && m.file ? m.file.replace(/^wavs\//, '').replace(/\.wav$/, '') : item.word);
+    const publicId = (m && m.cloudinaryPublicId) || code.replace(/\+/g, '_');
+    const audioUrl = item.audioUrl || (m && m.audioUrl) || `https://res.cloudinary.com/wximbfoz/video/upload/${publicId}.wav`;
+
+    const a = document.createElement('a');
+    a.href = audioUrl;
+    a.download = item.filename || `${item.word}.wav`;
+    a.target = '_blank';
+    a.click();
   };
 
   const handleDeleteReal = (item: CorpusItem) => {
-    const itemSpeakerCore = item.speaker === 'Nam' ? 'nam' : 'nu';
     const real = realEntries.find((e) => {
-      const eSpk = (e.speaker || '').toLowerCase();
-      return e.word.toLowerCase() === item.word.toLowerCase() && (eSpk === itemSpeakerCore || eSpk.includes(itemSpeakerCore));
+      return e.word.toLowerCase() === item.word.toLowerCase() || (item.code && e.code === item.code);
     });
     const targetId = real?.id || item.id;
 

@@ -11,7 +11,7 @@ export const historyAudioCache = new Map<string, Blob>();
  * Tự động tìm Blob âm thanh trong cache hoặc tổng hợp nhanh tức thì nếu thiếu
  */
 export async function resolveTrackAudioBlob(
-  track: { id?: string; text: string; speaker: 'Hữu Thọ' | 'Nam' | string; audioBlob?: Blob },
+  track: { id?: string; text: string; speaker: 'Hữu Thọ' | string; audioBlob?: Blob },
   entries: CorpusEntry[]
 ): Promise<Blob | null> {
   if (track.audioBlob) return track.audioBlob;
@@ -83,7 +83,7 @@ export function saveHistory(items: ConversionHistoryItem[]): void {
  */
 export function addHistoryEntry(
   text: string,
-  speaker: 'Hữu Thọ' | 'Nam' = 'Hữu Thọ',
+  speaker: 'Hữu Thọ' | string = 'Hữu Thọ',
   duration: number,
   audioBlob?: Blob,
   audioUrl?: string,
@@ -146,7 +146,7 @@ export function removeHistoryEntries(ids: string[]): ConversionHistoryItem[] {
  * Chuẩn hóa tên speaker cho thư viện tts (Hữu Thọ tương ứng mã 'nam')
  */
 export function mapSpeakerToCore(_speaker?: string): string {
-  return 'nam';
+  return 'Hữu Thọ';
 }
 
 export interface WordVoiceCheck {
@@ -162,7 +162,7 @@ export interface WordVoiceCheck {
  */
 export function inspectVocabularyWithVoice(
   text: string,
-  _selectedVoice: 'Hữu Thọ' | 'Nam' = 'Hữu Thọ',
+  _selectedVoice: 'Hữu Thọ' | string = 'Hữu Thọ',
   entries: CorpusEntry[]
 ): {
   tokens: string[];
@@ -267,7 +267,7 @@ export function inspectVocabularyWithVoice(
  */
 export function inspectVocabulary(
   text: string,
-  speaker: 'Hữu Thọ' | 'Nam' = 'Hữu Thọ',
+  speaker: 'Hữu Thọ' | string = 'Hữu Thọ',
   entries: CorpusEntry[]
 ) {
   const res = inspectVocabularyWithVoice(text, speaker, entries);
@@ -287,7 +287,7 @@ export function inspectVocabulary(
  */
 export async function performSynthesis(
   text: string,
-  speaker: 'Hữu Thọ' | 'Nam' = 'Hữu Thọ',
+  speaker: 'Hữu Thọ' | string = 'Hữu Thọ',
   entries: CorpusEntry[]
 ): Promise<{
   success: boolean;
@@ -313,13 +313,13 @@ export async function performSynthesis(
     };
   }
 
-  const speakerKey = 'nam';
+  const speakerKey = 'Hữu Thọ';
   const safeEntries = Array.isArray(entries) ? entries : [];
 
-  // Chỉ lấy đúng các mục của Hữu Thọ (key 'nam')
+  // Lấy toàn bộ các mục thuộc giọng Hữu Thọ
   const speakerEntries = safeEntries.filter((e) => {
     const spk = (e?.speaker || '').toLowerCase();
-    return spk === speakerKey || spk.includes(speakerKey) || spk.includes('hữu thọ');
+    return spk.includes('thọ') || spk === 'nam' || spk === 'hữu thọ' || spk === '';
   });
 
   const pauseSettings = getStoredPauseSettings();

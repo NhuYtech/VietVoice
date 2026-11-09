@@ -21,7 +21,7 @@ import { normalizeNumbersInText, hasNumbers } from '../lib/numberNormalizer';
 interface MainEditorProps {
   text: string;
   onChangeText: (val: string) => void;
-  selectedVoice?: 'Hữu Thọ' | 'Nam' | string;
+  selectedVoice?: 'Hữu Thọ' | string;
   onSelectVoice?: (voice: 'Hữu Thọ') => void;
   onConvert: () => void;
   isConverting: boolean;

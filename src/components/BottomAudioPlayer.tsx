@@ -14,7 +14,7 @@ import {
 export interface PlayerTrack {
   id?: string;
   text: string;
-  speaker: 'Hữu Thọ' | 'Nam' | string;
+  speaker: 'Hữu Thọ' | string;
   durationSec: number;
   audioBlob?: Blob;
   audioUrl?: string;

@@ -5,7 +5,7 @@ import { playSamples, stopPlayback, SR } from '../lib/dsp';
 
 interface AudioOutputProps {
   result: SynthResult | null;
-  selectedVoice?: 'Hữu Thọ' | 'Nam' | string;
+  selectedVoice?: 'Hữu Thọ' | string;
   onDownload: () => void;
   isLoading?: boolean;
 }

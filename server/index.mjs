@@ -112,7 +112,7 @@ app.get('/api/audio/manifest', async (req, res) => {
       cloudinaryPublicId: d.cloudinaryPublicId,
       file: `${d.code}.wav`,
       audioUrl: d.audioUrl,
-      speaker: (d.speaker || 'Nam').toLowerCase(),
+      speaker: d.speaker || 'Hữu Thọ',
       duration: d.duration || 0.45,
     }));
 
@@ -182,7 +182,7 @@ app.get('/api/audio', async (req, res) => {
 app.get('/api/audio/word/:word', async (req, res) => {
   try {
     const word = req.params.word.trim().toLowerCase();
-    const speaker = req.query.speaker || 'Nam';
+    const speaker = req.query.speaker || 'Hữu Thọ';
 
     const item = await audioCollection.findOne({
       $or: [
@@ -301,8 +301,8 @@ app.post('/api/audio', async (req, res) => {
       code: code || cleanWord,
       cloudinaryPublicId: cloudinaryPublicId || code || cleanWord,
       audioUrl,
-      speaker: speaker || 'Nam',
-      gender: (speaker || '').toLowerCase().includes('nữ') ? 'female' : 'male',
+      speaker: speaker || 'Hữu Thọ',
+      gender: 'male',
       duration: Number(duration) || 0.45,
       format: format || 'wav',
       source: 'upload',

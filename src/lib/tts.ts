@@ -175,9 +175,13 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
   const existingWordSet = new Set(entries.map((e) => normalizeText(e.word)));
 
   for (const tok of tokens) {
-    const mKey = `${targetSpeaker}::${tok}`;
-    const codeKey = `${targetSpeaker}::${encodeVnWord(tok)}`;
-    if (!existingWordSet.has(tok) && (manifestLookup.has(mKey) || manifestLookup.has(codeKey))) {
+    const foundM =
+      manifestLookup.get(`${targetSpeaker}::${tok}`) ||
+      manifestLookup.get(`${targetSpeaker}::${encodeVnWord(tok)}`) ||
+      manifestLookup.get(`hữu thọ::${tok}`) ||
+      manifestLookup.get(`hữu thọ::${encodeVnWord(tok)}`) ||
+      manifestLookup.get(`nam::${tok}`);
+    if (!existingWordSet.has(tok) && foundM) {
       missingTokensToFetch.push(tok);
     }
   }
@@ -185,7 +189,12 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
   // Tải tuần tự các từ còn thiếu để tránh nghẽn CPU và bảo đảm 100% âm thanh được giải mã chuẩn xác
   if (missingTokensToFetch.length > 0) {
     for (const tok of missingTokensToFetch) {
-      const m = manifestLookup.get(`${targetSpeaker}::${tok}`) || manifestLookup.get(`${targetSpeaker}::${encodeVnWord(tok)}`);
+      const m =
+        manifestLookup.get(`${targetSpeaker}::${tok}`) ||
+        manifestLookup.get(`${targetSpeaker}::${encodeVnWord(tok)}`) ||
+        manifestLookup.get(`hữu thọ::${tok}`) ||
+        manifestLookup.get(`hữu thọ::${encodeVnWord(tok)}`) ||
+        manifestLookup.get(`nam::${tok}`);
       if (m) {
         try {
           const entry = await fetchManifestWord(m);
@@ -206,7 +215,12 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
   let maxN = 1;
   const optSpkLower = opts.speaker.toLowerCase();
   for (const e of entries) {
-    const isMine = (e.speaker || '').toLowerCase() === optSpkLower || (e.speaker || '').toLowerCase().includes(optSpkLower);
+    const eSpk = (e.speaker || '').toLowerCase();
+    const isMine =
+      eSpk === optSpkLower ||
+      eSpk.includes(optSpkLower) ||
+      (optSpkLower.includes('thọ') && (eSpk.includes('thọ') || eSpk === 'nam')) ||
+      (optSpkLower === 'nam' && eSpk.includes('thọ'));
     const target = isMine ? mine : others;
     target.set(normalizeText(e.word), e);
     target.set(e.word, e);
@@ -421,15 +435,24 @@ export async function loadManifest(existing: Set<string>): Promise<CorpusEntry[]
       console.warn('[VietVoice] Backend MongoDB chưa phản hồi, giữ manifest sẵn có:', apiErr);
     }
 
-    cachedManifestWords = words;
+    cachedManifestWords = words.map((w: any) => ({
+      ...w,
+      speaker: w.speaker && w.speaker.toLowerCase() !== 'nam' ? w.speaker : 'Hữu Thọ',
+    }));
     manifestLookup.clear();
     for (const m of cachedManifestWords) {
-      const spk = (m.speaker || 'nam').toLowerCase();
+      const spk = (m.speaker || 'Hữu Thọ').toLowerCase();
       const normW = normalizeText(m.word);
       manifestLookup.set(`${spk}::${normW}`, m);
+      manifestLookup.set(`hữu thọ::${normW}`, m);
+      manifestLookup.set(`huu tho::${normW}`, m);
+      manifestLookup.set(`nam::${normW}`, m);
       const code = m.code || encodeVnWord(normW);
       if (code && code !== normW) {
-        manifestLookup.set(`${spk}::${code}`, m);
+        manifestLookup.set(`${spk}::${code.toLowerCase()}`, m);
+        manifestLookup.set(`hữu thọ::${code.toLowerCase()}`, m);
+        manifestLookup.set(`huu tho::${code.toLowerCase()}`, m);
+        manifestLookup.set(`nam::${code.toLowerCase()}`, m);
       }
     }
   } catch (err) {
@@ -458,7 +481,7 @@ export async function fetchManifestWord(m: ManifestItem): Promise<CorpusEntry | 
     }
     const blob = await res.blob();
     if (blob.size < 100) return null;
-    const entry = await addToCorpus(blob, m.word, m.speaker, 'manifest');
+    const entry = await addToCorpus(blob, m.word, m.speaker || 'Hữu Thọ', 'manifest');
     return entry;
   } catch (err) {
     console.error('Lỗi khi tải file từ ngữ liệu manifest:', m.word, err);
