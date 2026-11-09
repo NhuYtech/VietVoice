@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Sidebar, type NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MainEditor } from './components/MainEditor';
@@ -413,6 +413,21 @@ export const App: React.FC = () => {
     }
   };
 
+  // Tính tổng số từ vựng duy nhất (khử trùng lặp giữa IndexedDB cache trình duyệt và 6.707 từ trong kho dataset)
+  const totalCorpusCount = useMemo(() => {
+    const baseCount = cachedManifestWords.length || manifestCount || 6707;
+    if (cachedManifestWords.length === 0) return realEntries.length || baseCount;
+    const manifestCodes = new Set(cachedManifestWords.map((m) => (m.code || m.word || '').toLowerCase()));
+    let customUserWords = 0;
+    for (const e of realEntries) {
+      const c = (e.code || e.word || '').toLowerCase();
+      if (!manifestCodes.has(c)) {
+        customUserWords++;
+      }
+    }
+    return baseCount + customUserWords;
+  }, [realEntries, cachedManifestWords, manifestCount]);
+
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#F7F8FC] flex text-[#20213A]">
       {/* 1. Left Fixed Sidebar */}
@@ -422,7 +437,7 @@ export const App: React.FC = () => {
           setCurrentTab(tab);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
-        corpusCount={realEntries.length + (cachedManifestWords.length || 6674)}
+        corpusCount={totalCorpusCount}
       />
 
       {/* 2. Main Content Area */}
