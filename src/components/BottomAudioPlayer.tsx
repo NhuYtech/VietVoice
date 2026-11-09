@@ -9,6 +9,8 @@ import {
   Volume,
   VolumeX,
   X,
+  Check,
+  Gauge,
 } from 'lucide-react';
 
 export interface PlayerTrack {
@@ -56,6 +58,10 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
   const [volume, setVolume] = useState(100); // 0 to 100
   const [isVolumeOpen, setIsVolumeOpen] = useState(false);
   const [isDraggingVolume, setIsDraggingVolume] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState<number>(1);
+  const [isSpeedMenuOpen, setIsSpeedMenuOpen] = useState(false);
+
+  const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const activeBlobUrlRef = useRef<string | null>(null);
@@ -65,8 +71,9 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
   const progressBarRef = useRef<HTMLDivElement>(null);
   const volumeBarRef = useRef<HTMLDivElement>(null);
   const volumeContainerRef = useRef<HTMLDivElement>(null);
+  const speedMenuRef = useRef<HTMLDivElement>(null);
 
-  // Đóng popover âm lượng khi click bên ngoài
+  // Đóng popover âm lượng và menu tốc độ khi click bên ngoài
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -74,6 +81,12 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
         !volumeContainerRef.current.contains(e.target as Node)
       ) {
         setIsVolumeOpen(false);
+      }
+      if (
+        speedMenuRef.current &&
+        !speedMenuRef.current.contains(e.target as Node)
+      ) {
+        setIsSpeedMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -126,6 +139,7 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
       const audio = new Audio(url);
       activeAudioRef.current = audio;
       audio.volume = isMuted ? 0 : volume / 100;
+      audio.playbackRate = playbackRate;
       setCurrentTime(0);
       setDuration(track.durationSec > 0 ? track.durationSec : 1);
 
@@ -180,6 +194,7 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
         audio.currentTime = 0;
       }
       audio.volume = isMuted ? 0 : volume / 100;
+      audio.playbackRate = playbackRate;
       audio
         .play()
         .then(() => {
@@ -224,6 +239,7 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
         audio.currentTime = 0;
       }
       audio.volume = isMuted ? 0 : volume / 100;
+      audio.playbackRate = playbackRate;
       audio
         .play()
         .then(() => {
@@ -334,6 +350,22 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
     };
   }, [isDraggingVolume]);
 
+  // Cập nhật tốc độ phát cho audio hiện tại
+  useEffect(() => {
+    if (activeAudioRef.current) {
+      activeAudioRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
+
+  // Chọn tốc độ phát
+  const handleSelectSpeed = (speed: number) => {
+    setPlaybackRate(speed);
+    if (activeAudioRef.current) {
+      activeAudioRef.current.playbackRate = speed;
+    }
+    setIsSpeedMenuOpen(false);
+  };
+
   // Tải file âm thanh
   const handleDownload = () => {
     if (!track) return;
@@ -437,12 +469,56 @@ export const BottomAudioPlayer: React.FC<BottomAudioPlayerProps> = ({
         </div>
       </div>
 
-      {/* 3. Bên phải: Nút Tải về + Nút tăng giảm âm lượng kiểu popup capsule dọc + Đóng player */}
-      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+      {/* 3. Bên phải: Nút Tốc độ phát YouTube + Nút Tải về + Nút tăng giảm âm lượng kiểu popup capsule dọc + Đóng player */}
+      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        {/* Nút điều chỉnh tốc độ phát kiểu YouTube */}
+        <div className="relative" ref={speedMenuRef}>
+          <button
+            type="button"
+            onClick={() => {
+              setIsSpeedMenuOpen(!isSpeedMenuOpen);
+              setIsVolumeOpen(false);
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 border cursor-pointer select-none ${
+              isSpeedMenuOpen || playbackRate !== 1
+                ? 'bg-[#F4F2FC] text-[#6255CF] border-[#6255CF]/40 ring-1 ring-[#6255CF]/20'
+                : 'text-[#555870] border-[#E2E4F0] hover:bg-gray-50 hover:text-[#20213A]'
+            }`}
+            title="Tốc độ phát (Playback Speed)"
+          >
+            <Gauge className="w-3.5 h-3.5" />
+            <span>{playbackRate === 1 ? '1x' : `${playbackRate}x`}</span>
+          </button>
+
+          {/* Menu popover chọn tốc độ như YouTube */}
+          {isSpeedMenuOpen && (
+            <div className="absolute bottom-full mb-3 right-0 w-36 bg-white rounded-xl shadow-xl border border-[#E8E8F0] py-1.5 z-50 animate-in fade-in zoom-in-95 text-xs font-medium">
+              <div className="px-3 py-1 text-[10px] font-bold text-[#85879A] uppercase tracking-wider border-b border-[#F0F2F9] mb-1">
+                Tốc độ phát
+              </div>
+              {SPEED_OPTIONS.map((spd) => (
+                <button
+                  key={spd}
+                  type="button"
+                  onClick={() => handleSelectSpeed(spd)}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 text-left transition cursor-pointer hover:bg-[#F7F6FD] ${
+                    playbackRate === spd
+                      ? 'text-[#6255CF] font-bold bg-[#F4F2FC]'
+                      : 'text-[#20213A]'
+                  }`}
+                >
+                  <span>{spd === 1 ? '1x (Chuẩn)' : `${spd}x`}</span>
+                  {playbackRate === spd && <Check className="w-3.5 h-3.5 text-[#6255CF]" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Nút tải về */}
         <button
           onClick={handleDownload}
-          className="p-1.5 text-[#1E2040] hover:text-[#6255CF] transition rounded-lg hover:bg-gray-50"
+          className="p-1.5 text-[#1E2040] hover:text-[#6255CF] transition rounded-lg hover:bg-gray-50 cursor-pointer"
           title="Tải về file WAV"
         >
           <Download className="w-4 h-4" />

@@ -32,21 +32,114 @@ const VOWEL_ACCENTS: Record<string, string[]> = {
   'y': ['y', 'ý', 'ỳ', 'ỷ', 'ỹ', 'ỵ']
 };
 
+const OLD_TO_NEW_TONE_A: Record<string, string> = {
+  'ó': 'oá', 'ò': 'oà', 'ỏ': 'oả', 'õ': 'oã', 'ọ': 'oạ',
+};
+const OLD_TO_NEW_TONE_E: Record<string, string> = {
+  'ó': 'oé', 'ò': 'oè', 'ỏ': 'oẻ', 'õ': 'oẽ', 'ọ': 'oẹ',
+};
+const OLD_TO_NEW_TONE_Y: Record<string, string> = {
+  'ú': 'uý', 'ù': 'uỳ', 'ủ': 'uỷ', 'ũ': 'uỹ', 'ụ': 'uỵ',
+};
+
 /**
- * Kiểm tra chuỗi có phải là mã VNI đã mã hóa theo quy ước không (vd: ba0, bac1, cang3, muung2, d-e+m0, xin0_chao2).
+ * Chuẩn hóa vị trí dấu thanh tiếng Việt từ kiểu cũ sang kiểu mới:
+ * Ví dụ: hóa -> hoá, hòa -> hoà, hỏa -> hoả, khỏe -> khoẻ, thủy -> thuỷ.
+ * Giúp tương thích tuyệt đối với bộ 6.674 từ trong dataset và quy chuẩn hiện đại.
+ */
+export function normalizeToneToNewStyle(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/([óòỏõọ])a/g, (_, ch) => OLD_TO_NEW_TONE_A[ch] || ch + 'a')
+    .replace(/([óòỏõọ])e/g, (_, ch) => OLD_TO_NEW_TONE_E[ch] || ch + 'e')
+    .replace(/([úùủũụ])y/g, (_, ch) => OLD_TO_NEW_TONE_Y[ch] || ch + 'y');
+}
+
+/**
+ * Chuyển dấu thanh từ kiểu mới sang kiểu cũ:
+ * Ví dụ: hoá -> hóa, hoà -> hòa, hoả -> hỏa, khoẻ -> khỏe, thuỷ -> thủy.
+ */
+export function normalizeToneToOldStyle(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/o([áàảãạ])/g, (_, ch) => {
+      const map: Record<string, string> = { 'á': 'óa', 'à': 'òa', 'ả': 'ỏa', 'ã': 'õa', 'ạ': 'ọa' };
+      return map[ch] || 'o' + ch;
+    })
+    .replace(/o([éèẻẽẹ])/g, (_, ch) => {
+      const map: Record<string, string> = { 'é': 'óe', 'è': 'òe', 'ẻ': 'ỏe', 'ẽ': 'õe', 'ẹ': 'ọe' };
+      return map[ch] || 'o' + ch;
+    })
+    .replace(/u([ýỳỷỹỵ])/g, (_, ch) => {
+      const map: Record<string, string> = { 'ý': 'úy', 'ỳ': 'ùy', 'ỷ': 'ủy', 'ỹ': 'ũy', 'ỵ': 'ụy' };
+      return map[ch] || 'u' + ch;
+    });
+}
+
+/**
+ * Lấy danh sách các biến thể dấu của từ (cả kiểu cũ và kiểu mới) để tra cứu đa chiều.
+ */
+export function getToneVariants(text: string): string[] {
+  if (!text) return [];
+  const t = text.trim().toLowerCase();
+  const n = normalizeToneToNewStyle(t);
+  const o = normalizeToneToOldStyle(t);
+  return Array.from(new Set([t, n, o])).filter(Boolean);
+}
+
+/**
+ * Chuẩn hóa mã VNI: nếu số dấu thanh (0-5) nằm ở giữa từ (ví dụ: ho1a, ho3a, thu3y, to1an)
+ * thì tự động chuyển về đúng quy ước chuẩn đặt ở cuối từ (hoa1, hoa3, thuy3, toan1).
+ */
+export function normalizeVniCode(code: string): string {
+  if (!code || typeof code !== 'string') return '';
+  const c = code.trim().toLowerCase();
+  const midMatch = c.match(/^([a-z\+\-]+?)([0-5])([a-z\+\-]+)$/);
+  if (midMatch) {
+    return `${midMatch[1]}${midMatch[3]}${midMatch[2]}`;
+  }
+  return c;
+}
+
+/**
+ * Sinh mã alias có số ở giữa cho các nguyên âm đôi (ví dụ: hoa1 -> ho1a, hoa3 -> ho3a, thuy3 -> thu3y)
+ */
+export function codeToMidDigitAlias(code: string): string {
+  if (!code || typeof code !== 'string') return '';
+  const c = code.trim().toLowerCase();
+  const endMatch = c.match(/^([a-z\+\-]+)(oa|oe|uy)([0-5])$/);
+  if (endMatch) {
+    const prefix = endMatch[1];
+    const diph = endMatch[2];
+    const tone = endMatch[3];
+    return `${prefix}${diph[0]}${tone}${diph[1]}`;
+  }
+  const simpleMatch = c.match(/^(oa|oe|uy)([0-5])$/);
+  if (simpleMatch) {
+    const diph = simpleMatch[1];
+    const tone = simpleMatch[2];
+    return `${diph[0]}${tone}${diph[1]}`;
+  }
+  return c;
+}
+
+/**
+ * Kiểm tra chuỗi có phải là mã VNI đã mã hóa theo quy ước không (vd: ba0, bac1, cang3, muung2, d-e+m0, xin0_chao2, ho1a, ho3a).
  */
 export function isVniCode(text: string): boolean {
   if (!text || typeof text !== 'string') return false;
   const t = text.trim().toLowerCase();
   const tokens = t.split(/[_\s]+/).filter(Boolean);
   if (tokens.length === 0) return false;
-  return tokens.every(
-    (tok) =>
-      /^[a-z0-9\+\-]+[0-5]$/.test(tok) ||
-      tok.includes('d-') ||
-      tok.includes('+') ||
-      /[0-5]$/.test(tok)
-  );
+  return tokens.every((tok) => {
+    const norm = normalizeVniCode(tok);
+    return (
+      /^[a-z0-9\+\-]+[0-5]$/.test(norm) ||
+      norm.includes('d-') ||
+      norm.includes('+') ||
+      /[0-5]$/.test(norm)
+    );
+  });
 }
 
 /**
@@ -56,6 +149,9 @@ export function encodeSingleWord(rawWord: string): string {
   if (!rawWord || typeof rawWord !== 'string') return '';
   let word = rawWord.trim().toLowerCase();
   if (!word) return '';
+
+  // Chuẩn hóa nếu là mã có số ở giữa: ho1a -> hoa1, ho3a -> hoa3
+  word = normalizeVniCode(word);
 
   // Nếu chuỗi đã là mã theo quy ước (kết thúc bằng 0-5), trả về luôn
   if (/^[a-z0-9\+\-]+[0-5]$/.test(word)) {
@@ -115,7 +211,7 @@ export function encodeVnWord(rawText: string): string {
  */
 export function decodeSingleWord(code: string): string {
   if (!code || typeof code !== 'string') return '';
-  const c = code.trim().toLowerCase();
+  const c = normalizeVniCode(code.trim().toLowerCase());
   if (!c) return '';
 
   // Tách số dấu thanh ở cuối (0-5)
@@ -176,10 +272,13 @@ export function decodeSingleWord(code: string): string {
     if (hasFinalConsonant) {
       targetVowelIdx = vowelIndices[1];
     } else {
+      const v1 = parts[vowelIndices[0]].val;
       const v2 = parts[vowelIndices[1]].val;
-      if (['a', 'e'].includes(v2)) {
-        targetVowelIdx = vowelIndices[0];
+      // oa, oe, uy: âm đệm (o, u) + âm chính (a, e, y) -> theo chuẩn mới và 6.674 từ dataset, dấu thanh đặt trên âm chính (v2): hoá, hoè, thuỷ
+      if (['oa', 'oe', 'uy'].includes(v1 + v2)) {
+        targetVowelIdx = vowelIndices[1];
       } else {
+        // ia, ua, ưa -> âm chính là âm đầu (v1): mía, của, cửa
         targetVowelIdx = vowelIndices[0];
       }
     }

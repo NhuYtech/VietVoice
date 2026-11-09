@@ -1,5 +1,6 @@
 import type { CorpusEntry, SynthResult } from '../lib/types';
 import { synthesize, normalizeText, cachedManifestWords } from '../lib/tts';
+import { normalizeToneToNewStyle, normalizeToneToOldStyle, encodeVnWord, codeToMidDigitAlias } from '../lib/vniCodec';
 import { INITIAL_CONVERSION_HISTORY, MOCK_CORPUS_ITEMS, type ConversionHistoryItem } from '../data/mockCorpus';
 import { getStoredPauseSettings } from '../components/PauseSettingsModal';
 
@@ -192,38 +193,57 @@ export function inspectVocabularyWithVoice(
   const tokens = norm.split(/\s+/).filter(Boolean);
   const safeEntries = Array.isArray(entries) ? entries : [];
 
-  // Tập hợp toàn bộ từ có bản thu âm của Hữu Thọ
+  // Tập hợp toàn bộ từ có bản thu âm của Hữu Thọ (hỗ trợ cả kiểu dấu cũ và mới)
   const availableSet = new Set<string>();
+
+  const addVariants = (val: string) => {
+    if (!val) return;
+    const v = val.trim().toLowerCase();
+    if (!v) return;
+    availableSet.add(v);
+    availableSet.add(normalizeToneToNewStyle(v));
+    availableSet.add(normalizeToneToOldStyle(v));
+  };
 
   // Từ trong IndexedDB / bản ghi âm thêm mới
   for (const e of safeEntries) {
     const w = (e?.word || '').toLowerCase();
     if (!w) continue;
-    availableSet.add(w);
-    w.split(/\s+/).forEach((part) => availableSet.add(part));
+    addVariants(w);
+    w.split(/\s+/).forEach(addVariants);
   }
 
   // Từ mẫu trong Ngữ liệu
   for (const m of MOCK_CORPUS_ITEMS) {
     const w = (m.word || '').toLowerCase();
     if (!w) continue;
-    availableSet.add(w);
-    w.split(/\s+/).forEach((part) => availableSet.add(part));
+    addVariants(w);
+    w.split(/\s+/).forEach(addVariants);
   }
 
   // Toàn bộ 6.674 từ trong bộ dữ liệu datasetTV của Hữu Thọ
   for (const m of cachedManifestWords) {
     const w = (m.word || '').toLowerCase();
     if (!w) continue;
-    availableSet.add(w);
-    w.split(/\s+/).forEach((part) => availableSet.add(part));
+    addVariants(w);
+    w.split(/\s+/).forEach(addVariants);
+    if (m.code) {
+      const cLow = m.code.toLowerCase();
+      availableSet.add(cLow);
+      const mid = codeToMidDigitAlias(cLow);
+      if (mid) availableSet.add(mid);
+    }
   }
 
   const wordChecks: WordVoiceCheck[] = [];
   const missingTokens: string[] = [];
 
   for (const tok of tokens) {
-    const inCurrent = availableSet.has(tok);
+    const inCurrent =
+      availableSet.has(tok) ||
+      availableSet.has(normalizeToneToNewStyle(tok)) ||
+      availableSet.has(normalizeToneToOldStyle(tok)) ||
+      availableSet.has(encodeVnWord(tok));
 
     if (inCurrent) {
       wordChecks.push({

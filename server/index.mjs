@@ -131,6 +131,42 @@ app.get('/api/audio/manifest', async (req, res) => {
   }
 });
 
+function normalizeToneToNewStyle(str) {
+  if (!str) return '';
+  const aMap = { 'ó': 'oá', 'ò': 'oà', 'ỏ': 'oả', 'õ': 'oã', 'ọ': 'oạ' };
+  const eMap = { 'ó': 'oé', 'ò': 'oè', 'ỏ': 'oẻ', 'õ': 'oẽ', 'ọ': 'oẹ' };
+  const yMap = { 'ú': 'uý', 'ù': 'uỳ', 'ủ': 'uỷ', 'ũ': 'uỹ', 'ụ': 'uỵ' };
+  return str
+    .replace(/([óòỏõọ])a/g, (_, ch) => aMap[ch] || ch + 'a')
+    .replace(/([óòỏõọ])e/g, (_, ch) => eMap[ch] || ch + 'e')
+    .replace(/([úùủũụ])y/g, (_, ch) => yMap[ch] || ch + 'y');
+}
+
+function normalizeToneToOldStyle(str) {
+  if (!str) return '';
+  const aMap = { 'á': 'óa', 'à': 'òa', 'ả': 'ỏa', 'ã': 'õa', 'ạ': 'ọa' };
+  const eMap = { 'é': 'óe', 'è': 'òe', 'ẻ': 'ỏe', 'ẽ': 'õe', 'ẹ': 'ọe' };
+  const yMap = { 'ý': 'úy', 'ỳ': 'ùy', 'ỷ': 'ủy', 'ỹ': 'ũy', 'ỵ': 'ụy' };
+  return str
+    .replace(/o([áàảãạ])/g, (_, ch) => aMap[ch] || 'o' + ch)
+    .replace(/o([éèẻẽẹ])/g, (_, ch) => eMap[ch] || 'o' + ch)
+    .replace(/u([ýỳỷỹỵ])/g, (_, ch) => yMap[ch] || 'u' + ch);
+}
+
+function normalizeVniCode(code) {
+  if (!code) return '';
+  const midMatch = code.match(/^([a-z\+\-]+?)([0-5])([a-z\+\-]+)$/);
+  if (midMatch) return `${midMatch[1]}${midMatch[3]}${midMatch[2]}`;
+  return code;
+}
+
+function codeToMidDigitAlias(code) {
+  if (!code) return '';
+  const m = code.match(/^([a-z\+\-]+)(oa|oe|uy)([0-5])$/);
+  if (m) return `${m[1]}${m[2][0]}${m[3]}${m[2][1]}`;
+  return code;
+}
+
 // 3. Tìm kiếm và phân trang danh sách Audio (cho CorpusView)
 app.get('/api/audio', async (req, res) => {
   try {
@@ -145,11 +181,20 @@ app.get('/api/audio', async (req, res) => {
     }
 
     if (q) {
-      filter.$or = [
-        { word: { $regex: q, $options: 'i' } },
-        { code: { $regex: q, $options: 'i' } },
-        { cloudinaryPublicId: { $regex: q, $options: 'i' } }
-      ];
+      const qNormCode = normalizeVniCode(q);
+      const qMidAlias = codeToMidDigitAlias(qNormCode);
+      const qNew = normalizeToneToNewStyle(q);
+      const qOld = normalizeToneToOldStyle(q);
+      const searchTerms = Array.from(new Set([q, qNormCode, qMidAlias, qNew, qOld])).filter(Boolean);
+
+      const escapeRegex = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+      const orClauses = [];
+      for (const term of searchTerms) {
+        orClauses.push({ word: { $regex: escapeRegex(term), $options: 'i' } });
+        orClauses.push({ code: { $regex: escapeRegex(term), $options: 'i' } });
+        orClauses.push({ cloudinaryPublicId: { $regex: escapeRegex(term), $options: 'i' } });
+      }
+      filter.$or = orClauses;
     }
 
     const [items, total] = await Promise.all([

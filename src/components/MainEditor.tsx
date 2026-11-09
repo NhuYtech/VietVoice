@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Volume2,
   Play,
@@ -11,6 +11,8 @@ import {
   Sparkles,
   Copy,
   Check,
+  WrapText,
+  AlignJustify,
 } from 'lucide-react';
 import { PauseSettingsModal, type PauseSettings } from './PauseSettingsModal';
 import type { NotificationModalData } from './NotificationModal';
@@ -54,6 +56,18 @@ export const MainEditor: React.FC<MainEditorProps> = ({
   const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
   const [copiedNormalized, setCopiedNormalized] = useState(false);
   const [showAllVocabTags, setShowAllVocabTags] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Tự động mở rộng không gian ô nhập theo lượng văn bản thực tế
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollH = textareaRef.current.scrollHeight;
+      // Chiều cao tự động tối thiểu 140px, mở rộng mượt mà theo nội dung lên đến 480px
+      const newHeight = Math.min(Math.max(scrollH, 140), 480);
+      textareaRef.current.style.height = `${newHeight}px`;
+    }
+  }, [text]);
 
   const handleCopyNormalized = (normalizedStr: string) => {
     if (!normalizedStr) return;
@@ -63,6 +77,32 @@ export const MainEditor: React.FC<MainEditorProps> = ({
   };
   const charCount = text.length;
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+
+  // Phát hiện xem văn bản có nhiều dòng bị gãy khúc giữa câu (thường do copy từ file PDF / LaTeX)
+  const hasBrokenLines = Boolean(
+    text &&
+    text.includes('\n') &&
+    text.split('\n').some((line) => {
+      const trimmed = line.trim();
+      return trimmed.length > 20 && trimmed.length < 120 && !/[.:!?…]$/.test(trimmed);
+    })
+  );
+
+  // Nối các dòng gãy khúc để văn bản tràn đều sang phải
+  const handleUnwrapLines = () => {
+    if (!text) return;
+    const cleaned = text
+      .split(/\n\s*\n/) // Giữ lại ngắt đoạn lớn
+      .map((para) => para.replace(/\s*\n\s*/g, ' ').replace(/\s+/g, ' ').trim())
+      .join('\n\n');
+    onChangeText(cleaned);
+    onShowNotification?.({
+      type: 'success',
+      title: 'Đã nối dòng văn bản',
+      message: 'Đã loại bỏ các ký tự xuống dòng thừa. Văn bản đã dàn đều sang phải.',
+      confirmText: 'Đóng',
+    });
+  };
 
   // Kiểm tra từ vựng hỗ trợ
   const vocabCheck = inspectVocabulary(text, 'Hữu Thọ', entries);
@@ -95,10 +135,22 @@ export const MainEditor: React.FC<MainEditorProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {hasBrokenLines && (
+            <button
+              type="button"
+              onClick={handleUnwrapLines}
+              className="flex items-center gap-1.5 text-xs text-[#6255CF] bg-[#F4F2FC] hover:bg-[#ECE8FD] border border-[#DDD7FD] px-2.5 py-1.5 rounded-lg transition font-medium cursor-pointer shadow-2xs select-none"
+              title="Nối các dòng bị ngắt khúc khi copy từ PDF để văn bản tràn đều sang phải"
+            >
+              <WrapText className="w-3.5 h-3.5 text-[#6255CF]" />
+              <span>Dàn đều sang phải</span>
+            </button>
+          )}
+
           {text && (
             <button
               onClick={() => onChangeText('')}
-              className="flex items-center gap-1 text-xs text-[#85879A] hover:text-red-500 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition"
+              className="flex items-center gap-1 text-xs text-[#85879A] hover:text-red-500 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition cursor-pointer select-none"
               title="Xóa toàn bộ văn bản"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -109,14 +161,32 @@ export const MainEditor: React.FC<MainEditorProps> = ({
       </div>
 
       {/* Large Text Area */}
-      <div className="px-6 py-3.5">
+      <div className="px-6 py-4">
         <textarea
+          ref={textareaRef}
           value={text}
           onChange={(e) => onChangeText(e.target.value)}
-          placeholder="Nhập văn bản tại đây..."
-          rows={3}
-          className="w-full resize-none text-[16px] text-[#20213A] placeholder-[#9AA0B4] focus:outline-none leading-relaxed bg-transparent min-h-[76px]"
+          placeholder="Nhập hoặc dán văn bản tiếng Việt tại đây (hệ thống tự động đọc số, tiền tệ, ngày tháng và ngắt câu thông minh)..."
+          rows={5}
+          className="w-full resize-y text-[15px] sm:text-[16px] text-[#1E2040] placeholder-[#9AA0B4] focus:outline-none leading-relaxed bg-transparent min-h-[140px] max-h-[520px] transition-[height] duration-150"
         />
+
+        {/* Thanh gợi ý 1 chạm nếu phát hiện văn bản copy từ PDF có nhiều dấu xuống dòng gãy khúc */}
+        {hasBrokenLines && (
+          <div className="mt-2.5 mb-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#F5F3FF] via-[#EEF2FF] to-[#FAF5FF] border border-[#DDD6FE] text-xs text-[#5B21B6] flex flex-wrap items-center justify-between gap-2 shadow-2xs animate-in fade-in duration-200">
+            <div className="flex items-center gap-2">
+              <WrapText className="w-4 h-4 text-[#7C3AED] shrink-0" />
+              <span>Văn bản bị ngắt dòng gãy khúc (do sao chép từ PDF/LaTeX). Bấm để văn bản tràn đều sang phải:</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleUnwrapLines}
+              className="px-3 py-1 rounded-lg bg-[#6255CF] hover:bg-[#5144BD] text-white text-[11px] font-bold cursor-pointer transition shadow-xs shrink-0 active:scale-95"
+            >
+              Dàn đều sang phải ngay
+            </button>
+          </div>
+        )}
 
         {/* Word / Char Counters & Status */}
         <div className="flex items-center justify-between pt-2 border-t border-[#F0F2F9] text-xs text-[#85879A]">

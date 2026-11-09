@@ -1,7 +1,7 @@
 import { SR, decodeBlob, encodeWav, extractFeatures, estimateF0, fadeEdges, normalizeRms, trimSilence, applyHighpassFilter, smartTrimWordAudio, applyStudioLimiter, normalizeSpeechRms, masterSpeechAudio } from './dsp';
 import { putEntry } from './store';
 import type { CorpusEntry, JoinInfo, SynthResult, TraceItem } from './types';
-import { encodeVnWord, isVniCode, decodeVnWord, wordAndCodeFromFilename } from './vniCodec';
+import { encodeVnWord, isVniCode, decodeVnWord, wordAndCodeFromFilename, normalizeToneToNewStyle, normalizeToneToOldStyle, codeToMidDigitAlias } from './vniCodec';
 import { normalizeNumbersInText, hasNumbers } from './numberNormalizer';
 import type { PauseSettings } from '../components/PauseSettingsModal';
 import { DEFAULT_PAUSE_SETTINGS } from '../components/PauseSettingsModal';
@@ -11,6 +11,11 @@ export function normalizeText(s: string): string {
   let text = s;
   if (!isVniCode(text) && hasNumbers(text)) {
     text = normalizeNumbersInText(text);
+  }
+  // Chuẩn hóa dấu thanh kiểu cũ (hóa, thủy, khỏe) -> kiểu mới (hoá, thuỷ, khoẻ)
+  // để khớp 100% với toàn bộ 6.674 từ trong dataset và quy định đặt tên
+  if (!isVniCode(text)) {
+    text = normalizeToneToNewStyle(text);
   }
   return text
     .normalize('NFC')
@@ -178,11 +183,18 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
 
   const manifestItemsToFetch = new Map<string, ManifestItem>();
   for (const tok of uniqueMissingTokens) {
+    const tokNew = normalizeToneToNewStyle(tok);
+    const tokOld = normalizeToneToOldStyle(tok);
+    const tokCode = encodeVnWord(tok);
     const m =
       manifestLookup.get(`${targetSpeaker}::${tok}`) ||
-      manifestLookup.get(`${targetSpeaker}::${encodeVnWord(tok)}`) ||
+      manifestLookup.get(`${targetSpeaker}::${tokNew}`) ||
+      manifestLookup.get(`${targetSpeaker}::${tokOld}`) ||
+      manifestLookup.get(`${targetSpeaker}::${tokCode}`) ||
       manifestLookup.get(`hữu thọ::${tok}`) ||
-      manifestLookup.get(`hữu thọ::${encodeVnWord(tok)}`) ||
+      manifestLookup.get(`hữu thọ::${tokNew}`) ||
+      manifestLookup.get(`hữu thọ::${tokOld}`) ||
+      manifestLookup.get(`hữu thọ::${tokCode}`) ||
       manifestLookup.get(`nam::${tok}`);
     if (m) {
       const key = m.code || m.word;
@@ -222,12 +234,20 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
       (optSpkLower.includes('thọ') && (eSpk.includes('thọ') || eSpk === 'nam')) ||
       (optSpkLower === 'nam' && eSpk.includes('thọ'));
     const target = isMine ? mine : others;
-    target.set(normalizeText(e.word), e);
+    const nW = normalizeText(e.word);
+    const oW = normalizeToneToOldStyle(nW);
+    target.set(nW, e);
+    target.set(oW, e);
     target.set(e.word, e);
     const c = e.code || encodeVnWord(e.word);
     if (c) {
-      target.set(c, e);
-      target.set(normalizeText(c), e);
+      const cLow = c.toLowerCase();
+      target.set(cLow, e);
+      target.set(normalizeText(cLow), e);
+      const midAlias = codeToMidDigitAlias(cLow);
+      if (midAlias && midAlias !== cLow) {
+        target.set(midAlias, e);
+      }
     }
     maxN = Math.max(maxN, e.word.split(' ').length);
   }
@@ -238,13 +258,16 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
     let done = false;
     for (let n = Math.min(maxN, tokens.length - i); n >= 1 && !done; n--) {
       const key = tokens.slice(i, i + n).join(' ');
-      let e = mine.get(key) || mine.get(encodeVnWord(key));
+      const keyNew = normalizeToneToNewStyle(key);
+      const keyOld = normalizeToneToOldStyle(key);
+      const keyCode = encodeVnWord(key);
+      let e = mine.get(key) || mine.get(keyNew) || mine.get(keyOld) || mine.get(keyCode);
       if (!e && isVniCode(key)) {
         e = mine.get(decodeVnWord(key));
       }
       let status: TraceItem['status'] = 'ok';
       if (!e && opts.fallbackSpeaker) {
-        e = others.get(key) || others.get(encodeVnWord(key));
+        e = others.get(key) || others.get(keyNew) || others.get(keyOld) || others.get(keyCode);
         if (!e && isVniCode(key)) {
           e = others.get(decodeVnWord(key));
         }
@@ -487,16 +510,31 @@ export async function loadManifest(existing: Set<string>): Promise<CorpusEntry[]
     for (const m of cachedManifestWords) {
       const spk = (m.speaker || 'Hữu Thọ').toLowerCase();
       const normW = normalizeText(m.word);
-      manifestLookup.set(`${spk}::${normW}`, m);
-      manifestLookup.set(`hữu thọ::${normW}`, m);
-      manifestLookup.set(`huu tho::${normW}`, m);
-      manifestLookup.set(`nam::${normW}`, m);
-      const code = m.code || encodeVnWord(normW);
-      if (code && code !== normW) {
-        manifestLookup.set(`${spk}::${code.toLowerCase()}`, m);
-        manifestLookup.set(`hữu thọ::${code.toLowerCase()}`, m);
-        manifestLookup.set(`huu tho::${code.toLowerCase()}`, m);
-        manifestLookup.set(`nam::${code.toLowerCase()}`, m);
+      const oldW = normalizeToneToOldStyle(normW);
+      const wordVariants = Array.from(new Set([normW, oldW, (m.word || '').toLowerCase()])).filter(Boolean);
+
+      for (const wVar of wordVariants) {
+        manifestLookup.set(`${spk}::${wVar}`, m);
+        manifestLookup.set(`hữu thọ::${wVar}`, m);
+        manifestLookup.set(`huu tho::${wVar}`, m);
+        manifestLookup.set(`nam::${wVar}`, m);
+      }
+
+      const code = (m.code || encodeVnWord(normW)).toLowerCase();
+      if (code && !wordVariants.includes(code)) {
+        manifestLookup.set(`${spk}::${code}`, m);
+        manifestLookup.set(`hữu thọ::${code}`, m);
+        manifestLookup.set(`huu tho::${code}`, m);
+        manifestLookup.set(`nam::${code}`, m);
+
+        // Hỗ trợ mã alias có số ở giữa (vd: hoa1 -> ho1a, hoa3 -> ho3a, thuy3 -> thu3y)
+        const midAlias = codeToMidDigitAlias(code);
+        if (midAlias && midAlias !== code) {
+          manifestLookup.set(`${spk}::${midAlias}`, m);
+          manifestLookup.set(`hữu thọ::${midAlias}`, m);
+          manifestLookup.set(`huu tho::${midAlias}`, m);
+          manifestLookup.set(`nam::${midAlias}`, m);
+        }
       }
     }
   } catch (err) {
