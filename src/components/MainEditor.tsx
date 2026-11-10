@@ -209,6 +209,7 @@ export const MainEditor: React.FC<MainEditorProps> = ({
               Gợi ý thử nhanh:
             </span>
             {[
+              { label: 'Viết tắt (CTUT, FPT, AI)', text: 'Sinh viên CTUT và FPT đang nghiên cứu AI và CSDL' },
               { label: '500k', text: 'giá 500k' },
               { label: '100.000đ', text: '100.000đ' },
               { label: '04/11', text: 'ngày 04/11' },

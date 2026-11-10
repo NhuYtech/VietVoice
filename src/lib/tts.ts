@@ -3,20 +3,35 @@ import { putEntry } from './store';
 import type { CorpusEntry, JoinInfo, SynthResult, TraceItem } from './types';
 import { encodeVnWord, isVniCode, decodeVnWord, wordAndCodeFromFilename, normalizeToneToNewStyle, normalizeToneToOldStyle, codeToMidDigitAlias } from './vniCodec';
 import { normalizeNumbersInText, hasNumbers } from './numberNormalizer';
+import { expandUppercaseAcronyms, expandCommonAcronyms, decomposeWordToLetters } from './acronymNormalizer';
 import type { PauseSettings } from '../components/PauseSettingsModal';
 import { DEFAULT_PAUSE_SETTINGS } from '../components/PauseSettingsModal';
 
-/* Bước 1: chuẩn hóa văn bản (hỗ trợ cả tiếng Việt có dấu và mã VNI quy ước a+, d-, o+...) */
+/* Bước 1: chuẩn hóa văn bản (hỗ trợ cả tiếng Việt có dấu, từ viết tắt và mã VNI quy ước a+, d-, o+...) */
 export function normalizeText(s: string): string {
   let text = s;
+
+  // 1. Tách từ viết tắt dạng viết hoa trước khi chuyển sang chữ thường (CTUT -> C T U T, FPT -> F P T, AI -> A I, VTV -> V T V...)
+  if (!isVniCode(text)) {
+    text = expandUppercaseAcronyms(text);
+  }
+
+  // 2. Chuẩn hóa số sang chữ tiếng Việt
   if (!isVniCode(text) && hasNumbers(text)) {
     text = normalizeNumbersInText(text);
   }
-  // Chuẩn hóa dấu thanh kiểu cũ (hóa, thủy, khỏe) -> kiểu mới (hoá, thuỷ, khoẻ)
-  // để khớp 100% với toàn bộ 6.674 từ trong dataset và quy định đặt tên
+
+  // 3. Chuẩn hóa các từ viết tắt phổ thông dạng chữ thường (ctut -> c t u t, fpt -> f p t, vtv -> v t v...)
+  if (!isVniCode(text)) {
+    text = expandCommonAcronyms(text);
+  }
+
+  // 4. Chuẩn hóa dấu thanh kiểu cũ (hóa, thủy, khỏe) -> kiểu mới (hoá, thuỷ, khoẻ)
+  // để khớp 100% với toàn bộ 6.707 từ trong dataset và quy định đặt tên
   if (!isVniCode(text)) {
     text = normalizeToneToNewStyle(text);
   }
+
   return text
     .normalize('NFC')
     .toLowerCase()
@@ -167,7 +182,7 @@ function edgeF0(x: Float32Array, atEnd: boolean): number {
 /** Bước 2–5: tra cứu longest-match → tiền xử lý → ghép nối → kiểm tra điểm nối. */
 export async function synthesize(text: string, entries: CorpusEntry[], opts: SynthOptions): Promise<SynthResult> {
   const t0 = performance.now();
-  const tokens = normalizeText(text).split(' ').filter(Boolean);
+  const rawTokens = normalizeText(text).split(' ').filter(Boolean);
 
   // Tự động nạp manifest nếu chưa kịp nạp khi khởi động
   if (manifestLookup.size === 0) {
@@ -177,6 +192,29 @@ export async function synthesize(text: string, entries: CorpusEntry[], opts: Syn
   // Tải tức thì các từ trong câu nếu có trong manifest datasetTV mà chưa tải
   const targetSpeaker = opts.speaker.toLowerCase();
   const existingWordSet = new Set(entries.map((e) => normalizeText(e.word)));
+
+  // Nếu trong câu có từ nào chưa có trong kho ngữ liệu thì tự động phân rã thành từng chữ cái riêng biệt ghép lại
+  const resolvedTokens: string[] = [];
+  for (const tok of rawTokens) {
+    const isKnown =
+      existingWordSet.has(tok) ||
+      manifestLookup.has(`${targetSpeaker}::${tok}`) ||
+      manifestLookup.has(`hữu thọ::${tok}`) ||
+      manifestLookup.has(`nam::${tok}`) ||
+      manifestLookup.has(`${targetSpeaker}::${normalizeToneToNewStyle(tok)}`) ||
+      manifestLookup.has(`hữu thọ::${normalizeToneToNewStyle(tok)}`) ||
+      manifestLookup.has(`${targetSpeaker}::${encodeVnWord(tok)}`) ||
+      manifestLookup.has(`hữu thọ::${encodeVnWord(tok)}`) ||
+      isVniCode(tok);
+
+    if (!isKnown && tok.length > 1) {
+      const letters = decomposeWordToLetters(tok).split(' ').filter(Boolean);
+      resolvedTokens.push(...letters);
+    } else {
+      resolvedTokens.push(tok);
+    }
+  }
+  const tokens = resolvedTokens;
 
   // Thu thập danh sách các từ còn thiếu ĐỘC NHẤT (không trùng lặp)
   const uniqueMissingTokens = Array.from(new Set(tokens.filter((tok) => !existingWordSet.has(tok))));

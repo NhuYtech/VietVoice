@@ -1,6 +1,7 @@
 import type { CorpusEntry, SynthResult } from '../lib/types';
 import { synthesize, normalizeText, cachedManifestWords } from '../lib/tts';
 import { normalizeToneToNewStyle, normalizeToneToOldStyle, encodeVnWord, codeToMidDigitAlias } from '../lib/vniCodec';
+import { decomposeWordToLetters } from '../lib/acronymNormalizer';
 import { INITIAL_CONVERSION_HISTORY, MOCK_CORPUS_ITEMS, type ConversionHistoryItem } from '../data/mockCorpus';
 import { getStoredPauseSettings } from '../components/PauseSettingsModal';
 
@@ -237,6 +238,7 @@ export function inspectVocabularyWithVoice(
 
   const wordChecks: WordVoiceCheck[] = [];
   const missingTokens: string[] = [];
+  const finalTokens: string[] = [];
 
   for (const tok of tokens) {
     const inCurrent =
@@ -246,13 +248,45 @@ export function inspectVocabularyWithVoice(
       availableSet.has(encodeVnWord(tok));
 
     if (inCurrent) {
+      finalTokens.push(tok);
       wordChecks.push({
         token: tok,
         inCurrentVoice: true,
         isAvailableAnywhere: true,
         correctVoice: 'Hữu Thọ',
       });
+    } else if (tok.length > 1) {
+      // Nếu từ chưa có trong dataset thì tự động phát âm riêng từng chữ cái ghép lại
+      const letters = decomposeWordToLetters(tok).split(' ').filter(Boolean);
+      let allLettersAvailable = true;
+      for (const l of letters) {
+        if (!availableSet.has(l) && !availableSet.has(encodeVnWord(l))) {
+          allLettersAvailable = false;
+        }
+      }
+
+      if (allLettersAvailable && letters.length > 0) {
+        // Từng chữ cái đều có bản thu âm (A-Z, Đ)
+        for (const l of letters) {
+          finalTokens.push(l);
+          wordChecks.push({
+            token: l,
+            inCurrentVoice: true,
+            isAvailableAnywhere: true,
+            correctVoice: 'Hữu Thọ',
+          });
+        }
+      } else {
+        finalTokens.push(tok);
+        wordChecks.push({
+          token: tok,
+          inCurrentVoice: false,
+          isAvailableAnywhere: false,
+        });
+        missingTokens.push(tok);
+      }
     } else {
+      finalTokens.push(tok);
       wordChecks.push({
         token: tok,
         inCurrentVoice: false,
@@ -263,7 +297,7 @@ export function inspectVocabularyWithVoice(
   }
 
   const hasMissing = missingTokens.length > 0;
-  const canConvert = tokens.length > 0 && !hasMissing;
+  const canConvert = finalTokens.length > 0 && !hasMissing;
 
   let missingMessage: string | undefined;
   if (hasMissing) {
@@ -271,7 +305,7 @@ export function inspectVocabularyWithVoice(
   }
 
   return {
-    tokens,
+    tokens: finalTokens,
     wordChecks,
     hasWrongVoice: false,
     wrongVoiceWords: [],
