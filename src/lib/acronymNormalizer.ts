@@ -182,3 +182,4 @@ export function decomposeWordToLetters(word: string): string {
   if (!letters || letters.length === 0) return clean;
   return letters.join(' ');
 }
+

@@ -182,7 +182,7 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-[#E8E8F0] shadow-sm overflow-hidden flex flex-col">
+    <div className="bg-white rounded-xl border border-[#E8E8F0] shadow-sm flex flex-col relative">
       {/* 1. Header Toolbar */}
       <div className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
         {/* Left: Collapse chevron + Title */}
@@ -489,11 +489,22 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                       )}
                     </button>
 
+                    {/* Direct Re-use Text Button on table row (1 chạm trực tiếp trên bảng) */}
+                    {onSelectSampleText && (
+                      <button
+                        onClick={() => onSelectSampleText(item.text)}
+                        className="p-1.5 transition rounded-lg hover:bg-[#F7F6FD] text-[#555870] hover:text-[#6255CF] cursor-pointer"
+                        title="Dùng lại văn bản này"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    )}
+
                     {/* Download Button */}
                     <button
                       onClick={() => handleDownloadItem(item)}
                       disabled={isConvertingItem}
-                      className={`p-1.5 transition rounded-lg hover:bg-gray-50 ${isConvertingItem ? 'text-gray-300 cursor-not-allowed' : 'text-[#555870] hover:text-[#6255CF]'
+                      className={`p-1.5 transition rounded-lg hover:bg-gray-50 cursor-pointer ${isConvertingItem ? 'text-gray-300 cursor-not-allowed' : 'text-[#555870] hover:text-[#6255CF]'
                         }`}
                       title="Tải về file WAV"
                     >
@@ -506,19 +517,20 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                         onClick={() =>
                           setActiveMenuId(activeMenuId === item.id ? null : item.id)
                         }
-                        className="p-1.5 text-[#85879A] hover:text-[#1E2040] transition rounded-lg hover:bg-gray-50"
+                        className="p-1.5 text-[#85879A] hover:text-[#1E2040] transition rounded-lg hover:bg-gray-50 cursor-pointer"
                         title="Tùy chọn khác"
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
 
-                      {/* Dropdown Menu */}
+                      {/* Dropdown Menu - Luôn nổi phía trên bảng để không bị che khuất */}
                       {activeMenuId === item.id && (
                         <div
-                          className={`absolute right-0 ${idx >= filtered.length - 2 && filtered.length > 2
-                              ? 'bottom-full mb-1'
-                              : 'top-full mt-1'
-                            } w-44 bg-white rounded-xl border border-[#E2E4F0] shadow-xl py-1.5 z-40 animate-in fade-in zoom-in-95 text-xs font-medium`}
+                          className={`absolute right-0 ${idx === 0 && filtered.length > 2
+                              ? 'top-full mt-1.5'
+                              : 'bottom-full mb-1.5'
+                            } w-48 bg-white rounded-xl border border-[#E2E4F0] shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 text-xs font-medium`}
+                          style={{ filter: 'drop-shadow(0 10px 25px rgba(0,0,0,0.15))' }}
                         >
                           {onSelectSampleText && (
                             <button
@@ -526,10 +538,10 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                                 onSelectSampleText(item.text);
                                 setActiveMenuId(null);
                               }}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-[#20213A] hover:bg-[#F7F6FD] hover:text-[#6255CF] text-left transition"
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[#20213A] hover:bg-[#F7F6FD] hover:text-[#6255CF] text-left transition cursor-pointer"
                             >
-                              <Copy className="w-3.5 h-3.5" />
-                              <span>Dùng lại văn bản</span>
+                              <Copy className="w-4 h-4 text-[#6255CF]" />
+                              <span className="font-semibold">Dùng lại văn bản</span>
                             </button>
                           )}
 
@@ -539,9 +551,9 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                               setActiveMenuId(null);
                             }}
                             disabled={isConvertingItem}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-[#20213A] hover:bg-[#F7F6FD] hover:text-[#6255CF] text-left transition disabled:opacity-50"
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[#20213A] hover:bg-[#F7F6FD] hover:text-[#6255CF] text-left transition disabled:opacity-50 cursor-pointer"
                           >
-                            <Download className="w-3.5 h-3.5" />
+                            <Download className="w-4 h-4 text-[#555870]" />
                             <span>Tải xuống WAV</span>
                           </button>
 
@@ -552,9 +564,9 @@ export const ConversionHistory: React.FC<ConversionHistoryProps> = ({
                               setActiveMenuId(null);
                               onDelete(item.id);
                             }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 text-left transition cursor-pointer"
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-red-600 hover:bg-red-50 text-left transition cursor-pointer"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4 text-red-500" />
                             <span>Xóa mục này</span>
                           </button>
                         </div>
